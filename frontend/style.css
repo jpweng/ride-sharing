@@ -1,0 +1,254 @@
+:root {
+  --accent: #d8232a;
+  --accent-dark: #a91b21;
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --border: #dfe2e6;
+  --text: #1c1f24;
+  --muted: #6b7280;
+  --success: #1a7f37;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  background: var(--accent);
+  color: white;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+header h1 {
+  font-size: 18px;
+  margin: 0;
+  font-weight: 600;
+}
+
+header .subtitle {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+nav.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+}
+
+nav.tabs button {
+  border: none;
+  background: none;
+  padding: 12px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+}
+
+nav.tabs button.active {
+  color: var(--accent-dark);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 0;
+  height: calc(100vh - 92px);
+}
+
+.panel {
+  padding: 20px 24px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+}
+
+.view { display: none; }
+.view.active { display: block; }
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 14px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+input[type=text], input[type=number], input[type=datetime-local] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.point-picker {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.point-picker button {
+  white-space: nowrap;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.point-picker button.picking {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.point-picker input[type=text] {
+  flex: 1;
+  min-width: 0;
+}
+
+.coord-readout {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.submit-btn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 11px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.submit-btn:hover { background: var(--accent-dark); }
+.submit-btn:disabled { background: var(--muted); cursor: not-allowed; }
+
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.status-msg {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: none;
+}
+
+.status-msg.show { display: block; }
+.status-msg.ok { background: #e6f4ea; color: var(--success); }
+.status-msg.err { background: #fdecea; color: #b3261e; }
+
+.drive-list { margin-top: 8px; }
+
+.drive-card, .match-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--bg);
+}
+
+.drive-card .route, .match-card .route {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.drive-card .meta, .match-card .meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.match-card .score {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #e6f4ea;
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.match-card .score.warn {
+  background: #fff4e5;
+  color: #995c00;
+}
+
+.last-mile, .transit-box {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: white;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.transit-box.alt {
+  border-style: solid;
+  border-color: var(--border);
+}
+
+.transit-box .conn {
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.transit-box .conn:first-of-type { border-top: none; }
+
+.empty-state {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 12px 0;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 18px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #eef0f3;
+  color: var(--muted);
+  margin-left: 6px;
+}
