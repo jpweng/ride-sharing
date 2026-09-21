@@ -30,14 +30,20 @@
       <label>Origin</label>
       <div class="point-picker">
         <button type="button" id="pick-post-origin" data-role="post-origin">Pick on map</button>
-        <input type="text" id="name-post-origin" placeholder="place name" />
+        <div class="autocomplete">
+          <input type="text" id="name-post-origin" placeholder="type an address or place…" autocomplete="off" />
+          <ul class="autocomplete-list" id="suggest-post-origin"></ul>
+        </div>
       </div>
       <div class="coord-readout" id="readout-post-origin">not set</div>
 
       <label>Destination</label>
       <div class="point-picker">
         <button type="button" id="pick-post-destination" data-role="post-destination">Pick on map</button>
-        <input type="text" id="name-post-destination" placeholder="place name" />
+        <div class="autocomplete">
+          <input type="text" id="name-post-destination" placeholder="type an address or place…" autocomplete="off" />
+          <ul class="autocomplete-list" id="suggest-post-destination"></ul>
+        </div>
       </div>
       <div class="coord-readout" id="readout-post-destination">not set</div>
 
@@ -50,7 +56,7 @@
       <button class="submit-btn" id="post-submit">Post drive</button>
       <div class="status-msg" id="post-status"></div>
 
-      <div class="hint">Click "Pick on map" then click a point on the map to set origin/destination.</div>
+      <div class="hint">Type an address to search, or click "Pick on map" then click a point on the map.</div>
     </section>
 
     <!-- REQUEST A RIDE -->
@@ -61,14 +67,20 @@
       <label>Origin</label>
       <div class="point-picker">
         <button type="button" id="pick-req-origin" data-role="req-origin">Pick on map</button>
-        <input type="text" id="name-req-origin" placeholder="place name" />
+        <div class="autocomplete">
+          <input type="text" id="name-req-origin" placeholder="type an address or place…" autocomplete="off" />
+          <ul class="autocomplete-list" id="suggest-req-origin"></ul>
+        </div>
       </div>
       <div class="coord-readout" id="readout-req-origin">not set</div>
 
       <label>Destination</label>
       <div class="point-picker">
         <button type="button" id="pick-req-destination" data-role="req-destination">Pick on map</button>
-        <input type="text" id="name-req-destination" placeholder="place name" />
+        <div class="autocomplete">
+          <input type="text" id="name-req-destination" placeholder="type an address or place…" autocomplete="off" />
+          <ul class="autocomplete-list" id="suggest-req-destination"></ul>
+        </div>
       </div>
       <div class="coord-readout" id="readout-req-destination">not set</div>
 

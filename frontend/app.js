@@ -99,6 +99,112 @@ function getPoint(role, nameInputId) {
 }
 
 // ---------------------------------------------------------------------
+// Address autocomplete (geo.admin.ch Search API — Swiss addresses/places)
+// See "address auto complete.md" for the option comparison behind this choice.
+// ---------------------------------------------------------------------
+const GEOADMIN_SEARCH_URL = "https://api3.geo.admin.ch/rest/services/api/SearchServer";
+
+function debounce(fn, delayMs) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delayMs);
+  };
+}
+
+function stripHtml(html) {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return div.textContent || div.innerText || "";
+}
+
+async function searchGeoAdmin(query) {
+  try {
+    const resp = await fetch(
+      `${GEOADMIN_SEARCH_URL}?searchText=${encodeURIComponent(query)}&type=locations&origins=address&limit=8&sr=4326`
+    );
+    if (!resp.ok) throw new Error("geocoding failed");
+    const data = await resp.json();
+    return (data.results || [])
+      .map((r) => r.attrs || {})
+      .filter((a) => typeof a.lat === "number" && typeof a.lon === "number")
+      .map((a) => ({ label: stripHtml(a.label), lat: a.lat, lon: a.lon }));
+  } catch {
+    return []; // fail soft -- "Pick on map" is always a working fallback
+  }
+}
+
+function setupAutocomplete(role) {
+  const input = document.getElementById(`name-${role}`);
+  const list = document.getElementById(`suggest-${role}`);
+  if (!input || !list) return;
+
+  let items = [];
+  let activeIndex = -1;
+
+  function closeList() {
+    list.classList.remove("show");
+    list.innerHTML = "";
+    items = [];
+    activeIndex = -1;
+  }
+
+  function renderList() {
+    list.innerHTML = items
+      .map((it, i) => `<li data-index="${i}" class="${i === activeIndex ? "active" : ""}">${it.label}</li>`)
+      .join("");
+    list.classList.toggle("show", items.length > 0);
+  }
+
+  function selectItem(it) {
+    input.value = it.label;
+    setPointCoords(role, it.lat, it.lon, it.label);
+    closeList();
+  }
+
+  const runSearch = debounce(async (query) => {
+    if (query.trim().length < 3) {
+      closeList();
+      return;
+    }
+    items = await searchGeoAdmin(query);
+    activeIndex = -1;
+    renderList();
+  }, 300);
+
+  input.addEventListener("input", () => runSearch(input.value));
+
+  input.addEventListener("keydown", (e) => {
+    if (!items.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+      renderList();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+      renderList();
+    } else if (e.key === "Enter" && activeIndex >= 0) {
+      e.preventDefault();
+      selectItem(items[activeIndex]);
+    } else if (e.key === "Escape") {
+      closeList();
+    }
+  });
+
+  list.addEventListener("mousedown", (e) => {
+    // mousedown (not click) fires before the input's blur handler closes the list
+    const li = e.target.closest("li[data-index]");
+    if (!li) return;
+    selectItem(items[Number(li.dataset.index)]);
+  });
+
+  input.addEventListener("blur", closeList);
+}
+
+["post-origin", "post-destination", "req-origin", "req-destination"].forEach(setupAutocomplete);
+
+// ---------------------------------------------------------------------
 // Tabs
 // ---------------------------------------------------------------------
 document.querySelectorAll(".tab-btn").forEach((btn) => {
