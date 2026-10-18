@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 
-# Never run two deploys at once (the service is stopped/started per deploy).
+# Never run two deploys at once.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -24,9 +24,11 @@ jobs:
 
   deploy:
     needs: test
-    runs-on: ubuntu-latest
+    # The server is Graviton (arm64): build the images natively on arm64.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
     env:
-      IMAGE: ${{ vars.ECR_REPOSITORY_URL }}
+      APP_IMAGE: ${{ vars.ECR_REPOSITORY_URL }}:${{ github.sha }}
     steps:
       - uses: actions/checkout@v7
 
@@ -40,29 +42,67 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image
+      - name: Build and push app image
         run: |
-          docker build -t "$IMAGE:$GITHUB_SHA" -t "$IMAGE:latest" .
-          docker push --all-tags "$IMAGE"
+          docker build -t "$APP_IMAGE" .
+          docker push "$APP_IMAGE"
 
-      # Start from the latest registered revision so settings changed in
-      # Terraform (env vars, CPU, volumes...) ship with this deploy.
-      - name: Fetch current task definition
+      # Tagged by the content of deploy/caddy/, so the proxy is only rebuilt
+      # (and restarted on the server) when its Dockerfile or Caddyfile change.
+      - name: Build and push proxy image if changed
+        id: proxy
         run: |
-          aws ecs describe-task-definition \
-            --task-definition "${{ vars.TASK_FAMILY }}" \
-            --query taskDefinition > task-definition.json
+          REPO_URL="${{ vars.ECR_PROXY_REPOSITORY_URL }}"
+          TAG="caddy-$(git ls-files -s deploy/caddy | sha256sum | cut -c1-16)"
+          IMAGE="$REPO_URL:$TAG"
+          if aws ecr describe-images --repository-name "${REPO_URL#*/}" --image-ids "imageTag=$TAG" > /dev/null 2>&1; then
+            echo "Proxy image $TAG already in ECR"
+          else
+            docker build -t "$IMAGE" deploy/caddy
+            docker push "$IMAGE"
+          fi
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      - id: render
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-definition.json
-          container-name: app
-          image: ${{ vars.ECR_REPOSITORY_URL }}:${{ github.sha }}
+      - name: Deploy on the server
+        env:
+          PROXY_IMAGE: ${{ steps.proxy.outputs.image }}
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=${{ vars.SERVER_NAME }}" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[].Instances[].InstanceId' --output text)
+          if [ -z "$INSTANCE_ID" ]; then echo "::error::No running server tagged Name=${{ vars.SERVER_NAME }}"; exit 1; fi
 
-      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.render.outputs.task-definition }}
-          cluster: ${{ vars.ECS_CLUSTER }}
-          service: ${{ vars.ECS_SERVICE }}
-          wait-for-service-stability: true
+          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\n' \
+            "$APP_IMAGE" "$PROXY_IMAGE" "${{ vars.SITE_ADDRESS }}" "${{ vars.AWS_REGION }}" "${{ vars.LOG_GROUP }}")
+          # Files travel base64-encoded inside the SSM command.
+          PARAMS=$(jq -n \
+            --arg compose "$(base64 -w0 deploy/compose.yaml)" \
+            --arg script "$(base64 -w0 deploy/deploy.sh)" \
+            --arg env "$(printf '%s' "$ENV_FILE" | base64 -w0)" \
+            '{commands: [
+                "set -eu",
+                "mkdir -p /opt/ride-sharing && cd /opt/ride-sharing",
+                "echo \($compose) | base64 -d > compose.yaml",
+                "echo \($env) | base64 -d > .env",
+                "echo \($script) | base64 -d > deploy.sh",
+                "bash deploy.sh"
+              ],
+              executionTimeout: ["900"]}')
+
+          CMD_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript --comment "deploy ${GITHUB_SHA::7}" \
+            --parameters "$PARAMS" --query Command.CommandId --output text)
+          echo "SSM command $CMD_ID on $INSTANCE_ID"
+
+          while :; do
+            sleep 5
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2> /dev/null || echo Pending)
+            case "$STATUS" in Pending|InProgress|Delayed) continue ;; esac
+            break
+          done
+
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query '[StandardOutputContent, StandardErrorContent]' --output text
+          echo "Deploy status: $STATUS"
+          [ "$STATUS" = Success ]

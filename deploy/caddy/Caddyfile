@@ -1,0 +1,49 @@
+{
+	order rate_limit before basic_auth
+}
+
+# ":80" serves plain HTTP on any host; a domain name gets automatic HTTPS
+# (Let's Encrypt) with HTTP redirected to it.
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	# Per-client-IP limits; over-limit requests get 429 + Retry-After.
+	# Every zone a request matches counts it, so POST /api/match uses the
+	# match, writes and api budgets at once.
+	rate_limit {
+		# Each match fans out to the free OSRM and transport.opendata.ch
+		# APIs; abuse here would get the server blocked by them.
+		zone match {
+			match {
+				method POST
+				path /api/match
+			}
+			key {remote_host}
+			events 10
+			window 1m
+		}
+		zone writes {
+			match {
+				method POST DELETE
+				path /api/*
+			}
+			key {remote_host}
+			events 30
+			window 1m
+		}
+		# Generous: the UI polls a few endpoints, and people behind one
+		# office/mobile NAT share an IP.
+		zone api {
+			match {
+				path /api/*
+			}
+			key {remote_host}
+			events 300
+			window 1m
+		}
+	}
+
+	reverse_proxy app:8000
+
+	log
+}

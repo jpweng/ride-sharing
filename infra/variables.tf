@@ -11,27 +11,21 @@ variable "project" {
 }
 
 variable "domain_name" {
-  description = "Public hostname for the app, e.g. rides.example.ch (DNS managed outside AWS). Empty: serve plain HTTP on the ALB's own DNS name, no certificate."
+  description = "Public hostname for the app, e.g. rides.example.ch (DNS managed outside AWS; point an A record at the server_public_ip output). Empty: plain HTTP on the server's IP. Set: Caddy gets a Let's Encrypt certificate and serves HTTPS."
   type        = string
   default     = ""
 }
 
-variable "image_tag" {
-  description = "Image tag in the task definition Terraform registers. CI deploys by commit SHA and ignores this after the first run."
+variable "instance_type" {
+  description = "EC2 instance type. Must be arm64 (Graviton): CI builds arm64 images."
   type        = string
-  default     = "latest"
+  default     = "t4g.micro" # 2 vCPU (burstable), 1 GiB RAM
 }
 
-variable "cpu" {
-  description = "Fargate task CPU units (256 = 0.25 vCPU)."
+variable "data_volume_size_gb" {
+  description = "Size of the EBS volume holding the SQLite database and Caddy's certificates."
   type        = number
-  default     = 256
-}
-
-variable "memory" {
-  description = "Fargate task memory in MiB."
-  type        = number
-  default     = 512
+  default     = 4
 }
 
 variable "log_retention_days" {

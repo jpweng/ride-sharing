@@ -1,0 +1,46 @@
+#!/bin/bash
+# First-boot setup for the app server (cloud-init). Installs Docker, mounts
+# the data volume at /data, and lets Docker pull from ECR with the instance
+# role. The app itself is deployed later by CI (deploy/deploy.sh via SSM).
+set -euxo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+# 1 GiB swap: headroom for image pulls on a 1 GiB instance.
+if [ ! -f /swapfile ]; then
+  fallocate -l 1G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  swapon /swapfile
+fi
+
+apt-get -o Acquire::Retries=10 update
+apt-get -o Acquire::Retries=10 install -y docker.io docker-compose-v2 amazon-ecr-credential-helper
+systemctl enable --now docker
+
+# Data volume: attached by Terraform shortly after boot; NVMe device names
+# aren't stable, so find it by serial (the volume ID without the dash).
+DEV=""
+for _ in $(seq 1 120); do
+  DEV=$(lsblk -dno NAME,SERIAL | awk '$2 == "${data_volume_serial}" { print "/dev/" $1 }')
+  [ -n "$DEV" ] && break
+  sleep 5
+done
+[ -n "$DEV" ] || { echo "data volume ${data_volume_serial} never attached" >&2; exit 1; }
+
+# Format only a blank volume; an existing one already holds the database.
+blkid "$DEV" || mkfs.ext4 -L ride-data "$DEV"
+mkdir -p /data
+grep -q 'LABEL=ride-data' /etc/fstab || echo 'LABEL=ride-data /data ext4 defaults,nofail 0 2' >> /etc/fstab
+mount -a
+
+mkdir -p /data/app /data/caddy/data /data/caddy/config
+chown 1000:1000 /data/app # the app container's non-root user (see Dockerfile)
+
+# Docker pulls from ECR using the instance role (no `docker login` needed).
+mkdir -p /root/.docker
+cat > /root/.docker/config.json <<'EOF'
+{ "credHelpers": { "${registry}": "ecr-login" } }
+EOF
+
+mkdir -p /opt/ride-sharing

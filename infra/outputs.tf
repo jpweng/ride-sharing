@@ -1,37 +1,23 @@
 output "app_url" {
-  value = local.https_enabled ? "https://${var.domain_name}" : "http://${aws_lb.app.dns_name}"
+  value = local.https_enabled ? "https://${var.domain_name}" : "http://${aws_eip.app.public_ip}"
 }
 
-output "alb_dns_name" {
-  description = "Point a CNAME for domain_name at this, at your DNS provider."
-  value       = aws_lb.app.dns_name
+output "server_public_ip" {
+  description = "Stable Elastic IP. With a domain, point an A record for domain_name at it."
+  value       = aws_eip.app.public_ip
 }
 
-output "acm_validation_records" {
-  description = "Add these CNAME records at your DNS provider to validate the certificate (empty without a domain)."
-  value = [
-    for o in flatten(aws_acm_certificate.app[*].domain_validation_options) : {
-      name  = o.resource_record_name
-      type  = o.resource_record_type
-      value = o.resource_record_value
-    }
-  ]
+output "server_instance_id" {
+  description = "For a shell: `aws ssm start-session --target <id>`, or EC2 console > Connect > Session Manager."
+  value       = aws_instance.app.id
 }
 
 output "ecr_repository_url" {
   value = aws_ecr_repository.app.repository_url
 }
 
-output "ecs_cluster_name" {
-  value = aws_ecs_cluster.main.name
-}
-
-output "ecs_service_name" {
-  value = aws_ecs_service.app.name
-}
-
-output "task_family" {
-  value = aws_ecs_task_definition.app.family
+output "ecr_proxy_repository_url" {
+  value = aws_ecr_repository.proxy.repository_url
 }
 
 output "github_deploy_user" {
@@ -39,22 +25,16 @@ output "github_deploy_user" {
   value       = aws_iam_user.github_deploy.name
 }
 
-# For one-off tasks (e.g. seeding) via `aws ecs run-task`.
-output "public_subnet_ids" {
-  value = aws_subnet.public[*].id
-}
-
-output "task_security_group_id" {
-  value = aws_security_group.task.id
-}
-
 output "github_actions_variables" {
   description = "Set these as repository variables (Settings > Secrets and variables > Actions > Variables)."
   value = {
-    AWS_REGION         = var.aws_region
-    ECR_REPOSITORY_URL = aws_ecr_repository.app.repository_url
-    ECS_CLUSTER        = aws_ecs_cluster.main.name
-    ECS_SERVICE        = aws_ecs_service.app.name
-    TASK_FAMILY        = aws_ecs_task_definition.app.family
+    AWS_REGION               = var.aws_region
+    ECR_REPOSITORY_URL       = aws_ecr_repository.app.repository_url
+    ECR_PROXY_REPOSITORY_URL = aws_ecr_repository.proxy.repository_url
+    SERVER_NAME              = var.project
+    LOG_GROUP                = aws_cloudwatch_log_group.app.name
+    # Caddy site address: ":80" serves plain HTTP on any hostname/IP; a domain
+    # name makes Caddy obtain a certificate and redirect HTTP to HTTPS.
+    SITE_ADDRESS = local.https_enabled ? var.domain_name : ":80"
   }
 }

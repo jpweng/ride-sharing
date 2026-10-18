@@ -1,0 +1,63 @@
+# Runs on the app server in /opt/ride-sharing. CI copies this file there on
+# every deploy and writes the variables below into .env next to it.
+#   APP_IMAGE, PROXY_IMAGE  ECR images to run
+#   SITE_ADDRESS            Caddy site address (":80" or a domain name)
+#   AWS_REGION, LOG_GROUP   CloudWatch Logs destination
+
+services:
+  app:
+    image: ${APP_IMAGE}
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/rideshare.db
+    volumes:
+      - type: bind
+        source: /data/app
+        target: /data
+        bind:
+          # Fail rather than start on an empty DB if the data volume
+          # isn't mounted.
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${LOG_GROUP}
+        awslogs-stream: app
+
+  proxy:
+    image: ${PROXY_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      # Certificates must survive restarts (Let's Encrypt rate-limits reissues).
+      - type: bind
+        source: /data/caddy/data
+        target: /data
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /data/caddy/config
+        target: /config
+        bind:
+          create_host_path: false
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${LOG_GROUP}
+        awslogs-stream: proxy

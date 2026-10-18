@@ -1,7 +1,10 @@
 # Copy to terraform.tfvars (gitignored) and adjust.
 
-# Leave unset to serve plain HTTP on the load balancer's AWS URL. Set it to
-# get an ACM certificate, HTTPS, and an HTTP->HTTPS redirect.
+# Leave unset to serve plain HTTP on the server's IP. Set it (after pointing
+# an A record at the server_public_ip output) to have Caddy obtain a Let's
+# Encrypt certificate and redirect HTTP to HTTPS. Then update the GitHub
+# SITE_ADDRESS variable from the github_actions_variables output and redeploy.
 # domain_name = "rides.example.ch"
 
-# aws_region = "eu-north-1"
+# aws_region    = "eu-north-1"
+# instance_type = "t4g.micro"

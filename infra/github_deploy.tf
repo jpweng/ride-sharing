@@ -22,44 +22,46 @@ data "aws_iam_policy_document" "github_deploy" {
     actions = [
       "ecr:BatchCheckLayerAvailability",
       "ecr:BatchGetImage",
+      "ecr:DescribeImages",
       "ecr:GetDownloadUrlForLayer",
       "ecr:InitiateLayerUpload",
       "ecr:UploadLayerPart",
       "ecr:CompleteLayerUpload",
       "ecr:PutImage",
     ]
-    resources = [aws_ecr_repository.app.arn]
+    resources = [aws_ecr_repository.app.arn, aws_ecr_repository.proxy.arn]
   }
 
-  # These two actions don't support resource-level permissions.
   statement {
-    sid = "TaskDefinitions"
-    actions = [
-      "ecs:DescribeTaskDefinition",
-      "ecs:RegisterTaskDefinition",
-    ]
+    sid       = "FindServer"
+    actions   = ["ec2:DescribeInstances"]
     resources = ["*"]
   }
 
+  # Run Command needs the permission on both the document and the target
+  # instance; the instance side is limited to the app server by its Name tag.
   statement {
-    sid = "DeployService"
-    actions = [
-      "ecs:UpdateService",
-      "ecs:DescribeServices",
-    ]
-    resources = [aws_ecs_service.app.id] # id is the service ARN
+    sid       = "RunShellScriptDocument"
+    actions   = ["ssm:SendCommand"]
+    resources = ["arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"]
   }
 
   statement {
-    sid       = "PassTaskRoles"
-    actions   = ["iam:PassRole"]
-    resources = [aws_iam_role.task_execution.arn, aws_iam_role.task.arn]
+    sid       = "RunOnAppServerOnly"
+    actions   = ["ssm:SendCommand"]
+    resources = ["arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"]
 
     condition {
       test     = "StringEquals"
-      variable = "iam:PassedToService"
-      values   = ["ecs-tasks.amazonaws.com"]
+      variable = "ssm:resourceTag/Name"
+      values   = [var.project]
     }
+  }
+
+  statement {
+    sid       = "ReadCommandResult"
+    actions   = ["ssm:GetCommandInvocation"]
+    resources = ["*"]
   }
 }
 

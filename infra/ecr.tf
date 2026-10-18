@@ -9,8 +9,24 @@ resource "aws_ecr_repository" "app" {
   }
 }
 
-resource "aws_ecr_lifecycle_policy" "app" {
-  repository = aws_ecr_repository.app.name
+# Caddy reverse proxy (TLS + rate limiting), built from deploy/caddy/.
+resource "aws_ecr_repository" "proxy" {
+  name = "${var.project}-proxy"
+
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "keep_recent" {
+  for_each = {
+    app   = aws_ecr_repository.app.name
+    proxy = aws_ecr_repository.proxy.name
+  }
+
+  repository = each.value
 
   policy = jsonencode({
     rules = [{
@@ -26,4 +42,9 @@ resource "aws_ecr_lifecycle_policy" "app" {
       }
     }]
   })
+}
+
+moved {
+  from = aws_ecr_lifecycle_policy.app
+  to   = aws_ecr_lifecycle_policy.keep_recent["app"]
 }

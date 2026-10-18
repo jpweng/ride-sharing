@@ -46,11 +46,28 @@ uv run --directory backend python seed_data.py
 
 ## Deploying to AWS
 
-Infrastructure is Terraform in [infra/](infra/): a load balancer in front of a single ECS Fargate
-task in `eu-north-1` (Stockholm, the AWS project's only allowed Region), with the SQLite file on EFS
-so it survives redeploys. Pushes to `main` are tested, built and deployed by
-[.github/workflows/deploy.yml](.github/workflows/deploy.yml). Expect roughly $40/month, mostly the
-load balancer.
+Infrastructure is Terraform in [infra/](infra/): one Graviton EC2 server (`t4g.micro`, Ubuntu 24.04)
+in `eu-north-1` (Stockholm, the AWS project's only allowed Region), running Docker Compose
+([deploy/compose.yaml](deploy/compose.yaml)):
+
+- **proxy**: Caddy ([deploy/caddy/Caddyfile](deploy/caddy/Caddyfile)), which handles HTTPS via
+  Let's Encrypt once a domain is set, plus per-IP rate limits. `POST /api/match` is limited to
+  10/min, since each match calls the free OSRM and transport.opendata.ch APIs. Other writes are
+  limited to 30/min and all of `/api/*` to 300/min. Over-limit requests get a 429 response.
+- **app**: the FastAPI image built from the root [Dockerfile](Dockerfile).
+
+The SQLite database lives on a separate EBS volume mounted at `/data`, with daily snapshots kept for
+7 days, so it survives redeploys and even replacing the server. There's no load balancer and no SSH:
+the server has a fixed Elastic IP that accepts only ports 80/443, and you get a shell through SSM
+Session Manager. Expect roughly $10–11/month: the instance (~$6.30), the IPv4 address (~$3.65), and
+the disks and snapshots (~$1).
+
+Pushes to `main` are tested, built and deployed by
+[.github/workflows/deploy.yml](.github/workflows/deploy.yml):
+
+1. Build arm64 images natively.
+2. Push them to ECR.
+3. Run [deploy/deploy.sh](deploy/deploy.sh) on the server via SSM Run Command.
 
 CI signs in to AWS as the `ride-sharing-github-deploy` IAM user, whose access key is stored in GitHub
 secrets. Keyless OIDC would be preferable, but the project's managed SCP denies `iam:*Provider*`.
@@ -68,7 +85,8 @@ Requires Terraform >= 1.10, the AWS CLI logged in to the target account (`aws lo
    terraform init -backend-config="bucket=<state_bucket output from step 1>"
    terraform apply
    ```
-   The ECS service keeps failing to start until step 4 pushes the first image.
+   The server finishes its first-boot setup (Docker, data volume) a few minutes after `apply`
+   returns. The first deploy waits for it.
 3. **GitHub settings**: copy `terraform output github_actions_variables` into repo *variables*, and
    create the deploy user's access key directly into repo *secrets*, without printing it:
    ```bash
@@ -82,22 +100,28 @@ Requires Terraform >= 1.10, the AWS CLI logged in to the target account (`aws lo
    app is then at `terraform output app_url`.
 5. **Seed demo data** (optional, once only; running it twice duplicates the drives):
    ```bash
-   aws ecs run-task --cluster ride-sharing --task-definition ride-sharing --launch-type FARGATE \
-     --network-configuration "awsvpcConfiguration={subnets=[<public_subnet_ids>],securityGroups=[<task_security_group_id>],assignPublicIp=ENABLED}" \
-     --overrides '{"containerOverrides":[{"name":"app","command":["python","backend/seed_data.py"]}]}'
+   aws ssm send-command --instance-ids "$(terraform -chdir=infra output -raw server_instance_id)" \
+     --document-name AWS-RunShellScript \
+     --parameters 'commands=["cd /opt/ride-sharing && docker compose exec -T app python backend/seed_data.py"]'
    ```
 
-**Custom domain + HTTPS** (optional): set `domain_name` in `infra/terraform.tfvars`, run
-`terraform apply -target=aws_acm_certificate.app`, add the `acm_validation_records` output as CNAMEs
-at your DNS provider, run `terraform apply` (it waits for validation), then CNAME the domain to
-`alb_dns_name`. HTTP then redirects to HTTPS.
+**Custom domain + HTTPS** (optional):
+1. At your DNS provider, add an A record pointing the domain to `terraform output server_public_ip`.
+2. Set `domain_name` in `infra/terraform.tfvars` and run `terraform apply`. This only changes outputs.
+3. Set the GitHub variable `SITE_ADDRESS` to the domain and re-run the workflow.
+
+Caddy then obtains a Let's Encrypt certificate and redirects HTTP to HTTPS.
 
 Notes:
-- Each deploy stops the old task before starting the new one (SQLite allows one writer), so the app is
-  down for up to about a minute.
-- A Terraform change to the task definition (env vars, CPU/memory, ...) goes live on the next CI deploy.
-  Re-run the workflow to apply it right away.
-- Logs: CloudWatch log group `/ecs/ride-sharing`. EFS is backed up daily by AWS Backup.
+- **Downtime per deploy:** the app container is replaced in a few seconds of downtime. The proxy only
+  restarts when `deploy/caddy/` changes.
+- **Logs:** CloudWatch log group `/ride-sharing`, with streams `app` and `proxy`.
+- **Shell:** EC2 console → the `ride-sharing` instance → *Connect* → *Session Manager*. Then run
+  `sudo -i; cd /opt/ride-sharing; docker compose ps` (or `logs`).
+- **OS patches:** Ubuntu installs security updates automatically through unattended-upgrades. Changes
+  to [infra/user_data.sh.tftpl](infra/user_data.sh.tftpl) replace the server on the next apply; the
+  data volume is kept.
+- **Restoring data:** create a volume from one of the daily snapshots, under EC2 → *Snapshots*.
 
 ## Project layout
 
@@ -112,10 +136,11 @@ frontend/
   index.html      pages: #/browse (public), #/ride (Passenger), #/drive (Driver)
   app.js          Leaflet map, point picking, address autocomplete, API calls
   style.css       SBB-inspired red/white theme
-infra/            Terraform for AWS (VPC, ALB, ECS Fargate, EFS, ECR, optional ACM, CI deploy user)
+infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user)
   bootstrap/      one-time S3 bucket for Terraform state
-Dockerfile        production image (uvicorn, non-root, DB on /data)
-.github/workflows/deploy.yml   test → build → push → deploy on push to main
+deploy/           what runs on the server: compose.yaml, deploy.sh, caddy/ (proxy image)
+Dockerfile        app image (uvicorn, non-root, DB on /data)
+.github/workflows/deploy.yml   test → build arm64 images → push → deploy via SSM on push to main
 ```
 
 ## API
