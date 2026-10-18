@@ -69,8 +69,13 @@ def find_best_dropoff(
     passenger_origin: tuple[float, float],
     passenger_destination: tuple[float, float],
     requested_time: str | None = None,
+    destination_place: str | None = None,
 ) -> dict | None:
     """
+    destination_place: the town name if the passenger picked a town rather
+    than an address, so the last-mile connection ends at its train station
+    (see transit.resolve_station).
+
     Returns the best drop-off candidate for this drive/passenger pair:
         {station_name, lat, lon, detour_km, dropoff_gap_km, last_mile_transit}
     or None if no candidate could be evaluated (no route geometry, or every
@@ -124,7 +129,7 @@ def find_best_dropoff(
             }
 
         if not dest_station_looked_up:
-            dest_station = transit.nearest_named_station(*passenger_destination)
+            dest_station = transit.resolve_station(*passenger_destination, place_name=destination_place)
             dest_station_name = dest_station["name"] if dest_station else None
             dest_station_looked_up = True
         if not dest_station_name:

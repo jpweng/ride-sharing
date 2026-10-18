@@ -12,35 +12,35 @@ import matching
 
 DEMO_DRIVES = [
     {
-        "driver_name": "Jean",
+        "driver_name": "Jean Dupont",
         "origin": {"name": "Lausanne", "lat": 46.5197, "lon": 6.6323},
         "destination": {"name": "Genève", "lat": 46.2044, "lon": 6.1432},
         "hours_from_now": 14,
         "seats_available": 3,
     },
     {
-        "driver_name": "Sophie",
+        "driver_name": "Sophie Meier",
         "origin": {"name": "Zürich", "lat": 47.3769, "lon": 8.5417},
         "destination": {"name": "Bern", "lat": 46.9480, "lon": 7.4474},
         "hours_from_now": 20,
         "seats_available": 2,
     },
     {
-        "driver_name": "Marco",
+        "driver_name": "Marco Rossi",
         "origin": {"name": "Fribourg", "lat": 46.8065, "lon": 7.1619},
         "destination": {"name": "Lausanne", "lat": 46.5197, "lon": 6.6323},
         "hours_from_now": 16,
         "seats_available": 4,
     },
     {
-        "driver_name": "Anna",
+        "driver_name": "Anna Keller",
         "origin": {"name": "Basel", "lat": 47.5596, "lon": 7.5886},
         "destination": {"name": "Zürich", "lat": 47.3769, "lon": 8.5417},
         "hours_from_now": 26,
         "seats_available": 1,
     },
     {
-        "driver_name": "Luca",
+        "driver_name": "Luca Bianchi",
         "origin": {"name": "Neuchâtel", "lat": 46.9900, "lon": 6.9293},
         "destination": {"name": "Genève", "lat": 46.2044, "lon": 6.1432},
         "hours_from_now": 18,

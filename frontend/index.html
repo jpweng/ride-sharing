@@ -14,96 +14,125 @@
 </header>
 
 <nav class="tabs">
-  <button class="tab-btn active" data-view="post">Post a Drive</button>
-  <button class="tab-btn" data-view="request">Request a Ride</button>
-  <button class="tab-btn" data-view="browse">Browse Drives</button>
+  <a class="tab-link" href="#/browse" data-page="browse">Browse rides</a>
+  <a class="tab-link" href="#/ride" data-page="ride">Passenger</a>
+  <a class="tab-link" href="#/drive" data-page="drive">Driver</a>
+  <div class="account" id="account"></div>
 </nav>
 
 <main>
   <div class="panel">
 
-    <!-- POST A DRIVE -->
-    <section id="view-post" class="view active">
-      <label for="post-driver-name">Your name</label>
-      <input type="text" id="post-driver-name" placeholder="e.g. Jean" />
-
-      <label>Origin</label>
-      <div class="point-picker">
-        <button type="button" id="pick-post-origin" data-role="post-origin">Pick on map</button>
-        <div class="autocomplete">
-          <input type="text" id="name-post-origin" placeholder="type an address or place…" autocomplete="off" />
-          <ul class="autocomplete-list" id="suggest-post-origin"></ul>
+    <!-- SIGN IN (shown instead of the Passenger/Driver page until we know who you are) -->
+    <section id="page-signin" class="page">
+      <div class="page-title">Who are you?</div>
+      <div class="hint">Enter your name once. It's remembered in this browser for both your passenger and driver pages.</div>
+      <div class="name-row">
+        <div>
+          <label for="signin-first-name">First name</label>
+          <input type="text" id="signin-first-name" placeholder="e.g. Jean" autocomplete="given-name" />
+        </div>
+        <div>
+          <label for="signin-last-name">Last name</label>
+          <input type="text" id="signin-last-name" placeholder="e.g. Dupont" autocomplete="family-name" />
         </div>
       </div>
-      <div class="coord-readout" id="readout-post-origin">not set</div>
-
-      <label>Destination</label>
-      <div class="point-picker">
-        <button type="button" id="pick-post-destination" data-role="post-destination">Pick on map</button>
-        <div class="autocomplete">
-          <input type="text" id="name-post-destination" placeholder="type an address or place…" autocomplete="off" />
-          <ul class="autocomplete-list" id="suggest-post-destination"></ul>
-        </div>
-      </div>
-      <div class="coord-readout" id="readout-post-destination">not set</div>
-
-      <label for="post-departure">Departure time</label>
-      <input type="datetime-local" id="post-departure" />
-
-      <label for="post-seats">Seats available</label>
-      <input type="number" id="post-seats" min="1" max="8" value="3" />
-
-      <button class="submit-btn" id="post-submit">Post drive</button>
-      <div class="status-msg" id="post-status"></div>
-
-      <div class="hint">Type an address to search, or click "Pick on map" then click a point on the map.</div>
+      <button class="submit-btn" id="signin-submit">Continue</button>
+      <div class="status-msg" id="signin-status"></div>
     </section>
 
-    <!-- REQUEST A RIDE -->
-    <section id="view-request" class="view">
-      <label for="req-passenger-name">Your name</label>
-      <input type="text" id="req-passenger-name" placeholder="e.g. Marie" />
-
-      <label>Origin</label>
-      <div class="point-picker">
-        <button type="button" id="pick-req-origin" data-role="req-origin">Pick on map</button>
-        <div class="autocomplete">
-          <input type="text" id="name-req-origin" placeholder="type an address or place…" autocomplete="off" />
-          <ul class="autocomplete-list" id="suggest-req-origin"></ul>
-        </div>
-      </div>
-      <div class="coord-readout" id="readout-req-origin">not set</div>
-
-      <label>Destination</label>
-      <div class="point-picker">
-        <button type="button" id="pick-req-destination" data-role="req-destination">Pick on map</button>
-        <div class="autocomplete">
-          <input type="text" id="name-req-destination" placeholder="type an address or place…" autocomplete="off" />
-          <ul class="autocomplete-list" id="suggest-req-destination"></ul>
-        </div>
-      </div>
-      <div class="coord-readout" id="readout-req-destination">not set</div>
-
-      <label for="req-time">Requested time</label>
-      <input type="datetime-local" id="req-time" />
-
-      <button class="submit-btn" id="req-submit">Find a ride</button>
-      <div class="status-msg" id="req-status"></div>
-
-      <div class="section-title">Driver matches</div>
-      <div id="req-matches"><div class="empty-state">No search yet.</div></div>
-
-      <div class="section-title">Public transport alternative</div>
-      <div id="req-transit"><div class="empty-state">No search yet.</div></div>
-    </section>
-
-    <!-- BROWSE DRIVES -->
-    <section id="view-browse" class="view">
-      <div class="section-title">Upcoming drives</div>
-      <button class="submit-btn" id="browse-refresh" style="margin-top:0;">Refresh</button>
+    <!-- BROWSE RIDES (public) -->
+    <section id="page-browse" class="page">
+      <div class="page-title">Upcoming rides</div>
+      <button class="submit-btn secondary" id="browse-refresh">Refresh</button>
       <div class="drive-list" id="browse-list"><div class="empty-state">Loading…</div></div>
     </section>
 
+    <!-- PASSENGER PAGE -->
+    <section id="page-ride" class="page">
+      <div class="page-title">Find a ride</div>
+
+      <label>From</label>
+      <div class="point-picker">
+        <button type="button" data-role="ride-origin">Pick on map</button>
+        <div class="autocomplete">
+          <input type="text" id="name-ride-origin" placeholder="type an address or place…" autocomplete="off" />
+          <ul class="autocomplete-list" id="suggest-ride-origin"></ul>
+        </div>
+      </div>
+      <div class="coord-readout" id="readout-ride-origin">not set</div>
+
+      <label>To</label>
+      <div class="point-picker">
+        <button type="button" data-role="ride-destination">Pick on map</button>
+        <div class="autocomplete">
+          <input type="text" id="name-ride-destination" placeholder="type an address or place…" autocomplete="off" />
+          <ul class="autocomplete-list" id="suggest-ride-destination"></ul>
+        </div>
+      </div>
+      <div class="coord-readout" id="readout-ride-destination">not set</div>
+
+      <label for="ride-time">When</label>
+      <input type="datetime-local" id="ride-time" />
+
+      <button class="submit-btn" id="ride-submit">Find a ride</button>
+      <div class="status-msg" id="ride-status"></div>
+
+      <div id="ride-results" hidden>
+        <div class="section-title">Driver matches</div>
+        <div id="ride-matches"></div>
+
+        <div class="section-title">Public transport alternative</div>
+        <div id="ride-transit"></div>
+      </div>
+
+      <div class="section-title">Your recent searches</div>
+      <div id="ride-recent"><div class="empty-state">Loading…</div></div>
+    </section>
+
+    <!-- DRIVER PAGE -->
+    <section id="page-drive" class="page">
+      <div class="page-title">Your drives</div>
+      <div class="drive-list" id="drive-mine"><div class="empty-state">Loading…</div></div>
+
+      <div class="section-title">Offer a drive</div>
+
+      <label>From</label>
+      <div class="point-picker">
+        <button type="button" data-role="drive-origin">Pick on map</button>
+        <div class="autocomplete">
+          <input type="text" id="name-drive-origin" placeholder="type an address or place…" autocomplete="off" />
+          <ul class="autocomplete-list" id="suggest-drive-origin"></ul>
+        </div>
+      </div>
+      <div class="coord-readout" id="readout-drive-origin">not set</div>
+
+      <label>To</label>
+      <div class="point-picker">
+        <button type="button" data-role="drive-destination">Pick on map</button>
+        <div class="autocomplete">
+          <input type="text" id="name-drive-destination" placeholder="type an address or place…" autocomplete="off" />
+          <ul class="autocomplete-list" id="suggest-drive-destination"></ul>
+        </div>
+      </div>
+      <div class="coord-readout" id="readout-drive-destination">not set</div>
+
+      <div class="name-row">
+        <div>
+          <label for="drive-departure">Departure</label>
+          <input type="datetime-local" id="drive-departure" />
+        </div>
+        <div class="narrow">
+          <label for="drive-seats">Seats</label>
+          <input type="number" id="drive-seats" min="1" max="8" value="3" />
+        </div>
+      </div>
+
+      <button class="submit-btn" id="drive-submit">Offer drive</button>
+      <div class="status-msg" id="drive-status"></div>
+    </section>
+
+    <div class="hint" id="picker-hint" hidden>Type an address to search, or click "Pick on map" then click a point on the map.</div>
   </div>
 
   <div id="map"></div>

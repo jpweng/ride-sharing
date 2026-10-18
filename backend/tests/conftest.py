@@ -49,19 +49,31 @@ class FakeTransit:
     transport.opendata.ch API. `stations` is a list of {name, lat, lon}
     dicts; nearest_named_station finds whichever is geographically closest
     to a query point (like the real API), so callers don't need an exact
-    coordinate match. `connections` maps (from_name, to_name) -> a list of
-    connection dicts (or leave a pair out / map it to [] for "no route
-    found").
+    coordinate match. `place_stations` maps a town name (as the user
+    picked it) -> the station station_for_place should return for it.
+    `connections` maps (from_name, to_name) -> a list of connection dicts
+    (or leave a pair out / map it to [] for "no route found").
     """
 
     def __init__(self):
         self.stations = []
+        self.place_stations = {}
         self.connections = {}
         self.connection_calls = []
         self.nearest_station_calls = []
 
     def add_station(self, name, lat, lon):
         self.stations.append({"name": name, "lat": lat, "lon": lon})
+
+    def add_place_station(self, place_name, name, lat, lon):
+        self.place_stations[place_name] = {"name": name, "lat": lat, "lon": lon}
+
+    def station_for_place(self, place_name, lat, lon):
+        station = self.place_stations.get(place_name)
+        if not station:
+            return None
+        distance_m = matching.haversine_km(lat, lon, station["lat"], station["lon"]) * 1000.0
+        return {**station, "distance_m": distance_m}
 
     def set_connections(self, from_name, to_name, connections):
         self.connections[(from_name, to_name)] = connections
@@ -77,12 +89,6 @@ class FakeTransit:
         distance_m = matching.haversine_km(lat, lon, closest["lat"], closest["lon"]) * 1000.0
         return {"name": closest["name"], "lat": closest["lat"], "lon": closest["lon"], "distance_m": distance_m}
 
-    # transit.nearest_station() has a slightly different contract (always
-    # "succeeds" with the API's raw first hit) but every caller in this
-    # codebase only reads .name/.distance_m off it, so the fake can reuse
-    # the same logic.
-    nearest_station = nearest_named_station
-
     def get_connections(self, from_station, to_station, when_iso=None, limit=3):
         self.connection_calls.append((from_station, to_station))
         return self.connections.get((from_station, to_station), [])
@@ -92,7 +98,7 @@ class FakeTransit:
 def fake_transit(monkeypatch):
     fake = FakeTransit()
     monkeypatch.setattr(transit, "nearest_named_station", fake.nearest_named_station)
-    monkeypatch.setattr(transit, "nearest_station", fake.nearest_station)
+    monkeypatch.setattr(transit, "station_for_place", fake.station_for_place)
     monkeypatch.setattr(transit, "get_connections", fake.get_connections)
     return fake
 

@@ -9,14 +9,18 @@ Two core use cases:
                                option and, for matches that don't reach the
                                passenger's exact destination, a "drive +
                                last-mile transit" combo (see transit.py).
-  GET /api/drives          -- browse all upcoming posted drives.
+  GET /api/drives          -- browse all upcoming posted drives
+                               (?driver_name= narrows to one driver's own).
   GET /api/drives/{id}     -- a single drive with full route geometry.
+  DELETE /api/drives/{id}  -- a driver cancels one of their drives.
+  GET /api/ride_requests   -- a passenger's recent searches.
 
 No authentication: a driver/passenger is just a name, auto-registered on
 first use. This is a demo/prototype, not a production app.
 """
 import os
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -42,6 +46,11 @@ class LatLon(BaseModel):
     name: str
     lat: float
     lon: float
+    # How the user specified this point: "place" (picked a town/municipality
+    # by name -- transit then starts/ends at that town's train station),
+    # "address" (a street address) or "point" (clicked on the map). The
+    # latter two use the nearest stop.
+    kind: Literal["place", "address", "point"] = "point"
 
 
 class DriveCreate(BaseModel):
@@ -61,7 +70,7 @@ class MatchRequest(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "time": datetime.utcnow().isoformat()}
+    return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
 
 
 @app.post("/api/drives")
@@ -95,8 +104,8 @@ def post_drive(payload: DriveCreate):
 
 
 @app.get("/api/drives")
-def get_drives(upcoming_only: bool = True):
-    return db.list_drives(upcoming_only=upcoming_only)
+def get_drives(upcoming_only: bool = True, driver_name: str | None = None):
+    return db.list_drives(upcoming_only=upcoming_only, driver_name=driver_name)
 
 
 @app.get("/api/drives/{drive_id}")
@@ -105,6 +114,24 @@ def get_drive(drive_id: int):
     if not drive:
         raise HTTPException(404, "Drive not found")
     return drive
+
+
+@app.delete("/api/drives/{drive_id}")
+def cancel_drive(drive_id: int, driver_name: str):
+    # No real auth in this prototype -- requiring the driver's name just keeps
+    # one user from cancelling someone else's drive by accident.
+    drive = db.get_drive(drive_id)
+    if not drive:
+        raise HTTPException(404, "Drive not found")
+    if drive["driver_name"] != driver_name.strip():
+        raise HTTPException(403, "Only the driver who posted this drive can cancel it")
+    db.delete_drive(drive_id)
+    return {"deleted": drive_id}
+
+
+@app.get("/api/ride_requests")
+def get_ride_requests(passenger_name: str):
+    return db.list_recent_ride_requests(passenger_name)
 
 
 @app.post("/api/match")
@@ -128,6 +155,8 @@ def match_ride(payload: MatchRequest):
     all_drives = db.list_drives(upcoming_only=True)
     passenger_origin = (payload.origin.lat, payload.origin.lon)
     passenger_destination = (payload.destination.lat, payload.destination.lon)
+    origin_place = payload.origin.name if payload.origin.kind == "place" else None
+    destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
     driver_matches = matching.find_matches(
         all_drives, passenger_origin, passenger_destination, payload.requested_time
@@ -153,7 +182,8 @@ def match_ride(payload: MatchRequest):
             continue
 
         best = dropoff.find_best_dropoff(
-            m, passenger_origin, passenger_destination, payload.requested_time
+            m, passenger_origin, passenger_destination, payload.requested_time,
+            destination_place=destination_place,
         )
         if best is not None:
             m["recommended_dropoff"] = {
@@ -172,6 +202,7 @@ def match_ride(payload: MatchRequest):
                 m["destination_lat"], m["destination_lon"],
                 payload.destination.lat, payload.destination.lon,
                 payload.requested_time,
+                destination_place=destination_place,
             )
 
     # Refine the ranking now that some matches may have a smaller,
@@ -184,6 +215,8 @@ def match_ride(payload: MatchRequest):
         payload.origin.lat, payload.origin.lon,
         payload.destination.lat, payload.destination.lon,
         payload.requested_time,
+        origin_place=origin_place,
+        destination_place=destination_place,
     )
 
     return {

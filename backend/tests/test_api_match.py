@@ -143,3 +143,29 @@ def test_date_typo_request_yields_no_match(isolated_db, force_haversine, fake_tr
     result = main.match_ride(payload)
 
     assert result["driver_matches"] == []
+
+
+def test_town_endpoints_use_their_train_stations(isolated_db, force_haversine, fake_transit):
+    """A passenger who picks towns by name ("place") gets the public-transport
+    alternative between those towns' train stations; one who picks a street
+    address or map point at the same spot gets the nearest stop instead."""
+    fake_transit.add_station("Veytaux, Grandchamp", 46.409856, 6.931329)
+    fake_transit.add_station("Fribourg, Pont de St-Jean", 46.803672, 7.161495)
+    fake_transit.add_place_station("Villeneuve (VD)", "Villeneuve VD", 46.398372, 6.926999)
+    fake_transit.add_place_station("Fribourg (FR)", "Fribourg/Freiburg", 46.803151, 7.151052)
+    fake_transit.set_connections("Villeneuve VD", "Fribourg/Freiburg", CONNECTION)
+    fake_transit.set_connections("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean", CONNECTION)
+
+    def search(kind):
+        return main.match_ride(main.MatchRequest(
+            passenger_name="Antoine",
+            origin={"name": "Villeneuve (VD)", "lat": 46.40636, "lon": 6.95311, "kind": kind},
+            destination={"name": "Fribourg (FR)", "lat": 46.80337, "lon": 7.16178, "kind": kind},
+            requested_time=f"{DAY_1}T18:53",
+        ))["transit_option"]
+
+    by_town = search("place")
+    assert (by_town["from_station"], by_town["to_station"]) == ("Villeneuve VD", "Fribourg/Freiburg")
+
+    by_address = search("address")
+    assert (by_address["from_station"], by_address["to_station"]) == ("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean")

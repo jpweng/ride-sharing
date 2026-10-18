@@ -46,20 +46,35 @@ nav.tabs {
   padding: 0 24px;
 }
 
-nav.tabs button {
-  border: none;
-  background: none;
+nav.tabs .tab-link {
   padding: 12px 16px;
   font-size: 14px;
-  cursor: pointer;
   color: var(--muted);
+  text-decoration: none;
   border-bottom: 2px solid transparent;
 }
 
-nav.tabs button.active {
+nav.tabs .tab-link.active {
   color: var(--accent-dark);
   border-bottom-color: var(--accent);
   font-weight: 600;
+}
+
+nav.tabs .account {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+nav.tabs .account button {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 main {
@@ -81,8 +96,14 @@ main {
   width: 100%;
 }
 
-.view { display: none; }
-.view.active { display: block; }
+.page { display: none; }
+.page.active { display: block; }
+
+.page-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
 
 label {
   display: block;
@@ -101,6 +122,18 @@ input[type=text], input[type=number], input[type=datetime-local] {
   border-radius: 6px;
   font-size: 14px;
 }
+
+.name-row {
+  display: flex;
+  gap: 8px;
+}
+
+.name-row > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.name-row > div.narrow { flex: 0 0 80px; }
 
 .point-picker {
   display: flex;
@@ -184,6 +217,15 @@ input[type=text], input[type=number], input[type=datetime-local] {
 .submit-btn:hover { background: var(--accent-dark); }
 .submit-btn:disabled { background: var(--muted); cursor: not-allowed; }
 
+.submit-btn.secondary {
+  margin-top: 4px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.submit-btn.secondary:hover { background: var(--border); }
+
 .hint {
   font-size: 12px;
   color: var(--muted);
@@ -211,6 +253,20 @@ input[type=text], input[type=number], input[type=datetime-local] {
   padding: 12px;
   margin-bottom: 10px;
   background: var(--bg);
+}
+
+.drive-card.clickable { cursor: pointer; }
+.drive-card.clickable:hover { border-color: var(--muted); }
+
+.link-btn {
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #b3261e;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .drive-card .route, .match-card .route {
@@ -285,3 +341,68 @@ input[type=text], input[type=number], input[type=datetime-local] {
   color: var(--muted);
   margin-left: 6px;
 }
+
+/* Public transport connections, flight-search style (see renderConnections) */
+.pt-conn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.pt-conn:first-of-type { border-top: none; }
+
+.pt-logos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 28px;
+  align-items: center;
+}
+.pt-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  text-decoration: none;
+}
+.pt-logo img { width: 20px; height: 20px; }
+.pt-code {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.pt-body { flex: 1; min-width: 0; }
+.pt-times { font-size: 14px; font-weight: 600; }
+.pt-meta { color: var(--muted); }
+.pt-legs { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 3px; }
+.pt-leg {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #eef0f3;
+  color: var(--text);
+}
+.pt-ops { margin-top: 3px; color: var(--muted); }
+.pt-ops a { color: var(--muted); }
+
+.pt-book {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+.pt-book:hover { background: var(--accent-dark); }

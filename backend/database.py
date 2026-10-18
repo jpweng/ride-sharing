@@ -126,15 +126,19 @@ def create_drive(
         return cur.lastrowid
 
 
-def list_drives(upcoming_only: bool = True) -> list[dict]:
+def list_drives(upcoming_only: bool = True, driver_name: str | None = None) -> list[dict]:
+    clauses, params = [], []
+    if upcoming_only:
+        clauses.append("departure_time >= ?")
+        params.append(now_iso())
+    if driver_name is not None:
+        clauses.append("driver_name = ?")
+        params.append(driver_name.strip())
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     with get_conn() as conn:
-        if upcoming_only:
-            rows = conn.execute(
-                "SELECT * FROM drives WHERE departure_time >= ? ORDER BY departure_time ASC",
-                (now_iso(),),
-            ).fetchall()
-        else:
-            rows = conn.execute("SELECT * FROM drives ORDER BY departure_time ASC").fetchall()
+        rows = conn.execute(
+            f"SELECT * FROM drives {where} ORDER BY departure_time ASC", params
+        ).fetchall()
         return [_drive_row_to_dict(r) for r in rows]
 
 
@@ -142,6 +146,11 @@ def get_drive(drive_id: int) -> dict | None:
     with get_conn() as conn:
         row = conn.execute("SELECT * FROM drives WHERE id = ?", (drive_id,)).fetchone()
         return _drive_row_to_dict(row) if row else None
+
+
+def delete_drive(drive_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM drives WHERE id = ?", (drive_id,))
 
 
 def _drive_row_to_dict(row: sqlite3.Row) -> dict:
@@ -178,3 +187,26 @@ def save_ride_request(
             ),
         )
         return cur.lastrowid
+
+
+def list_recent_ride_requests(passenger_name: str, limit: int = 5) -> list[dict]:
+    """
+    A passenger's most recent searches, newest first, with repeats of the
+    same origin -> destination collapsed (every "Find a ride" click saves a
+    row, so the raw table is full of near-duplicates).
+    """
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM ride_requests WHERE passenger_name = ? ORDER BY id DESC LIMIT 50",
+            (passenger_name.strip(),),
+        ).fetchall()
+    seen, result = set(), []
+    for r in rows:
+        key = (r["origin_name"], r["destination_name"])
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(dict(r))
+        if len(result) >= limit:
+            break
+    return result

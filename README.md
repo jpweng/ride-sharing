@@ -13,7 +13,7 @@ See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for t
 - Routing: [OSRM demo server](https://router.project-osrm.org) (falls back to haversine if unreachable)
 - Public transport: [transport.opendata.ch](https://transport.opendata.ch) (all Swiss operators)
 - Address search: [geo.admin.ch Search API](https://api3.geo.admin.ch) (Swiss addresses/places)
-- Auth: none — a name field auto-registers a user
+- Auth: none — you enter a first + last name once (remembered in the browser), which auto-registers a user
 
 ## Run it
 
@@ -37,8 +37,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 
 ### Seed demo data
 
-Populates a handful of posted drives across Swiss towns so "Browse Drives" and "Request a Ride"
-have something to show immediately:
+Populates a handful of posted drives across Swiss towns so "Browse rides" and the Passenger page
+have something to show immediately (sign in as e.g. "Jean Dupont" to see his Driver page):
 
 ```bash
 uv run --directory backend python seed_data.py
@@ -54,7 +54,7 @@ backend/
   transit.py      transport.opendata.ch integration
   seed_data.py    demo data seeder
 frontend/
-  index.html      tabs: Post a Drive / Request a Ride / Browse Drives
+  index.html      pages: #/browse (public), #/ride (Passenger), #/drive (Driver)
   app.js          Leaflet map, point picking, address autocomplete, API calls
   style.css       SBB-inspired red/white theme
 ```
@@ -63,8 +63,10 @@ frontend/
 
 - `GET  /api/health`
 - `POST /api/drives` — driver posts a drive
-- `GET  /api/drives?upcoming_only=true` — browse drives
+- `GET  /api/drives?upcoming_only=true[&driver_name=…]` — browse drives, or one driver's own
 - `GET  /api/drives/{id}` — one drive with full route geometry
+- `DELETE /api/drives/{id}?driver_name=…` — driver cancels their own drive
+- `GET  /api/ride_requests?passenger_name=…` — a passenger's recent searches (deduplicated)
 - `POST /api/match` — passenger requests a ride; returns ranked driver matches (detour cost),
   a last-mile transit suggestion per match, and a pure public-transport alternative
 
