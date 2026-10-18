@@ -4,3 +4,9 @@ __pycache__/
 .env
 node_modules/
 rideshare.db
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+infra/terraform.tfvars

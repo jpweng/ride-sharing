@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars (gitignored) and adjust.
+
+# Leave unset to serve plain HTTP on the load balancer's AWS URL. Set it to
+# get an ACM certificate, HTTPS, and an HTTP->HTTPS redirect.
+# domain_name = "rides.example.ch"
+
+# aws_region = "eu-north-1"

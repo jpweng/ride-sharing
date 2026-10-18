@@ -11,7 +11,12 @@ import os
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rideshare.db")
+# Overridable so the container can keep the database on a persistent volume
+# (EFS in AWS); defaults to the repo root for local development.
+DB_PATH = os.environ.get(
+    "DB_PATH",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rideshare.db"),
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
