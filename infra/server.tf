@@ -197,7 +197,7 @@ resource "aws_dlm_lifecycle_policy" "data" {
     }
 
     schedule {
-      name      = "daily, keep 7"
+      name      = "daily-keep-7" # letters, digits, spaces, - and _ only
       copy_tags = true
 
       create_rule {
