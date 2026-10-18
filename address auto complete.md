@@ -86,3 +86,13 @@ lot, a village square).
 Not yet done / left as follow-ups if this grows past prototype stage: caching repeated queries, a backend
 proxy (would only be needed for rate-limiting or hiding the upstream host, not for CORS or auth — none of
 which this API requires), and cross-border coverage via Option 3 if requested.
+
+### Bug fix: place names (e.g. a bare city name) resolving to the wrong address
+
+`origins=address` only searches the building-address register, which has no entry for a city/town as a
+whole — so typing e.g. "Bern" returned obscure street addresses that happen to contain "Bern" in their
+street name (such as "Berne 210, 9064 Hundwil", ~150 km from the city of Bern) instead of the city itself,
+and picking the top suggestion silently sent the wrong coordinates. Fixed by searching
+`origins=address,gg25` — `gg25` is the SwissNAMES3D place-name layer (cities, villages, hamlets), and
+geo.admin.ch weights those matches far higher than a street-name substring hit, so the city itself now
+sorts first while full street addresses still resolve correctly.

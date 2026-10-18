@@ -3,8 +3,7 @@ Seeds a handful of demo drives across Swiss towns so the "browse" and
 "match" use cases have something to show immediately.
 
 Run with the backend on PYTHONPATH, e.g.:
-    source .venv/bin/activate
-    PYTHONPATH=backend python3 backend/seed_data.py
+    PYTHONPATH=backend uv run python backend/seed_data.py
 """
 from datetime import datetime, timedelta
 

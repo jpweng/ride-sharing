@@ -23,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import database as db
+import dropoff
 import matching
 import transit
 
@@ -132,22 +133,51 @@ def match_ride(payload: MatchRequest):
         all_drives, passenger_origin, passenger_destination, payload.requested_time
     )
 
-    # For each match, if the driver's drop-off is meaningfully far from the
-    # passenger's actual destination, suggest a last-mile public transport leg.
+    # For each match, if the driver's own drop-off is meaningfully far from
+    # the passenger's actual destination, see if the driver could instead let
+    # them off somewhere closer -- but still on their own route -- with a
+    # real transit connection covering the rest (see dropoff.py). This is
+    # strictly an improvement over the driver's own destination: it's only
+    # used when it has a smaller detour *and* an onward connection, so it
+    # never makes a match worse, only refines where the passenger actually
+    # gets dropped.
     for m in driver_matches:
         dropoff_gap_km = matching.haversine_km(
             m["destination_lat"], m["destination_lon"],
             payload.destination.lat, payload.destination.lon,
         )
         m["dropoff_gap_km"] = round(dropoff_gap_km, 2)
-        if dropoff_gap_km > LAST_MILE_THRESHOLD_KM:
+        m["recommended_dropoff"] = None
+        if dropoff_gap_km <= LAST_MILE_THRESHOLD_KM:
+            m["last_mile_transit"] = None
+            continue
+
+        best = dropoff.find_best_dropoff(
+            m, passenger_origin, passenger_destination, payload.requested_time
+        )
+        if best is not None:
+            m["recommended_dropoff"] = {
+                "station_name": best["station_name"],
+                "lat": best["lat"],
+                "lon": best["lon"],
+            }
+            m["detour_km"] = best["detour_km"]
+            m["detour_pct"] = round(
+                best["detour_km"] / m["base_distance_km"] * 100.0, 1
+            ) if m["base_distance_km"] > 0 else 0.0
+            m["dropoff_gap_km"] = best["dropoff_gap_km"]
+            m["last_mile_transit"] = best["last_mile_transit"]
+        else:
             m["last_mile_transit"] = transit.transit_option_for_trip(
                 m["destination_lat"], m["destination_lon"],
                 payload.destination.lat, payload.destination.lon,
                 payload.requested_time,
             )
-        else:
-            m["last_mile_transit"] = None
+
+    # Refine the ranking now that some matches may have a smaller,
+    # route-aware detour than the naive "all the way to my own destination"
+    # figure they were originally ranked on.
+    driver_matches.sort(key=lambda d: (d["detour_km"], d["detour_pct"]))
 
     # Pure public-transport alternative, origin to final destination, for comparison.
     transit_option = transit.transit_option_for_trip(

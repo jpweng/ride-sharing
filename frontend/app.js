@@ -121,7 +121,7 @@ function stripHtml(html) {
 async function searchGeoAdmin(query) {
   try {
     const resp = await fetch(
-      `${GEOADMIN_SEARCH_URL}?searchText=${encodeURIComponent(query)}&type=locations&origins=address&limit=8&sr=4326`
+      `${GEOADMIN_SEARCH_URL}?searchText=${encodeURIComponent(query)}&type=locations&origins=address,gg25&limit=8&sr=4326`
     );
     if (!resp.ok) throw new Error("geocoding failed");
     const data = await resp.json();
@@ -346,7 +346,13 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
       <div class="meta">Base route: ${m.base_distance_km} km · via you: ${m.via_distance_km} km</div>
       <span class="score ${warn ? "warn" : ""}">detour +${m.detour_km} km (${m.detour_pct}%)</span>
       <span class="badge">${m.route_source}</span>
-      ${m.dropoff_gap_km > 1 ? `<div class="meta">Drop-off is ${m.dropoff_gap_km} km from your destination.</div>` : ""}
+      ${
+        m.recommended_dropoff
+          ? `<div class="meta">Suggested drop-off: <strong>${m.recommended_dropoff.station_name}</strong> (on the driver's way, ${m.dropoff_gap_km} km from your destination)</div>`
+          : m.dropoff_gap_km > 1
+          ? `<div class="meta">Drop-off is ${m.dropoff_gap_km} km from your destination.</div>`
+          : ""
+      }
       ${renderLastMile(m.last_mile_transit)}
     `;
     container.appendChild(card);

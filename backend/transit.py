@@ -51,6 +51,39 @@ def nearest_station(lat: float, lon: float) -> dict | None:
         return None
 
 
+def nearest_named_station(lat: float, lon: float) -> dict | None:
+    """
+    Like nearest_station, but for callers that need real coordinates to route
+    to/from the stop (see dropoff.py), not just a name to hand to
+    get_connections. The /locations endpoint's first hit is often a bare
+    "this exact coordinate as an address" pseudo-result (id and coordinate
+    both null) rather than an actual stop -- fine as a connections()
+    endpoint, useless as a point to route to. This skips those and returns
+    the closest entry that has real coordinates.
+    """
+    try:
+        resp = requests.get(
+            f"{TRANSPORT_API_BASE}/locations",
+            params={"x": lat, "y": lon, "type": "coordinate"},
+            timeout=REQUEST_TIMEOUT_S,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        for station in data.get("stations", []):
+            coordinate = station.get("coordinate") or {}
+            if coordinate.get("x") is None or coordinate.get("y") is None:
+                continue
+            return {
+                "name": station.get("name"),
+                "lat": coordinate["x"],
+                "lon": coordinate["y"],
+                "distance_m": station.get("distance"),
+            }
+        return None
+    except (requests.RequestException, ValueError, KeyError, IndexError):
+        return None
+
+
 def get_connections(from_station: str, to_station: str, when_iso: str | None = None, limit: int = 3) -> list[dict]:
     """
     Fetch up to `limit` journey options between two named stations.

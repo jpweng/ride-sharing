@@ -137,6 +137,43 @@ def compute_detour(
     }
 
 
+def sample_route_points(route_geometry: list | None, step_km: float = 10.0) -> list[tuple[float, float, float]]:
+    """
+    Sample points along a route polyline at roughly `step_km` intervals of
+    cumulative driving distance, for evaluating candidate drop-off points
+    along the *whole* route rather than only at its final destination (see
+    dropoff.py). Used to answer "could the driver let the passenger off
+    somewhere closer to their actual destination, on the way?".
+
+    route_geometry: [[lon, lat], ...] as returned by route_with_fallback /
+    stored on a drive. Returns [(lat, lon, cumulative_km), ...], always
+    including the route's start and end point. Empty input -> [].
+    """
+    if not route_geometry or len(route_geometry) < 2:
+        return []
+
+    points = [(lat, lon) for lon, lat in route_geometry]
+    cumulative = [0.0]
+    for (lat1, lon1), (lat2, lon2) in zip(points, points[1:]):
+        cumulative.append(cumulative[-1] + haversine_km(lat1, lon1, lat2, lon2))
+    total_km = cumulative[-1]
+
+    # Don't oversample a very long route -- cap how many candidates
+    # downstream code has to evaluate (each one costs a routing + a transit
+    # lookup call).
+    step_km = max(step_km, total_km / 20.0) if total_km > 0 else step_km
+
+    samples = []
+    next_target = 0.0
+    for (lat, lon), dist_km in zip(points, cumulative):
+        if dist_km >= next_target:
+            samples.append((lat, lon, dist_km))
+            next_target = dist_km + step_km
+    if samples[-1][2] != total_km:
+        samples.append((points[-1][0], points[-1][1], total_km))
+    return samples
+
+
 def hours_between(iso_a: str, iso_b: str) -> float:
     from datetime import datetime
     try:

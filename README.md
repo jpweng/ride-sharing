@@ -17,19 +17,23 @@ See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for t
 
 ## Run it
 
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) (it fetches the right Python
+version automatically if needed).
+
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload --app-dir backend --port 8000
+uv sync
+uv run uvicorn main:app --reload --app-dir backend --port 8000
 # open http://localhost:8000
 ```
 
-If your system Python has no `venv`/`pip` module (common on minimal Debian/Ubuntu images):
+Run the tests:
 
 ```bash
-sudo apt install -y python3-venv python3-pip   # or python3.<X>-venv for your version
+uv run pytest
 ```
+
+Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools); this updates
+`pyproject.toml` and `uv.lock`, both of which are committed.
 
 ### Seed demo data
 
@@ -37,8 +41,7 @@ Populates a handful of posted drives across Swiss towns so "Browse Drives" and "
 have something to show immediately:
 
 ```bash
-source .venv/bin/activate
-cd backend && python3 seed_data.py
+uv run --directory backend python seed_data.py
 ```
 
 ## Project layout
