@@ -1,7 +1,7 @@
 # Runs on the app server in /opt/ride-sharing. CI copies this file there on
 # every deploy and writes the variables below into .env next to it.
 #   APP_IMAGE, PROXY_IMAGE  ECR images to run
-#   SITE_ADDRESS            Caddy site address (":80" or a domain name)
+#   SITE_ADDRESS            Caddy site address (":80" or domain names)
 #   AWS_REGION, LOG_GROUP   CloudWatch Logs destination
 
 services:

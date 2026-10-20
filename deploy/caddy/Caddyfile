@@ -2,10 +2,15 @@
 	order rate_limit before basic_auth
 }
 
-# ":80" serves plain HTTP on any host; a domain name gets automatic HTTPS
-# (Let's Encrypt) with HTTP redirected to it.
+# ":80" serves plain HTTP on any host; domain names (comma-separated, e.g.
+# "example.ch, www.example.ch") get automatic HTTPS (Let's Encrypt) with HTTP
+# redirected to it.
 {$SITE_ADDRESS::80} {
 	encode zstd gzip
+
+	# One canonical hostname: www.<domain> redirects to <domain>.
+	@www header_regexp www Host ^www\.(.+)$
+	redir @www https://{re.www.1}{uri} permanent
 
 	# Per-client-IP limits; over-limit requests get 429 + Retry-After.
 	# Every zone a request matches counts it, so POST /api/match uses the

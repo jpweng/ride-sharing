@@ -11,7 +11,7 @@ variable "project" {
 }
 
 variable "domain_name" {
-  description = "Public hostname for the app, e.g. rides.example.ch (DNS managed outside AWS; point an A record at the server_public_ip output). Empty: plain HTTP on the server's IP. Set: Caddy gets a Let's Encrypt certificate and serves HTTPS."
+  description = "Domain for the app, e.g. rideandrail.ch. Terraform creates its Route 53 hosted zone; set the name_servers output as its nameservers at the registrar. The apex and www get A records for the server; www redirects to the apex. Empty: plain HTTP on the server's IP. Set: Caddy gets Let's Encrypt certificates and serves HTTPS."
   type        = string
   default     = ""
 }

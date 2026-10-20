@@ -3,8 +3,13 @@ output "app_url" {
 }
 
 output "server_public_ip" {
-  description = "Stable Elastic IP. With a domain, point an A record for domain_name at it."
+  description = "Stable Elastic IP; domain_name and its www point at it."
   value       = aws_eip.app.public_ip
+}
+
+output "name_servers" {
+  description = "Set these as the domain's nameservers at its registrar (Hostpoint)."
+  value       = local.https_enabled ? aws_route53_zone.site[0].name_servers : []
 }
 
 output "server_instance_id" {
@@ -33,8 +38,8 @@ output "github_actions_variables" {
     ECR_PROXY_REPOSITORY_URL = aws_ecr_repository.proxy.repository_url
     SERVER_NAME              = var.project
     LOG_GROUP                = aws_cloudwatch_log_group.app.name
-    # Caddy site address: ":80" serves plain HTTP on any hostname/IP; a domain
-    # name makes Caddy obtain a certificate and redirect HTTP to HTTPS.
-    SITE_ADDRESS = local.https_enabled ? var.domain_name : ":80"
+    # Caddy site addresses: ":80" serves plain HTTP on any hostname/IP; domain
+    # names make Caddy obtain certificates and redirect HTTP to HTTPS.
+    SITE_ADDRESS = local.https_enabled ? "${var.domain_name}, www.${var.domain_name}" : ":80"
   }
 }

@@ -1,10 +1,11 @@
 # Copy to terraform.tfvars (gitignored) and adjust.
 
-# Leave unset to serve plain HTTP on the server's IP. Set it (after pointing
-# an A record at the server_public_ip output) to have Caddy obtain a Let's
-# Encrypt certificate and redirect HTTP to HTTPS. Then update the GitHub
-# SITE_ADDRESS variable from the github_actions_variables output and redeploy.
-# domain_name = "rides.example.ch"
+# Leave unset to serve plain HTTP on the server's IP. Set it to your domain to
+# create its Route 53 zone and records, then set the name_servers output as the
+# domain's nameservers at the registrar. Update the GitHub SITE_ADDRESS variable
+# from the github_actions_variables output and redeploy: Caddy then obtains
+# Let's Encrypt certificates and redirects HTTP to HTTPS.
+# domain_name = "rideandrail.ch"
 
 # aws_region    = "eu-north-1"
 # instance_type = "t4g.micro"

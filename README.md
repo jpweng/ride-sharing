@@ -59,8 +59,8 @@ in `eu-north-1` (Stockholm, the AWS project's only allowed Region), running Dock
 The SQLite database lives on a separate EBS volume mounted at `/data`, with daily snapshots kept for
 7 days, so it survives redeploys and even replacing the server. There's no load balancer and no SSH:
 the server has a fixed Elastic IP that accepts only ports 80/443, and you get a shell through SSM
-Session Manager. Expect roughly $10–11/month: the instance (~$6.30), the IPv4 address (~$3.65), and
-the disks and snapshots (~$1).
+Session Manager. Expect roughly $11/month: the instance (~$6.30), the IPv4 address (~$3.65), the
+disks and snapshots (~$1), and the DNS zone ($0.50). The domain itself is billed by Hostpoint.
 
 Pushes to `main` are tested, built and deployed by
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml):
@@ -105,12 +105,18 @@ Requires Terraform >= 1.10, the AWS CLI logged in to the target account (`aws lo
      --parameters 'commands=["cd /opt/ride-sharing && docker compose exec -T app python backend/seed_data.py"]'
    ```
 
-**Custom domain + HTTPS** (optional):
-1. At your DNS provider, add an A record pointing the domain to `terraform output server_public_ip`.
-2. Set `domain_name` in `infra/terraform.tfvars` and run `terraform apply`. This only changes outputs.
-3. Set the GitHub variable `SITE_ADDRESS` to the domain and re-run the workflow.
+**Domain + HTTPS**: the site runs at <https://rideandrail.ch>. The domain is registered at Hostpoint,
+and its DNS is a Route 53 hosted zone managed by Terraform ($0.50/month). To set up a domain:
+1. Set `domain_name` in `infra/terraform.tfvars` and run `terraform apply`. This creates the hosted
+   zone, plus A records for the apex and `www` pointing at the server. It also adds SPF/DMARC records
+   saying the domain sends no mail.
+2. At the registrar (Hostpoint control panel → the domain → nameservers), replace the nameservers
+   with `terraform output name_servers`.
+3. Set the GitHub variable `SITE_ADDRESS` from `terraform output github_actions_variables` and re-run
+   the workflow.
 
-Caddy then obtains a Let's Encrypt certificate and redirects HTTP to HTTPS.
+Caddy then obtains Let's Encrypt certificates, redirects HTTP to HTTPS, and redirects `www` to the
+apex.
 
 Notes:
 - **Downtime per deploy:** the app container is replaced in a few seconds of downtime. The proxy only
