@@ -88,15 +88,19 @@ def now_iso():
 
 
 def get_or_create_user(name: str) -> int:
+    with get_conn() as conn:
+        return _get_or_create_user(conn, name)
+
+
+def _get_or_create_user(conn: sqlite3.Connection, name: str) -> int:
+    # Writing first opens the write transaction, so delete_inactive_users()
+    # can't remove the user before the caller's insert in the same
+    # transaction references it.
     name = name.strip()
     if not name:
         raise ValueError("Name must not be empty")
-    with get_conn() as conn:
-        row = conn.execute("SELECT id FROM users WHERE name = ?", (name,)).fetchone()
-        if row:
-            return row["id"]
-        cur = conn.execute("INSERT INTO users (name) VALUES (?)", (name,))
-        return cur.lastrowid
+    conn.execute("INSERT INTO users (name) VALUES (?) ON CONFLICT (name) DO NOTHING", (name,))
+    return conn.execute("SELECT id FROM users WHERE name = ?", (name,)).fetchone()["id"]
 
 
 def create_drive(
@@ -115,8 +119,8 @@ def create_drive(
     route_source: str,
     is_demo: bool = False,
 ) -> int:
-    driver_id = get_or_create_user(driver_name)
     with get_conn() as conn:
+        driver_id = _get_or_create_user(conn, driver_name)
         cur = conn.execute(
             """
             INSERT INTO drives (
@@ -184,6 +188,15 @@ def delete_demo_drives_before(departure_time: str) -> int:
         return cur.rowcount
 
 
+def delete_visitor_drives_before(departure_time: str) -> int:
+    """Delete non-demo drives departing before `departure_time`; returns how many."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "DELETE FROM drives WHERE is_demo = 0 AND departure_time < ?", (departure_time,)
+        )
+        return cur.rowcount
+
+
 def _drive_row_to_dict(row: sqlite3.Row) -> dict:
     d = dict(row)
     if d.get("route_geometry"):
@@ -201,8 +214,8 @@ def save_ride_request(
     destination_lon: float,
     requested_time: str,
 ) -> int:
-    passenger_id = get_or_create_user(passenger_name)
     with get_conn() as conn:
+        passenger_id = _get_or_create_user(conn, passenger_name)
         cur = conn.execute(
             """
             INSERT INTO ride_requests (
@@ -241,3 +254,21 @@ def list_recent_ride_requests(passenger_name: str, limit: int = 5) -> list[dict]
         if len(result) >= limit:
             break
     return result
+
+
+def delete_ride_requests_before(created_at: str) -> int:
+    """Delete searches made before `created_at` (UTC ISO 8601); returns how many."""
+    with get_conn() as conn:
+        cur = conn.execute("DELETE FROM ride_requests WHERE created_at < ?", (created_at,))
+        return cur.rowcount
+
+
+def delete_inactive_users() -> int:
+    """Delete users with no drives and no searches left; returns how many."""
+    with get_conn() as conn:
+        cur = conn.execute("""
+            DELETE FROM users
+            WHERE id NOT IN (SELECT driver_id FROM drives)
+              AND id NOT IN (SELECT passenger_id FROM ride_requests)
+        """)
+        return cur.rowcount

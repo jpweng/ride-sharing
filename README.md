@@ -35,17 +35,24 @@ uv run pytest
 Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools); this updates
 `pyproject.toml` and `uv.lock`, both of which are committed.
 
-### Demo drives
+### Demo drives and data retention
 
-The app keeps a rolling week of fictional drives between Swiss towns, so "Browse rides" and the
-Passenger page always have something to show. The drives are commutes and weekend trips by Jean
-Dupont, Sophie Meier, and others; sign in as one of them to see their Driver page. At startup and
-then every hour, [backend/demo_drives.py](backend/demo_drives.py) deletes demo drives that have
-departed and adds missing ones for the next 7 days. They're flagged `is_demo` in the database, and
-drives posted by visitors are never touched. To run a refresh by hand:
+At startup and then every hour, the app runs [backend/maintenance.py](backend/maintenance.py):
+
+- **Demo drives**: [backend/demo_drives.py](backend/demo_drives.py) keeps a rolling week of fictional
+  drives between Swiss towns, so "Browse rides" and the Passenger page always have something to
+  show. The drives are commutes and weekend trips by Jean Dupont, Sophie Meier, and others; sign in
+  as one of them to see their Driver page. Demo drives that have departed are deleted, and missing
+  ones for the next 7 days are added. They're flagged `is_demo` in the database.
+- **Visitors' data is kept for 30 days**: drives are deleted 30 days after their departure, searches
+  30 days after they were made, and then names with no drive or search left. Nothing in the UI shows
+  any of this by then. On the server, deleted data also remains in the daily disk snapshots for 7
+  more days.
+
+To run it by hand:
 
 ```bash
-uv run --directory backend python demo_drives.py
+uv run --directory backend python maintenance.py
 ```
 
 ## Deploying to AWS
@@ -135,6 +142,7 @@ backend/
   database.py     SQLite schema + access layer
   matching.py     detour-cost route matching (OSRM, haversine fallback)
   transit.py      transport.opendata.ch integration
+  maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
 frontend/
   index.html      pages: #/browse (public), #/ride (Passenger), #/drive (Driver)

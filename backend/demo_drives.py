@@ -4,8 +4,9 @@ and matching always have something to show on the public demo.
 
 Demo drives are flagged `is_demo` and are the only drives touched here:
 drives posted by visitors are never modified or deleted. refresh() is
-idempotent; main.py runs it at startup and then hourly. It drops demo drives
-that have departed and adds the ones missing from the next DAYS_AHEAD days.
+idempotent; maintenance.py runs it at startup and then hourly. It drops demo
+drives that have departed and adds the ones missing from the next DAYS_AHEAD
+days.
 
 Run it by hand with the backend on PYTHONPATH, e.g.:
     PYTHONPATH=backend uv run python backend/demo_drives.py

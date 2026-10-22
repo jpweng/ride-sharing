@@ -18,8 +18,9 @@ Two core use cases:
 No authentication: a driver/passenger is just a name, auto-registered on
 first use. This is a demo/prototype, not a production app.
 
-A background task keeps a rolling week of fictional demo drives in the
-database (see demo_drives.py); drives posted by visitors are left alone.
+An hourly background task keeps a rolling week of fictional demo drives in
+the database and deletes visitors' data a month after it's last useful (see
+maintenance.py).
 """
 import asyncio
 import logging
@@ -33,32 +34,32 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import database as db
-import demo_drives
 import dropoff
+import maintenance
 import matching
 import transit
 
 logger = logging.getLogger("uvicorn.error")
 
-DEMO_REFRESH_INTERVAL_S = 3600
+MAINTENANCE_INTERVAL_S = 3600
 
 
-async def _keep_demo_drives_fresh():
+async def _maintenance_loop():
     # One loop per process; fine because the app runs as a single uvicorn
-    # worker (and refresh() is idempotent anyway).
+    # worker (and maintenance.run() is idempotent anyway).
     while True:
         try:
-            deleted, created = await asyncio.to_thread(demo_drives.refresh)
-            if deleted or created:
-                logger.info("Demo drives: %d deleted, %d created", deleted, created)
+            changes = await asyncio.to_thread(maintenance.run)
+            if any(changes.values()):
+                logger.info("Maintenance: %s", changes)
         except Exception:
-            logger.exception("Refreshing demo drives failed")
-        await asyncio.sleep(DEMO_REFRESH_INTERVAL_S)
+            logger.exception("Maintenance failed")
+        await asyncio.sleep(MAINTENANCE_INTERVAL_S)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task = asyncio.create_task(_keep_demo_drives_fresh())
+    task = asyncio.create_task(_maintenance_loop())
     yield
     task.cancel()
 
