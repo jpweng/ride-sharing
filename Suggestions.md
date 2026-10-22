@@ -13,6 +13,10 @@
 - **Demo notices:** a banner on every page, a "Demo" badge on fictional drives, a warning to use a
   made-up name when signing in, a privacy notice (`privacy.html`) and `noindex`. The privacy notice
   still lacks who is responsible for the data and how to contact them; see open questions.
+- **Ride and Rail identity:** the name everywhere, a text wordmark, a teal palette instead of the
+  SBB-inspired red, and a home page explaining the concept in three steps.
+- **Uptime alerts:** a health check every 5 minutes, with an email when the site is down and when
+  it's back.
 
 ## Next steps, in order of priority
 
@@ -20,13 +24,6 @@
    (about 730 lines of JavaScript), is much cheaper than later. Plain JavaScript with one dictionary
    per language and a language picker, defaulting to the browser's language. Error messages from the
    API that reach the user need translating too.
-2. **Align the identity with "Ride and Rail".** The name, the title, and a home page that explains
-   the concept in 30 seconds: the car to a station, then the train. That's what sets the project
-   apart from BlaBlaCar, and today the interface doesn't highlight it. Without a logo, a text
-   wordmark is enough for now. Moving away from the SBB-inspired look would also help with
-   investors: it shouldn't look like an SBB product.
-3. **Monitor availability at low cost.** A CloudWatch alert by email if `/api/health` stops
-   responding, for about $1/month. Today, an outage would go unnoticed.
 
 ## Before real drivers
 

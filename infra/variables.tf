@@ -16,6 +16,12 @@ variable "domain_name" {
   default     = ""
 }
 
+variable "alert_email" {
+  description = "Email address for site-down alerts (monitoring.tf). Empty: no monitoring. AWS first emails a confirmation link that must be clicked."
+  type        = string
+  default     = ""
+}
+
 variable "instance_type" {
   description = "EC2 instance type. Must be arm64 (Graviton): CI builds arm64 images."
   type        = string

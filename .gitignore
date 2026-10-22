@@ -10,3 +10,4 @@ rideshare.db
 *.tfstate
 *.tfstate.*
 infra/terraform.tfvars
+infra/.build/

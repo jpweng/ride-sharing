@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
     task.cancel()
 
 
-app = FastAPI(title="Swiss Ride Share Prototype", lifespan=lifespan)
+app = FastAPI(title="Ride and Rail", lifespan=lifespan)
 
 db.init_db()
 

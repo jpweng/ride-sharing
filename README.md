@@ -1,8 +1,9 @@
-# Swiss Ride-Share Prototype
+# Ride and Rail
 
-A web-based prototype ride-sharing app for Switzerland: drivers post drives, passengers either
-browse them or ask for a match based on route corridor (detour-cost) matching, with a public-transport
-comparison and last-mile-transit suggestion via [transport.opendata.ch](https://transport.opendata.ch).
+A demo of a ride-sharing app for Switzerland that combines car rides with public transport, live at
+<https://rideandrail.ch>. Drivers post drives; passengers either browse them or ask for a match based
+on route corridor (detour-cost) matching, with a public-transport comparison and last-mile-transit
+suggestion via [transport.opendata.ch](https://transport.opendata.ch).
 
 See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for the full design rationale.
 
@@ -71,7 +72,7 @@ The SQLite database lives on a separate EBS volume mounted at `/data`, with dail
 7 days, so it survives redeploys and even replacing the server. There's no load balancer and no SSH:
 the server has a fixed Elastic IP that accepts only ports 80/443, and you get a shell through SSM
 Session Manager. Expect roughly $11/month: the instance (~$6.30), the IPv4 address (~$3.65), the
-disks and snapshots (~$1), and the DNS zone ($0.50). The domain itself is billed by Hostpoint.
+disks and snapshots (~$1), the DNS zone ($0.50), and the uptime alarm ($0.10). The domain itself is billed by Hostpoint.
 
 Pushes to `main` are tested, built and deployed by
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml):
@@ -127,6 +128,12 @@ Notes:
 - **Downtime per deploy:** the app container is replaced in a few seconds of downtime. The proxy only
   restarts when `deploy/caddy/` changes.
 - **Logs:** CloudWatch log group `/ride-sharing`, with streams `app` and `proxy`.
+- **Uptime alerts:** with `alert_email` set in `infra/terraform.tfvars`, a Lambda function
+  ([infra/health_check/](infra/health_check/handler.py)) checks `/api/health` every 5 minutes. After
+  two failed checks in a row, a CloudWatch alarm emails that address, and emails again on recovery.
+  AWS first sends a confirmation link, which must be clicked. Route 53 health checks aren't used
+  because their alarms must live in us-east-1, which the AWS project can't use. See
+  [infra/monitoring.tf](infra/monitoring.tf).
 - **Shell:** EC2 console → the `ride-sharing` instance → *Connect* → *Session Manager*. Then run
   `sudo -i; cd /opt/ride-sharing; docker compose ps` (or `logs`).
 - **OS patches:** Ubuntu installs security updates automatically through unattended-upgrades. Changes
@@ -145,10 +152,10 @@ backend/
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
 frontend/
-  index.html      pages: #/browse (public), #/ride (Passenger), #/drive (Driver)
+  index.html      pages: #/ (home), #/browse (public), #/ride (Passenger), #/drive (Driver)
   privacy.html    privacy notice, linked from the demo banner
   app.js          Leaflet map, point picking, address autocomplete, API calls
-  style.css       SBB-inspired red/white theme
+  style.css       teal/white theme, text wordmark (no logo yet)
 infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user)
   bootstrap/      one-time S3 bucket for Terraform state
 deploy/           what runs on the server: compose.yaml, deploy.sh, caddy/ (proxy image)

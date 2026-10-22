@@ -311,9 +311,11 @@ document.getElementById("signin-submit").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------------
-// Pages: #/browse (public), #/ride (passenger), #/drive (driver)
+// Pages: #/ (home, full width), #/browse (public), #/ride (passenger),
+// #/drive (driver)
 // ---------------------------------------------------------------------
 const PAGES = {
+  home: { needsUser: false, onShow: null },
   browse: { needsUser: false, onShow: loadBrowse },
   ride: { needsUser: true, onShow: loadRecentSearches },
   drive: { needsUser: true, onShow: loadMyDrives },
@@ -321,8 +323,13 @@ const PAGES = {
 
 function route() {
   const requested = location.hash.replace(/^#\/?/, "");
-  const page = PAGES[requested] ? requested : "browse";
+  const page = PAGES[requested] ? requested : "home";
   const shown = PAGES[page].needsUser && !currentUser ? "signin" : page;
+
+  // The home page replaces the panel + map layout; Leaflet needs to
+  // re-measure the map once it's visible again.
+  document.body.classList.toggle("home-active", shown === "home");
+  if (shown !== "home") map.invalidateSize();
 
   document.querySelectorAll(".tab-link").forEach((a) => a.classList.toggle("active", a.dataset.page === page));
   document.querySelectorAll(".page").forEach((s) => s.classList.toggle("active", s.id === `page-${shown}`));
@@ -337,7 +344,7 @@ function route() {
   });
   resultsLayer.clearLayers();
 
-  if (shown !== "signin") PAGES[shown].onShow();
+  if (PAGES[shown]?.onShow) PAGES[shown].onShow();
 }
 
 window.addEventListener("hashchange", route);

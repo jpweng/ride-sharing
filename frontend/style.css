@@ -1,6 +1,7 @@
 :root {
-  --accent: #d8232a;
-  --accent-dark: #a91b21;
+  --accent: #0f6e5f;
+  --accent-dark: #0a5046;
+  --accent-soft: #e4f2ef;
   --bg: #f4f5f7;
   --panel: #ffffff;
   --border: #dfe2e6;
@@ -25,23 +26,37 @@ body {
 }
 
 header {
-  background: var(--accent);
-  color: white;
-  padding: 14px 24px;
+  background: var(--panel);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: baseline;
+  gap: 14px;
 }
 
 header h1 {
-  font-size: 18px;
+  font-size: 22px;
   margin: 0;
-  font-weight: 600;
 }
 
+/* Text wordmark until there's a logo */
+.wordmark {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.wordmark .wm-ride { color: var(--accent); }
+.wordmark .wm-and {
+  color: var(--muted);
+  font-weight: 400;
+  font-style: italic;
+  font-size: 0.8em;
+}
+.wordmark .wm-rail { color: var(--text); }
+
 header .subtitle {
-  font-size: 12px;
-  opacity: 0.85;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 nav.tabs {
@@ -456,4 +471,97 @@ body.doc-page {
 .doc h3 { margin: 24px 0 6px; font-size: 16px; }
 .doc ul { padding-left: 20px; }
 .doc .todo { color: var(--demo-text); background: var(--demo-bg); padding: 2px 6px; border-radius: 4px; }
-header a { color: inherit; text-decoration: none; }
+header a { text-decoration: none; }
+
+/* Home page: full width, replaces the panel + map layout (see route() in app.js) */
+.home {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--panel);
+  padding: 0 24px 40px;
+}
+body:not(.home-active) .home { display: none; }
+body.home-active main { display: none; }
+
+.home-hero {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 56px 0 32px;
+}
+.home-hero h2 {
+  font-size: 38px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+}
+.home-lead {
+  font-size: 18px;
+  line-height: 1.55;
+  color: #3d434c;
+  margin: 0 0 28px;
+}
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.home-actions .submit-btn {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  padding: 12px 24px;
+  text-decoration: none;
+}
+.home-link {
+  color: var(--accent-dark);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  margin-left: 4px;
+}
+
+.home-steps {
+  list-style: none;
+  counter-reset: step;
+  max-width: 960px;
+  margin: 8px auto 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.home-steps li {
+  counter-increment: step;
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 20px;
+}
+.home-steps li::before {
+  content: counter(step);
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+}
+.home-steps h3 { margin: 12px 0 6px; font-size: 16px; }
+.home-steps p { margin: 0; font-size: 14px; line-height: 1.5; color: #3d434c; }
+
+.home-note {
+  max-width: 960px;
+  margin: 20px auto 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .home-hero { padding-top: 32px; }
+  .home-hero h2 { font-size: 30px; }
+  .home-lead { font-size: 16px; }
+}

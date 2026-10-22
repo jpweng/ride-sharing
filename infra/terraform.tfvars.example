@@ -7,5 +7,9 @@
 # Let's Encrypt certificates and redirects HTTP to HTTPS.
 # domain_name = "rideandrail.ch"
 
+# Email address for site-down alerts; leave unset for no monitoring. AWS sends
+# a confirmation link to it first, which must be clicked.
+# alert_email = "you@example.ch"
+
 # aws_region    = "eu-north-1"
 # instance_type = "t4g.micro"

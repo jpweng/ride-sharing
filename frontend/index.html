@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <!-- A demo: keep it out of search engines until it's ready. -->
 <meta name="robots" content="noindex, nofollow" />
-<title>Swiss Ride Share — Prototype</title>
+<title>Ride and Rail — shared rides to the train</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <header>
-  <h1>🚗 Swiss Ride Share</h1>
-  <span class="subtitle">prototype — drives + public transport, corridor-matched</span>
+  <h1><a class="wordmark" href="#/"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
+  <span class="subtitle">Shared rides to the train</span>
 </header>
 
 <div class="demo-banner" role="note">
@@ -22,11 +22,54 @@
 </div>
 
 <nav class="tabs">
+  <a class="tab-link" href="#/" data-page="home">Home</a>
   <a class="tab-link" href="#/browse" data-page="browse">Browse rides</a>
   <a class="tab-link" href="#/ride" data-page="ride">Passenger</a>
   <a class="tab-link" href="#/drive" data-page="drive">Driver</a>
   <div class="account" id="account"></div>
 </nav>
+
+<!-- HOME: what Ride and Rail is, full width (the map pages are in <main>) -->
+<section id="home" class="home">
+  <div class="home-hero">
+    <h2>Drive part of the way.<br>Take the train for the rest.</h2>
+    <p class="home-lead">
+      Ride and Rail matches you with drivers who are already heading your way, even if they aren't
+      going all the way. They drop you at a station on their route, and a real train or bus
+      connection takes you the rest of the way.
+    </p>
+    <div class="home-actions">
+      <a class="submit-btn" href="#/ride">Find a ride</a>
+      <a class="submit-btn secondary" href="#/drive">Offer a drive</a>
+      <a class="home-link" href="#/browse">Browse upcoming rides →</a>
+    </div>
+  </div>
+
+  <ol class="home-steps">
+    <li>
+      <h3>Drivers share empty seats</h3>
+      <p>On a trip they're making anyway: where from, where to, when, and how many seats are free.</p>
+    </li>
+    <li>
+      <h3>Matched along the route</h3>
+      <p>
+        Not just drivers going to the same town: anyone whose route passes close to you, ranked by
+        how small the detour is for them.
+      </p>
+    </li>
+    <li>
+      <h3>Finish by train or bus</h3>
+      <p>
+        If the driver isn't going all the way, you get a drop-off station on their route with a real
+        connection to your destination, from the Swiss public transport timetable.
+      </p>
+    </li>
+  </ol>
+
+  <p class="home-note">
+    Every search also shows the public transport option on its own, so you can compare.
+  </p>
+</section>
 
 <main>
   <div class="panel">
