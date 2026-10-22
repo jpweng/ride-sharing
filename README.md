@@ -35,13 +35,17 @@ uv run pytest
 Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools); this updates
 `pyproject.toml` and `uv.lock`, both of which are committed.
 
-### Seed demo data
+### Demo drives
 
-Populates a handful of posted drives across Swiss towns so "Browse rides" and the Passenger page
-have something to show immediately (sign in as e.g. "Jean Dupont" to see his Driver page):
+The app keeps a rolling week of fictional drives between Swiss towns, so "Browse rides" and the
+Passenger page always have something to show. The drives are commutes and weekend trips by Jean
+Dupont, Sophie Meier, and others; sign in as one of them to see their Driver page. At startup and
+then every hour, [backend/demo_drives.py](backend/demo_drives.py) deletes demo drives that have
+departed and adds missing ones for the next 7 days. They're flagged `is_demo` in the database, and
+drives posted by visitors are never touched. To run a refresh by hand:
 
 ```bash
-uv run --directory backend python seed_data.py
+uv run --directory backend python demo_drives.py
 ```
 
 ## Deploying to AWS
@@ -97,13 +101,7 @@ Requires Terraform >= 1.10, the AWS CLI logged in to the target account (`aws lo
    subprocess.run(["gh", "secret", "set", "AWS_SECRET_ACCESS_KEY", "--body", k["SecretAccessKey"]], check=True)'
    ```
 4. **First deploy**: push to `main`, or run the *Test and deploy* workflow from the Actions tab. The
-   app is then at `terraform output app_url`.
-5. **Seed demo data** (optional, once only; running it twice duplicates the drives):
-   ```bash
-   aws ssm send-command --instance-ids "$(terraform -chdir=infra output -raw server_instance_id)" \
-     --document-name AWS-RunShellScript \
-     --parameters 'commands=["cd /opt/ride-sharing && docker compose exec -T app python backend/seed_data.py"]'
-   ```
+   app is then at `terraform output app_url`, with the demo drives created at startup.
 
 **Domain + HTTPS**: the site runs at <https://rideandrail.ch>. The domain is registered at Hostpoint,
 and its DNS is a Route 53 hosted zone managed by Terraform ($0.50/month). To set up a domain:
@@ -137,7 +135,7 @@ backend/
   database.py     SQLite schema + access layer
   matching.py     detour-cost route matching (OSRM, haversine fallback)
   transit.py      transport.opendata.ch integration
-  seed_data.py    demo data seeder
+  demo_drives.py  rolling week of fictional demo drives
 frontend/
   index.html      pages: #/browse (public), #/ride (Passenger), #/drive (Driver)
   app.js          Leaflet map, point picking, address autocomplete, API calls

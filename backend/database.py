@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS drives (
     route_duration_s REAL,      -- driving duration, seconds
     route_source TEXT,          -- 'osrm' or 'haversine' (fallback)
     created_at TEXT NOT NULL,
+    is_demo INTEGER NOT NULL DEFAULT 0,  -- 1: fictional, managed by demo_drives.py
     FOREIGN KEY (driver_id) REFERENCES users(id)
 );
 
@@ -76,6 +77,10 @@ def get_conn():
 def init_db():
     with get_conn() as conn:
         conn.executescript(SCHEMA)
+        # Databases created before is_demo existed.
+        columns = {r["name"] for r in conn.execute("PRAGMA table_info(drives)")}
+        if "is_demo" not in columns:
+            conn.execute("ALTER TABLE drives ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0")
 
 
 def now_iso():
@@ -108,6 +113,7 @@ def create_drive(
     route_distance_m: float | None,
     route_duration_s: float | None,
     route_source: str,
+    is_demo: bool = False,
 ) -> int:
     driver_id = get_or_create_user(driver_name)
     with get_conn() as conn:
@@ -117,8 +123,9 @@ def create_drive(
                 driver_id, driver_name, origin_name, origin_lat, origin_lon,
                 destination_name, destination_lat, destination_lon,
                 departure_time, seats_available, route_geometry,
-                route_distance_m, route_duration_s, route_source, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                route_distance_m, route_duration_s, route_source, created_at,
+                is_demo
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 driver_id, driver_name, origin_name, origin_lat, origin_lon,
@@ -126,6 +133,7 @@ def create_drive(
                 departure_time, seats_available,
                 json.dumps(route_geometry) if route_geometry is not None else None,
                 route_distance_m, route_duration_s, route_source, now_iso(),
+                int(is_demo),
             ),
         )
         return cur.lastrowid
@@ -156,6 +164,24 @@ def get_drive(drive_id: int) -> dict | None:
 def delete_drive(drive_id: int) -> None:
     with get_conn() as conn:
         conn.execute("DELETE FROM drives WHERE id = ?", (drive_id,))
+
+
+def demo_drive_exists(driver_name: str, departure_time: str) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM drives WHERE is_demo = 1 AND driver_name = ? AND departure_time = ?",
+            (driver_name, departure_time),
+        ).fetchone()
+        return row is not None
+
+
+def delete_demo_drives_before(departure_time: str) -> int:
+    """Delete demo drives departing before `departure_time`; returns how many."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "DELETE FROM drives WHERE is_demo = 1 AND departure_time < ?", (departure_time,)
+        )
+        return cur.rowcount
 
 
 def _drive_row_to_dict(row: sqlite3.Row) -> dict:

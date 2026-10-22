@@ -17,8 +17,14 @@ Two core use cases:
 
 No authentication: a driver/passenger is just a name, auto-registered on
 first use. This is a demo/prototype, not a production app.
+
+A background task keeps a rolling week of fictional demo drives in the
+database (see demo_drives.py); drives posted by visitors are left alone.
 """
+import asyncio
+import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -27,11 +33,37 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import database as db
+import demo_drives
 import dropoff
 import matching
 import transit
 
-app = FastAPI(title="Swiss Ride Share Prototype")
+logger = logging.getLogger("uvicorn.error")
+
+DEMO_REFRESH_INTERVAL_S = 3600
+
+
+async def _keep_demo_drives_fresh():
+    # One loop per process; fine because the app runs as a single uvicorn
+    # worker (and refresh() is idempotent anyway).
+    while True:
+        try:
+            deleted, created = await asyncio.to_thread(demo_drives.refresh)
+            if deleted or created:
+                logger.info("Demo drives: %d deleted, %d created", deleted, created)
+        except Exception:
+            logger.exception("Refreshing demo drives failed")
+        await asyncio.sleep(DEMO_REFRESH_INTERVAL_S)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(_keep_demo_drives_fresh())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title="Swiss Ride Share Prototype", lifespan=lifespan)
 
 db.init_db()
 
