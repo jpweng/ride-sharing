@@ -7,12 +7,18 @@
   --text: #1c1f24;
   --muted: #6b7280;
   --success: #1a7f37;
+  --demo-bg: #fff4d6;
+  --demo-border: #f0d58c;
+  --demo-text: #6b4e00;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -81,7 +87,8 @@ main {
   display: grid;
   grid-template-columns: 380px 1fr;
   gap: 0;
-  height: calc(100vh - 92px);
+  flex: 1;
+  min-height: 0;
 }
 
 .panel {
@@ -342,6 +349,12 @@ input[type=text], input[type=number], input[type=datetime-local] {
   margin-left: 6px;
 }
 
+.badge.demo {
+  background: var(--demo-bg);
+  color: var(--demo-text);
+  font-weight: 600;
+}
+
 /* Public transport connections, flight-search style (see renderConnections) */
 .pt-conn {
   display: flex;
@@ -406,3 +419,41 @@ input[type=text], input[type=number], input[type=datetime-local] {
   text-decoration: none;
 }
 .pt-book:hover { background: var(--accent-dark); }
+
+/* "This is a demo" notices (index.html, privacy.html) */
+.demo-banner {
+  background: var(--demo-bg);
+  border-bottom: 1px solid var(--demo-border);
+  color: var(--demo-text);
+  padding: 6px 24px;
+  font-size: 13px;
+}
+.demo-banner .badge.demo { margin-left: 0; }
+.demo-banner a { color: var(--demo-text); font-weight: 600; margin-left: 6px; }
+
+.demo-hint {
+  background: var(--demo-bg);
+  border: 1px solid var(--demo-border);
+  color: var(--demo-text);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+/* Text pages such as privacy.html: normal scrolling instead of the app layout */
+body.doc-page {
+  height: auto;
+  display: block;
+}
+.doc {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+  background: var(--panel);
+  line-height: 1.5;
+  font-size: 15px;
+}
+.doc h2 { margin-top: 0; }
+.doc h3 { margin: 24px 0 6px; font-size: 16px; }
+.doc ul { padding-left: 20px; }
+.doc .todo { color: var(--demo-text); background: var(--demo-bg); padding: 2px 6px; border-radius: 4px; }
+header a { color: inherit; text-decoration: none; }

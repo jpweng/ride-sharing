@@ -146,6 +146,7 @@ backend/
   demo_drives.py  rolling week of fictional demo drives
 frontend/
   index.html      pages: #/browse (public), #/ride (Passenger), #/drive (Driver)
+  privacy.html    privacy notice, linked from the demo banner
   app.js          Leaflet map, point picking, address autocomplete, API calls
   style.css       SBB-inspired red/white theme
 infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user)

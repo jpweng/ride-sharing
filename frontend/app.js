@@ -358,10 +358,15 @@ function hideStatus(elId) {
 // ---------------------------------------------------------------------
 // Driver page: your drives + offer a new one
 // ---------------------------------------------------------------------
+// Fictional drives kept by the backend (demo_drives.py) are flagged is_demo.
+function demoBadge(d) {
+  return d.is_demo ? '<span class="badge demo">Demo</span>' : "";
+}
+
 function driveCardHtml(d) {
   const km = d.route_distance_m ? (d.route_distance_m / 1000).toFixed(1) : "?";
   return `
-    <div class="route">${esc(d.origin_name)} → ${esc(d.destination_name)}</div>
+    <div class="route">${esc(d.origin_name)} → ${esc(d.destination_name)}${demoBadge(d)}</div>
     <div class="meta">${fmtTime(d.departure_time)} · ${d.seats_available} seat(s) · ${km} km</div>
   `;
 }
@@ -548,7 +553,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
     card.className = "match-card";
     const warn = m.detour_km > 4 || m.detour_pct > 25;
     card.innerHTML = `
-      <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}</div>
+      <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}${demoBadge(m)}</div>
       <div class="meta">Driver: ${esc(m.driver_name)} · ${fmtTime(m.departure_time)} · ${m.seats_available} seat(s)</div>
       <div class="meta">Base route: ${m.base_distance_km} km · via you: ${m.via_distance_km} km</div>
       <span class="score ${warn ? "warn" : ""}">detour +${m.detour_km} km (${m.detour_pct}%)</span>

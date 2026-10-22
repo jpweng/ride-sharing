@@ -1,16 +1,50 @@
-Suggestions, par ordre de priorité
-Rendre la démo vivante. Charger des trajets de démo et les régénérer chaque nuit avec des dates futures. Sans ça, les trajets passent et la démo se vide d'elle-même. Purger au passage les données réelles saisies par les visiteurs.
-Afficher clairement que c'est une démo. Un bandeau « Démo – ne saisissez pas de données réelles », une courte mention de confidentialité (la nouvelle loi suisse sur la protection des données, nLPD, s'applique dès qu'on collecte des noms), et éventuellement noindex pour que les moteurs de recherche ne référencent pas le site.
-Aligner l'identité sur « Ride and Rail ». Le nom, le titre, et une page d'accueil qui explique le concept en 30 secondes : la voiture jusqu'à une gare, puis le train. C'est ce qui distingue le projet de BlaBlaCar, et aujourd'hui l'interface ne le met pas en avant.
-Traduire en français et en allemand, l'anglais en option. Le frontend est petit (environ 730 lignes de JavaScript), donc c'est faisable sans framework.
-Surveiller la disponibilité à faible coût. Une alerte CloudWatch par e-mail si /api/health ne répond plus, pour environ 1 $/mois. Aujourd'hui, une panne passerait inaperçue.
-Questions
-Public : à qui sert la démo ? Investisseurs ou partenaires (CFF, cantons), testeurs réels, portfolio, projet d'études ? Ça change le niveau de finition et l'urgence de la confidentialité.
-Utilisation réelle : veux-tu que de vraies personnes publient des trajets, ou seulement qu'on puisse la montrer ? Dans le premier cas, il faudra une vraie connexion (un lien envoyé par e-mail, par exemple) avant tout le reste.
-Langues : français seulement, français et allemand, ou les trois langues nationales plus l'anglais ?
-Nom : « Ride and Rail » est-il le nom définitif ? As-tu un logo ou des couleurs, ou on garde le style inspiré des CFF ?
-Échéance : y a-t-il une date de présentation ? Ça m'aiderait à choisir entre peaufiner l'existant et ajouter des fonctionnalités.
-Si tu veux un point de départ rapide sans attendre tes réponses, je ferais les points 1 et 2. Ils sont petits, et ils rendent le site présentable et sûr à partager dès aujourd'hui.
+## Decisions
 
+- **Audience:** investors and real testers. For now the site only needs to be shown, but real
+  drivers are coming soon, so nothing built now should assume the demo stays a demo.
+- **Languages:** the three national languages (German, French, Italian) plus English.
+- **Branding:** no logo yet.
 
+## Done
 
+- **Demo drives:** a rolling week of fictional drives, refreshed hourly; visitors' drives are kept.
+- **Data retention:** visitors' drives, searches and names are deleted 30 days after they're last
+  useful.
+- **Demo notices:** a banner on every page, a "Demo" badge on fictional drives, a warning to use a
+  made-up name when signing in, a privacy notice (`privacy.html`) and `noindex`. The privacy notice
+  still lacks who is responsible for the data and how to contact them; see open questions.
+
+## Next steps, in order of priority
+
+1. **Translate into German, French, Italian and English.** Doing it now, while the frontend is small
+   (about 730 lines of JavaScript), is much cheaper than later. Plain JavaScript with one dictionary
+   per language and a language picker, defaulting to the browser's language. Error messages from the
+   API that reach the user need translating too.
+2. **Align the identity with "Ride and Rail".** The name, the title, and a home page that explains
+   the concept in 30 seconds: the car to a station, then the train. That's what sets the project
+   apart from BlaBlaCar, and today the interface doesn't highlight it. Without a logo, a text
+   wordmark is enough for now. Moving away from the SBB-inspired look would also help with
+   investors: it shouldn't look like an SBB product.
+3. **Monitor availability at low cost.** A CloudWatch alert by email if `/api/health` stops
+   responding, for about $1/month. Today, an outage would go unnoticed.
+
+## Before real drivers
+
+Not needed for the demo, but these shape decisions made now:
+
+- **Accounts:** a real sign-in (e.g. a link sent by email) instead of a typed name, so nobody can
+  post or read as someone else.
+- **Contact and booking:** how a passenger reaches a driver and reserves a seat.
+- **Legal:** terms of use and a full privacy policy. In Switzerland, carpooling is fine as long as
+  drivers only share costs; earning money from rides needs a professional licence, so pricing rules
+  matter.
+- **Demo drives:** they're labelled "Demo" already; decide whether to switch them off once real
+  drives exist.
+
+## Open questions
+
+1. **Name:** is "Ride and Rail" the final name?
+2. **Deadline:** is there a date for an investor meeting or the start of testing?
+3. **Testers:** how many, and do they get access by invitation, or is the site open to anyone?
+4. **Privacy contact:** who is responsible for the data (a person or a company), and which contact
+   to publish? The Swiss data protection law requires both in the privacy notice.
