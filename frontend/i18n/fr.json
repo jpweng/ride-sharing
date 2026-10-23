@@ -40,6 +40,7 @@
   "browse.refresh": "Actualiser",
   "browse.empty": "Aucun trajet à venir pour l'instant.",
   "browse.loadFailed": "Impossible de charger les trajets : {error}",
+  "browse.limited": "Voici les {count} prochains trajets. Pour votre voyage, utilisez plutôt la recherche sur la page «Passager».",
   "form.from": "De",
   "form.to": "À",
   "form.pickOnMap": "Choisir sur la carte",

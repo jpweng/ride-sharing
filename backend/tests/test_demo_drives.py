@@ -1,20 +1,27 @@
 """
-Tests for demo_drives.refresh(): the rolling week of fictional drives, and
-that drives posted by visitors are never touched. Isolated temp DB and
-haversine routing -- no network.
+Tests for demo_drives.refresh(): the rolling week of fictional drives, that
+drives posted by visitors are never touched, and that the network covers
+the corridors and regions it's meant to. Isolated temp DB and haversine
+routing -- no network.
 """
 import sqlite3
-from datetime import datetime
+from collections import Counter
+from datetime import datetime, timedelta
 
 import database as db
 import demo_drives
+import matching
 
 WED_NOON = datetime(2026, 10, 21, 12, 0)
 THU_NOON = datetime(2026, 10, 22, 12, 0)
 
 
 def _all_drives():
-    return db.list_drives(upcoming_only=False)
+    return db.list_drives(upcoming_only=False, with_geometry=False)
+
+
+def _expected_count(now):
+    return len(demo_drives._expected(now))
 
 
 def _post_visitor_drive(driver_name, departure_time):
@@ -29,35 +36,66 @@ def _post_visitor_drive(driver_name, departure_time):
 
 
 def test_fills_the_coming_week(isolated_db, force_haversine):
-    assert demo_drives.refresh(WED_NOON) == (0, 17)
+    expected = _expected_count(WED_NOON)
+    assert expected > 400
+    assert demo_drives.refresh(WED_NOON) == (0, expected)
 
     drives = _all_drives()
-    assert len(drives) == 17
+    assert len(drives) == expected
     assert all(d["is_demo"] == 1 for d in drives)
-    # Nothing already departed; the morning commutes of Wednesday are skipped.
-    assert drives[0]["departure_time"] == "2026-10-21T17:30"
-    assert drives[-1]["departure_time"] == "2026-10-27T17:30"
-    assert {d["departure_time"] for d in drives if d["driver_name"] == "Luca Bianchi"} == {
-        "2026-10-24T09:30", "2026-10-25T18:00",
-    }
+    departures = [d["departure_time"] for d in drives]
+    # Nothing already departed, nothing beyond the 7-day window.
+    assert min(departures) > "2026-10-21T12:00"
+    assert max(departures) < "2026-10-28T00:00"
 
 
 def test_refresh_is_idempotent(isolated_db, force_haversine):
     demo_drives.refresh(WED_NOON)
     assert demo_drives.refresh(WED_NOON) == (0, 0)
-    assert len(_all_drives()) == 17
+    assert len(_all_drives()) == _expected_count(WED_NOON)
 
 
 def test_next_day_drops_departed_and_adds_new_day(isolated_db, force_haversine):
     demo_drives.refresh(WED_NOON)
+    departed = sum(1 for k in demo_drives._expected(WED_NOON) if k[1] <= "2026-10-22T12:00")
+    new_day = sum(1 for k in demo_drives._expected(THU_NOON) if k[1] >= "2026-10-28")
 
-    # Departed by Thursday noon: Wednesday 17:30, Thursday 07:15 and 07:45.
-    # New day (next Wednesday): the three weekday commutes plus Anna's.
-    assert demo_drives.refresh(THU_NOON) == (3, 4)
+    assert demo_drives.refresh(THU_NOON) == (departed, new_day)
+    assert len(_all_drives()) == _expected_count(THU_NOON)
 
-    departures = [d["departure_time"] for d in _all_drives()]
-    assert min(departures) == "2026-10-22T17:30"
-    assert max(departures) == "2026-10-28T17:30"
+
+def test_removed_template_drives_are_deleted(isolated_db, force_haversine, monkeypatch):
+    demo_drives.refresh(WED_NOON)
+    gone = demo_drives.DEMO_DRIVES[0]
+    monkeypatch.setattr(demo_drives, "DEMO_DRIVES", demo_drives.DEMO_DRIVES[1:])
+
+    deleted, created = demo_drives.refresh(WED_NOON)
+
+    assert created == 0
+    assert deleted > 0
+    assert not [d for d in _all_drives()
+                if d["driver_name"] == gone["driver_name"]
+                and d["origin_name"] == gone["origin"]["name"]]
+
+
+def test_routes_are_reused_from_earlier_demo_drives(isolated_db, monkeypatch):
+    calls = []
+
+    def fake_osrm(points):
+        calls.append(points)
+        return {"distance_m": 1000.0, "duration_s": 60.0, "geometry": [[p[1], p[0]] for p in points]}
+
+    monkeypatch.setattr(matching, "osrm_route", fake_osrm)
+    monkeypatch.setattr(demo_drives, "ROUTING_PAUSE_S", 0)
+
+    demo_drives.refresh(WED_NOON)
+    trips = {(s["origin"]["name"], s["destination"]["name"]) for s in demo_drives.DEMO_DRIVES}
+    assert len(calls) == len(trips)
+
+    # The next day's new drives reuse the stored routes.
+    calls.clear()
+    demo_drives.refresh(THU_NOON)
+    assert calls == []
 
 
 def test_visitor_drives_are_never_touched(isolated_db, force_haversine):
@@ -71,10 +109,60 @@ def test_visitor_drives_are_never_touched(isolated_db, force_haversine):
 
     visitor = {d["id"] for d in _all_drives() if not d["is_demo"]}
     assert visitor == {past, future, same_as_demo}
-    # The demo drive at the same time still exists alongside the visitor's.
     jean_fri = [d for d in _all_drives()
                 if d["driver_name"] == "Jean Dupont" and d["departure_time"] == "2026-10-23T07:15"]
     assert sorted(d["is_demo"] for d in jean_fri) == [0, 1]
+
+
+def test_no_driver_has_two_drives_at_once():
+    slots = Counter(
+        (s["driver_name"], day, s["time"])
+        for s in demo_drives.DEMO_DRIVES
+        for day in s["weekdays"]
+    )
+    assert [slot for slot, n in slots.items() if n > 1] == []
+
+
+def _drives_between(origin, destination, day):
+    """Demo drives on `day` that a passenger from `origin` to `destination` would
+    be matched with: same direction, route passing within a few km of both."""
+    o, d = demo_drives.PLACES[origin], demo_drives.PLACES[destination]
+    found = []
+    for spec in demo_drives.DEMO_DRIVES:
+        if day.weekday() not in spec["weekdays"]:
+            continue
+        drive = {
+            "origin_lat": spec["origin"]["lat"], "origin_lon": spec["origin"]["lon"],
+            "destination_lat": spec["destination"]["lat"], "destination_lon": spec["destination"]["lon"],
+        }
+        if matching.straight_line_detour_km(drive, o, d) <= matching.MAX_DETOUR_KM:
+            found.append(datetime.combine(day, spec["time"]))
+    return found
+
+
+def test_vevey_fribourg_covered_all_day():
+    # Any weekday search between 07:00 and 19:00 has a drive within the
+    # matching time window.
+    day = datetime(2026, 10, 23).date()  # a Friday
+    departures = _drives_between("Vevey", "Fribourg", day)
+    window = timedelta(hours=matching.MAX_TIME_WINDOW_HOURS)
+    for hour in range(7, 20):
+        asked = datetime.combine(day, datetime.min.time()) + timedelta(hours=hour)
+        assert any(abs(dep - asked) <= window for dep in departures), hour
+
+
+def test_ticino_and_graubunden_well_covered():
+    ticino = {"Airolo", "Biasca", "Bellinzona", "Locarno", "Cevio", "Lugano", "Ponte Tresa",
+              "Mendrisio", "Chiasso"}
+    graubunden = {"Chur", "Landquart", "Klosters", "Davos", "Arosa", "Flims", "Ilanz",
+                  "Disentis/Mustér", "Thusis", "St. Moritz", "Zernez", "Scuol", "Poschiavo", "Roveredo"}
+    per_week = Counter()
+    for s in demo_drives.DEMO_DRIVES:
+        for region, places in (("TI", ticino), ("GR", graubunden)):
+            if s["origin"]["name"] in places or s["destination"]["name"] in places:
+                per_week[region] += len(s["weekdays"])
+    assert per_week["TI"] >= 100
+    assert per_week["GR"] >= 120
 
 
 def test_init_db_adds_is_demo_to_an_existing_database(isolated_db):

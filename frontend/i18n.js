@@ -69,7 +69,8 @@ const I18N = (() => {
   }
 
   function t(key, params = {}) {
-    if ("count" in params) {
+    // Plural variants when the key has them; a plain key otherwise.
+    if ("count" in params && lookup(`${key}.other`) !== undefined) {
       const rule = new Intl.PluralRules(LOCALES[lang]).select(params.count);
       key = lookup(`${key}.${rule}`) !== undefined ? `${key}.${rule}` : `${key}.other`;
     }

@@ -7,6 +7,7 @@ import sqlite3
 from datetime import datetime
 
 import database as db
+import demo_drives
 import maintenance
 
 NOW = datetime(2026, 10, 21, 12, 0)  # Swiss local time
@@ -86,7 +87,7 @@ def test_run_refreshes_demo_drives_and_purges(isolated_db, force_haversine):
 
     changes = maintenance.run(NOW)
 
-    assert changes["demo_created"] == 17
+    assert changes["demo_created"] == len(demo_drives._expected(NOW))
     assert changes["drives"] == 1
     assert changes["users"] == 1
     assert maintenance.run(NOW) == {

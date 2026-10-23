@@ -146,3 +146,29 @@ def test_seats_and_time_window_still_filter(force_haversine):
     assert matching.find_matches(
         [far_future], CASES[0].passenger_origin, CASES[0].passenger_destination, CASES[0].requested_time
     ) == []
+
+
+def test_only_the_most_promising_drives_are_routed(force_haversine, monkeypatch):
+    """With many drives in the time window, only MAX_ROUTED_CANDIDATES are
+    routed (one routing call each), picked by straight-line detour, so the
+    best fit is still found."""
+    routed = []
+    real_compute_detour = matching.compute_detour
+
+    def counting_compute_detour(drive, *args):
+        routed.append(drive["driver_name"])
+        return real_compute_detour(drive, *args)
+
+    monkeypatch.setattr(matching, "compute_detour", counting_compute_detour)
+
+    lausanne, geneve = (46.5197, 6.6323), (46.2044, 6.1432)
+    zurich, bern = (47.3769, 8.5417), (46.9480, 7.4474)
+    off_route = [_drive(f"Far {i}", zurich, bern, "2026-09-22T08:00") for i in range(20)]
+    best = _drive("Along the lake", lausanne, geneve, "2026-09-22T08:00")
+    morges, nyon = (46.5089, 6.4979), (46.3833, 6.2333)
+
+    matches = matching.find_matches([*off_route, best], morges, nyon, "2026-09-22T08:00")
+
+    assert len(routed) == matching.MAX_ROUTED_CANDIDATES
+    assert "Along the lake" in routed
+    assert matches[0]["driver_name"] == "Along the lake"

@@ -40,6 +40,7 @@
   "browse.refresh": "Aktualisieren",
   "browse.empty": "Noch keine kommenden Fahrten.",
   "browse.loadFailed": "Fahrten konnten nicht geladen werden: {error}",
+  "browse.limited": "Hier sind die nächsten {count} Fahrten. Für Ihre Reise suchen Sie am besten unter «Mitfahren».",
   "form.from": "Von",
   "form.to": "Nach",
   "form.pickOnMap": "Auf Karte wählen",

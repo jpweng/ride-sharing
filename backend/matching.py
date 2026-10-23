@@ -35,6 +35,11 @@ MAX_DETOUR_KM = 8.0
 MAX_DETOUR_PCT = 40.0
 MAX_TIME_WINDOW_HOURS = 3.0
 
+# Each candidate costs a routing call, so only the drives with the smallest
+# straight-line detour are routed. This keeps a search fast however many
+# drives are posted.
+MAX_ROUTED_CANDIDATES = 10
+
 
 def haversine_km(lat1, lon1, lat2, lon2) -> float:
     R = 6371.0088
@@ -96,6 +101,23 @@ def route_with_fallback(points: list[tuple[float, float]]) -> dict:
         "geometry": [[lon, lat] for lat, lon in points],
         "source": "haversine",
     }
+
+
+def straight_line_detour_km(
+    drive: dict,
+    passenger_origin: tuple[float, float],
+    passenger_destination: tuple[float, float],
+) -> float:
+    """Cheap estimate of the detour, as the crow flies, to pick which drives
+    are worth routing."""
+    stops = [
+        (drive["origin_lat"], drive["origin_lon"]),
+        passenger_origin,
+        passenger_destination,
+        (drive["destination_lat"], drive["destination_lon"]),
+    ]
+    via = sum(haversine_km(*a, *b) for a, b in zip(stops, stops[1:]))
+    return via - haversine_km(*stops[0], *stops[-1])
 
 
 def compute_detour(
@@ -195,13 +217,15 @@ def find_matches(
     Rank candidate drives by detour cost. Filters out drives with no seats,
     departure time too far from the request, or a detour beyond threshold.
     """
-    candidates = []
-    for drive in drives:
-        if drive.get("seats_available", 0) <= 0:
-            continue
-        if hours_between(drive["departure_time"], requested_time) > MAX_TIME_WINDOW_HOURS:
-            continue
+    in_window = [
+        d for d in drives
+        if d.get("seats_available", 0) > 0
+        and hours_between(d["departure_time"], requested_time) <= MAX_TIME_WINDOW_HOURS
+    ]
+    in_window.sort(key=lambda d: straight_line_detour_km(d, passenger_origin, passenger_destination))
 
+    candidates = []
+    for drive in in_window[:MAX_ROUTED_CANDIDATES]:
         metrics = compute_detour(drive, passenger_origin, passenger_destination)
         if metrics["detour_km"] > MAX_DETOUR_KM and metrics["detour_pct"] > MAX_DETOUR_PCT:
             continue

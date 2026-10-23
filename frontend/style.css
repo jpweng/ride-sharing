@@ -592,3 +592,5 @@ body.home-active main { display: none; }
   .home-hero h2 { font-size: 30px; }
   .home-lead { font-size: 16px; }
 }
+
+.browse-limited { margin: 4px 0 10px; }

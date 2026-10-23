@@ -40,6 +40,7 @@
   "browse.refresh": "Refresh",
   "browse.empty": "No upcoming rides posted yet.",
   "browse.loadFailed": "Failed to load rides: {error}",
+  "browse.limited": "Showing the next {count} rides. To find one for your trip, use Find a ride on the Passenger page.",
   "form.from": "From",
   "form.to": "To",
   "form.pickOnMap": "Pick on map",

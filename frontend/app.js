@@ -708,17 +708,23 @@ function fmtTime(iso) {
 // ---------------------------------------------------------------------
 document.getElementById("browse-refresh").addEventListener("click", loadBrowse);
 
+// The soonest rides only: with the demo network there are hundreds a week.
+const BROWSE_LIMIT = 100;
+
 async function loadBrowse() {
   const list = document.getElementById("browse-list");
   list.innerHTML = `<div class="empty-state">${esc(t("common.loading"))}</div>`;
   resultsLayer.clearLayers();
   try {
-    const drives = await fetchJson("/api/drives?upcoming_only=true");
+    const drives = await fetchJson(`/api/drives?upcoming_only=true&limit=${BROWSE_LIMIT}`);
     if (!drives.length) {
       list.innerHTML = `<div class="empty-state">${esc(t("browse.empty"))}</div>`;
       return;
     }
-    list.innerHTML = "";
+    list.innerHTML =
+      drives.length === BROWSE_LIMIT
+        ? `<div class="hint browse-limited">${esc(t("browse.limited", { count: BROWSE_LIMIT }))}</div>`
+        : "";
     drives.forEach((d) => {
       const card = document.createElement("div");
       card.className = "drive-card clickable";
@@ -739,7 +745,15 @@ async function loadBrowse() {
   }
 }
 
-function showDriveOnMap(drive) {
+// Lists come without route geometry (it's large); fetch it for the drive shown.
+async function showDriveOnMap(drive) {
+  if (!drive.route_geometry) {
+    try {
+      drive = await fetchJson(`/api/drives/${drive.id}`);
+    } catch {
+      // Drive gone or network error: show its start and end without the route.
+    }
+  }
   resultsLayer.clearLayers();
   if (drive.route_geometry && drive.route_geometry.length) {
     const latlngs = drive.route_geometry.map(([lon, lat]) => [lat, lon]);

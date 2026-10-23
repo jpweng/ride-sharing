@@ -143,7 +143,21 @@ def create_drive(
         return cur.lastrowid
 
 
-def list_drives(upcoming_only: bool = True, driver_name: str | None = None) -> list[dict]:
+# Every drives column but route_geometry, which can be ~60 KB per drive.
+_DRIVE_COLUMNS_WITHOUT_GEOMETRY = """
+    id, driver_id, driver_name, origin_name, origin_lat, origin_lon,
+    destination_name, destination_lat, destination_lon, departure_time,
+    seats_available, route_distance_m, route_duration_s, route_source,
+    created_at, is_demo
+"""
+
+
+def list_drives(
+    upcoming_only: bool = True,
+    driver_name: str | None = None,
+    with_geometry: bool = True,
+    limit: int | None = None,
+) -> list[dict]:
     clauses, params = [], []
     if upcoming_only:
         clauses.append("departure_time >= ?")
@@ -152,9 +166,14 @@ def list_drives(upcoming_only: bool = True, driver_name: str | None = None) -> l
         clauses.append("driver_name = ?")
         params.append(driver_name.strip())
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    columns = "*" if with_geometry else _DRIVE_COLUMNS_WITHOUT_GEOMETRY
+    limit_sql = ""
+    if limit is not None:
+        limit_sql = "LIMIT ?"
+        params.append(limit)
     with get_conn() as conn:
         rows = conn.execute(
-            f"SELECT * FROM drives {where} ORDER BY departure_time ASC", params
+            f"SELECT {columns} FROM drives {where} ORDER BY departure_time ASC {limit_sql}", params
         ).fetchall()
         return [_drive_row_to_dict(r) for r in rows]
 
@@ -170,13 +189,27 @@ def delete_drive(drive_id: int) -> None:
         conn.execute("DELETE FROM drives WHERE id = ?", (drive_id,))
 
 
-def demo_drive_exists(driver_name: str, departure_time: str) -> bool:
+def find_demo_route(origin_name: str, destination_name: str) -> dict | None:
+    """A road route already stored for a demo drive on this trip, in
+    matching.route_with_fallback()'s shape; None if there's none."""
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT 1 FROM drives WHERE is_demo = 1 AND driver_name = ? AND departure_time = ?",
-            (driver_name, departure_time),
+            """
+            SELECT route_geometry, route_distance_m, route_duration_s FROM drives
+            WHERE is_demo = 1 AND route_source = 'osrm'
+              AND origin_name = ? AND destination_name = ?
+            LIMIT 1
+            """,
+            (origin_name, destination_name),
         ).fetchone()
-        return row is not None
+    if row is None:
+        return None
+    return {
+        "geometry": json.loads(row["route_geometry"]) if row["route_geometry"] else None,
+        "distance_m": row["route_distance_m"],
+        "duration_s": row["route_duration_s"],
+        "source": "osrm",
+    }
 
 
 def delete_demo_drives_before(departure_time: str) -> int:

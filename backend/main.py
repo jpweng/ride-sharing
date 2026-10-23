@@ -27,9 +27,9 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -143,8 +143,16 @@ def post_drive(payload: DriveCreate):
 
 
 @app.get("/api/drives")
-def get_drives(upcoming_only: bool = True, driver_name: str | None = None):
-    return db.list_drives(upcoming_only=upcoming_only, driver_name=driver_name)
+def get_drives(
+    upcoming_only: bool = True,
+    driver_name: str | None = None,
+    limit: Annotated[int | None, Query(ge=1, le=500)] = None,
+):
+    # Without route geometry, which can be ~60 KB per drive: the map gets it
+    # from /api/drives/{id} for the drive it shows.
+    return db.list_drives(
+        upcoming_only=upcoming_only, driver_name=driver_name, with_geometry=False, limit=limit
+    )
 
 
 @app.get("/api/drives/{drive_id}")
@@ -191,7 +199,7 @@ def match_ride(payload: MatchRequest):
         requested_time=payload.requested_time,
     )
 
-    all_drives = db.list_drives(upcoming_only=True)
+    all_drives = db.list_drives(upcoming_only=True, with_geometry=False)
     passenger_origin = (payload.origin.lat, payload.origin.lon)
     passenger_destination = (payload.destination.lat, payload.destination.lon)
     origin_place = payload.origin.name if payload.origin.kind == "place" else None
@@ -200,6 +208,9 @@ def match_ride(payload: MatchRequest):
     driver_matches = matching.find_matches(
         all_drives, passenger_origin, passenger_destination, payload.requested_time
     )
+    # Route geometry only for the few matches: drop-off search and the map use it.
+    for m in driver_matches:
+        m["route_geometry"] = (db.get_drive(m["id"]) or {}).get("route_geometry")
 
     # For each match, if the driver's own drop-off is meaningfully far from
     # the passenger's actual destination, see if the driver could instead let

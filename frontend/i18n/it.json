@@ -40,6 +40,7 @@
   "browse.refresh": "Aggiornare",
   "browse.empty": "Ancora nessun viaggio in programma.",
   "browse.loadFailed": "Impossibile caricare i viaggi: {error}",
+  "browse.limited": "Ecco i prossimi {count} viaggi. Per il suo viaggio, usi la ricerca nella pagina «Passeggero».",
   "form.from": "Da",
   "form.to": "A",
   "form.pickOnMap": "Scegliere sulla mappa",
