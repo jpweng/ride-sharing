@@ -162,8 +162,10 @@ def test_only_the_most_promising_drives_are_routed(force_haversine, monkeypatch)
     monkeypatch.setattr(matching, "compute_detour", counting_compute_detour)
 
     lausanne, geneve = (46.5197, 6.6323), (46.2044, 6.1432)
-    zurich, bern = (47.3769, 8.5417), (46.9480, 7.4474)
-    off_route = [_drive(f"Far {i}", zurich, bern, "2026-09-22T08:00") for i in range(20)]
+    # Same direction, but a bigger straight-line detour than the drive along
+    # the lake (11.7 km vs 4.7 km).
+    vevey = (46.4628, 6.8419)
+    off_route = [_drive(f"From Vevey {i}", vevey, geneve, "2026-09-22T08:00") for i in range(20)]
     best = _drive("Along the lake", lausanne, geneve, "2026-09-22T08:00")
     morges, nyon = (46.5089, 6.4979), (46.3833, 6.2333)
 
@@ -172,3 +174,21 @@ def test_only_the_most_promising_drives_are_routed(force_haversine, monkeypatch)
     assert len(routed) == matching.MAX_ROUTED_CANDIDATES
     assert "Along the lake" in routed
     assert matches[0]["driver_name"] == "Along the lake"
+
+
+def test_passenger_going_the_other_way_is_not_matched(force_haversine):
+    """Real bug: Samedan -> St. Moritz matched a St. Moritz -> Scuol drive
+    (12 km of detour, under the 40% threshold), though the driver would have
+    to turn back."""
+    st_moritz, scuol = (46.4908, 9.8355), (46.7966, 10.2980)
+    samedan, zernez = (46.5340, 9.8730), (46.6990, 10.0920)
+    drive = _drive("Men Cadonau", st_moritz, scuol, "2026-09-22T17:20")
+
+    assert matching.find_matches([drive], samedan, st_moritz, "2026-09-22T17:30") == []
+    # Also when the driver's destination lies beyond both, as seen from the
+    # passenger: Poschiavo is south of Samedan and St. Moritz alike.
+    poschiavo = (46.3240, 10.0580)
+    to_poschiavo = _drive("Mirco Lardi", st_moritz, poschiavo, "2026-09-22T17:30")
+    assert matching.find_matches([to_poschiavo], samedan, st_moritz, "2026-09-22T17:30") == []
+    # The same drive still matches a passenger heading its way.
+    assert len(matching.find_matches([drive], samedan, zernez, "2026-09-22T17:30")) == 1

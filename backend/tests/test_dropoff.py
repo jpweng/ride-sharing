@@ -191,3 +191,74 @@ def test_matches_the_live_recorded_outcome(
     assert result is not None
     assert result["detour_km"] < baseline["detour_km"]
     assert result["dropoff_gap_km"] < 15
+
+
+# The Engadin case that exposed pointless drop-offs: a St. Moritz -> Scuol
+# drive, simplified to its towns, in [lon, lat] order.
+ST_MORITZ = (46.4908, 9.8355)
+SAMEDAN = (46.5340, 9.8730)
+GUARDA = (46.7760, 10.1520)
+ENGADIN_ROUTE_GEOMETRY = [
+    [9.8355, 46.4908],   # St. Moritz
+    [9.8650, 46.4960],   # Celerina
+    [9.8730, 46.5340],   # Samedan
+    [9.9300, 46.5833],   # La Punt
+    [10.0920, 46.6990],  # Zernez
+    [10.1110, 46.7690],  # Lavin
+    [10.2980, 46.7966],  # Scuol
+]
+
+
+def _engadin_drive():
+    return {
+        "origin_lat": ST_MORITZ[0], "origin_lon": ST_MORITZ[1],
+        "destination_lat": 46.7966, "destination_lon": 10.2980,
+        "destination_name": "Scuol",
+        "route_geometry": ENGADIN_ROUTE_GEOMETRY,
+        "route_distance_m": None,
+    }
+
+
+def _engadin_stations(fake_transit):
+    for name, (lon, lat) in zip(
+        ["St. Moritz", "Celerina", "Samedan", "La Punt", "Zernez", "Lavin", "Scuol-Tarasp"],
+        ENGADIN_ROUTE_GEOMETRY,
+    ):
+        fake_transit.add_station(name, lat, lon)
+
+
+def test_no_dropoff_that_takes_the_passenger_nowhere(force_haversine, fake_transit, dense_dropoff_sampling):
+    """
+    Real bug: a passenger from Samedan to St. Moritz (the way the driver came
+    from) got Samedan itself as the "drop-off": zero detour for the driver,
+    but the car took them nowhere and the train did the whole trip. No stop
+    after the pickup gets them closer to St. Moritz, so there's no drop-off.
+    """
+    _engadin_stations(fake_transit)
+    for station in ["Samedan", "La Punt", "Zernez", "Lavin", "Scuol-Tarasp"]:
+        fake_transit.set_connections(station, "St. Moritz", CONNECTION)
+
+    assert dropoff.find_best_dropoff(_engadin_drive(), SAMEDAN, ST_MORITZ, "2026-09-23T15:15") is None
+
+
+def test_dropoff_comes_after_the_pickup(force_haversine, fake_transit, dense_dropoff_sampling, monkeypatch):
+    """Guarda is off the route, a few km from Lavin (its nearest station), and
+    only the pickup station has a connection there: the pickup must not be
+    offered as the drop-off, so there's no drop-off rather than a pointless one."""
+    # Check every candidate, so the pickup station would be reached.
+    monkeypatch.setattr(dropoff, "MAX_CONNECTION_CHECKS", 10)
+    _engadin_stations(fake_transit)
+    fake_transit.set_connections("Samedan", "Lavin", CONNECTION)
+
+    assert dropoff.find_best_dropoff(_engadin_drive(), SAMEDAN, GUARDA, "2026-09-23T15:15") is None
+
+
+def test_dropoff_further_along_still_found(force_haversine, fake_transit, dense_dropoff_sampling):
+    _engadin_stations(fake_transit)
+    fake_transit.set_connections("Samedan", "Lavin", CONNECTION)
+    fake_transit.set_connections("Zernez", "Lavin", CONNECTION)
+
+    result = dropoff.find_best_dropoff(_engadin_drive(), SAMEDAN, (46.80, 10.12), "2026-09-23T15:15")
+
+    assert result is not None
+    assert result["station_name"] in {"Zernez", "Lavin"}

@@ -103,6 +103,44 @@ def route_with_fallback(points: list[tuple[float, float]]) -> dict:
     }
 
 
+def heads_same_way(
+    drive: dict,
+    passenger_origin: tuple[float, float],
+    passenger_destination: tuple[float, float],
+) -> bool:
+    """
+    Whether the passenger travels the same way as the driver: as the crow
+    flies, their destination is further from the driver's start and closer
+    to the driver's destination than their pickup. Without this, a short
+    trip the other way can pass the detour thresholds -- e.g. Samedan -> St.
+    Moritz on a St. Moritz -> Scuol drive is "only" 12 km of detour, 20% of
+    the drive -- but the driver would have to turn back for it.
+    """
+    start = (drive["origin_lat"], drive["origin_lon"])
+    end = (drive["destination_lat"], drive["destination_lon"])
+    return (
+        haversine_km(*start, *passenger_destination) > haversine_km(*start, *passenger_origin)
+        and haversine_km(*passenger_destination, *end) < haversine_km(*passenger_origin, *end)
+    )
+
+
+def route_position_km(route_geometry: list | None, point: tuple[float, float]) -> float | None:
+    """How far along the route (km from its start) the route comes closest to
+    `point` (lat, lon). None without a route geometry."""
+    if not route_geometry:
+        return None
+    best_km, best_gap, cumulative = 0.0, math.inf, 0.0
+    previous = None
+    for lon, lat in route_geometry:
+        if previous is not None:
+            cumulative += haversine_km(previous[0], previous[1], lat, lon)
+        gap = haversine_km(lat, lon, point[0], point[1])
+        if gap < best_gap:
+            best_km, best_gap = cumulative, gap
+        previous = (lat, lon)
+    return best_km
+
+
 def straight_line_detour_km(
     drive: dict,
     passenger_origin: tuple[float, float],
@@ -215,12 +253,14 @@ def find_matches(
 ) -> list[dict]:
     """
     Rank candidate drives by detour cost. Filters out drives with no seats,
-    departure time too far from the request, or a detour beyond threshold.
+    departure time too far from the request, going the other way, or with a
+    detour beyond threshold.
     """
     in_window = [
         d for d in drives
         if d.get("seats_available", 0) > 0
         and hours_between(d["departure_time"], requested_time) <= MAX_TIME_WINDOW_HOURS
+        and heads_same_way(d, passenger_origin, passenger_destination)
     ]
     in_window.sort(key=lambda d: straight_line_detour_km(d, passenger_origin, passenger_destination))
 

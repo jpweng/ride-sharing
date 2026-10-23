@@ -15,6 +15,11 @@ isn't a detour, it's already on the way to the driver's own destination.
 The candidate with the smallest detour that still has a working transit
 connection onward to the passenger's actual destination wins.
 
+A candidate must also make the car ride worth it: come after the pickup on
+the driver's route, and leave the passenger meaningfully closer to their
+destination than the pickup was. Otherwise the cheapest "drop-off" can be
+the pickup itself, leaving public transport to do the whole trip.
+
 Falls back to None (letting callers keep the original "detour all the way
 to the exact destination" behavior) when there's no route geometry to
 sample, or no candidate both saves distance and has a working connection.
@@ -26,6 +31,8 @@ SAMPLE_STEP_KM = 10.0
 MAX_STATION_WALK_M = 750.0  # a "nearest station" further than this isn't a realistic drop-off
 WALKABLE_GAP_KM = 0.3  # close enough to the passenger's destination that no last-mile leg is needed
 MAX_CONNECTION_CHECKS = 4  # cap get_connections() calls per match -- transport.opendata.ch is rate-limited
+MIN_CAR_LEG_KM = 2.0  # a drop-off must be at least this far past the pickup along the route
+MIN_PROGRESS_KM = 2.0  # ...and this much closer (as the crow flies) to the passenger's destination
 
 
 def _route_candidates(drive: dict) -> list[dict]:
@@ -83,8 +90,12 @@ def find_best_dropoff(
     passenger with no onward connection).
     """
     candidates = _route_candidates(drive)
+    pickup_km = matching.route_position_km(drive.get("route_geometry"), passenger_origin)
+    if pickup_km is not None:
+        candidates = [c for c in candidates if c["route_km"] >= pickup_km + MIN_CAR_LEG_KM]
     if not candidates:
         return None
+    trip_km = matching.haversine_km(*passenger_origin, *passenger_destination)
 
     # Phase 1: score every candidate on distance alone (an OSRM call each,
     # but no transit lookups yet) -- driver detour plus how much of the trip
@@ -95,16 +106,18 @@ def find_best_dropoff(
     # *total* trip, not just the driver's.
     ranked = []
     for candidate in candidates:
+        dropoff_gap_km = matching.haversine_km(
+            candidate["lat"], candidate["lon"],
+            passenger_destination[0], passenger_destination[1],
+        )
+        if trip_km - dropoff_gap_km < MIN_PROGRESS_KM:
+            continue  # the car ride wouldn't get the passenger any closer
         via = matching.route_with_fallback([
             (drive["origin_lat"], drive["origin_lon"]),
             passenger_origin,
             (candidate["lat"], candidate["lon"]),
         ])
         detour_km = max(0.0, via["distance_m"] / 1000.0 - candidate["route_km"])
-        dropoff_gap_km = matching.haversine_km(
-            candidate["lat"], candidate["lon"],
-            passenger_destination[0], passenger_destination[1],
-        )
         ranked.append({**candidate, "detour_km": detour_km, "dropoff_gap_km": dropoff_gap_km})
     ranked.sort(key=lambda c: (c["detour_km"] + c["dropoff_gap_km"], c["detour_km"]))
 
