@@ -89,13 +89,13 @@ function clearPoint(role) {
   if (points[role] && points[role].marker) pickerLayer.removeLayer(points[role].marker);
   delete points[role];
   const readout = document.getElementById(`readout-${role}`);
-  if (readout) readout.textContent = "not set";
+  if (readout) readout.textContent = t("form.notSet");
 }
 
 async function reverseGeocode(lat, lon) {
   try {
     const resp = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14`,
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&accept-language=${I18N.lang()}`,
       { headers: { Accept: "application/json" } }
     );
     if (!resp.ok) throw new Error("reverse geocode failed");
@@ -146,7 +146,7 @@ function stripHtml(html) {
 async function searchGeoAdmin(query) {
   try {
     const resp = await fetch(
-      `${GEOADMIN_SEARCH_URL}?searchText=${encodeURIComponent(query)}&type=locations&origins=address,gg25&limit=8&sr=4326`
+      `${GEOADMIN_SEARCH_URL}?searchText=${encodeURIComponent(query)}&type=locations&origins=address,gg25&limit=8&sr=4326&lang=${I18N.lang()}`
     );
     if (!resp.ok) throw new Error("geocoding failed");
     const data = await resp.json();
@@ -249,10 +249,14 @@ function fitToResults() {
   if (group.getBounds().isValid()) map.fitBounds(group.getBounds(), { padding: [30, 30] });
 }
 
+// API errors carry a code (see main.py) that maps to "errors.<code>".
 async function fetchJson(url, options) {
   const resp = await fetch(url, options);
   const data = await resp.json();
-  if (!resp.ok) throw new Error(data.detail || `Request failed (${resp.status})`);
+  if (!resp.ok) {
+    const code = data.detail?.code;
+    throw new Error(code ? t(`errors.${code}`) : t("errors.request_failed", { status: resp.status }));
+  }
   return data;
 }
 
@@ -294,7 +298,7 @@ function renderAccount() {
     el.innerHTML = "";
     return;
   }
-  el.innerHTML = `<span>${esc(fullName(currentUser))}</span> <button type="button" id="signout">Sign out</button>`;
+  el.innerHTML = `<span>${esc(fullName(currentUser))}</span> <button type="button" id="signout">${esc(t("account.signOut"))}</button>`;
   document.getElementById("signout").addEventListener("click", () => {
     setUser(null);
     route();
@@ -304,8 +308,8 @@ function renderAccount() {
 document.getElementById("signin-submit").addEventListener("click", () => {
   const first = document.getElementById("signin-first-name").value.trim();
   const last = document.getElementById("signin-last-name").value.trim();
-  if (!first) return showStatus("signin-status", "Enter your first name.", false);
-  if (!last) return showStatus("signin-status", "Enter your last name.", false);
+  if (!first) return showStatus("signin-status", t("signin.needFirstName"), false);
+  if (!last) return showStatus("signin-status", t("signin.needLastName"), false);
   setUser({ first, last });
   route();
 });
@@ -367,31 +371,31 @@ function hideStatus(elId) {
 // ---------------------------------------------------------------------
 // Fictional drives kept by the backend (demo_drives.py) are flagged is_demo.
 function demoBadge(d) {
-  return d.is_demo ? '<span class="badge demo">Demo</span>' : "";
+  return d.is_demo ? `<span class="badge demo">${esc(t("badge.demo"))}</span>` : "";
 }
 
 function driveCardHtml(d) {
   const km = d.route_distance_m ? (d.route_distance_m / 1000).toFixed(1) : "?";
   return `
     <div class="route">${esc(d.origin_name)} → ${esc(d.destination_name)}${demoBadge(d)}</div>
-    <div class="meta">${fmtTime(d.departure_time)} · ${d.seats_available} seat(s) · ${km} km</div>
+    <div class="meta">${fmtTime(d.departure_time)} · ${esc(t("common.seats", { count: d.seats_available }))} · ${km} km</div>
   `;
 }
 
 async function loadMyDrives() {
   const list = document.getElementById("drive-mine");
-  list.innerHTML = '<div class="empty-state">Loading…</div>';
+  list.innerHTML = `<div class="empty-state">${esc(t("common.loading"))}</div>`;
   try {
     const drives = await fetchJson(`/api/drives?driver_name=${encodeURIComponent(fullName(currentUser))}`);
     if (!drives.length) {
-      list.innerHTML = '<div class="empty-state">You have no upcoming drives. Offer one below.</div>';
+      list.innerHTML = `<div class="empty-state">${esc(t("drive.empty"))}</div>`;
       return;
     }
     list.innerHTML = "";
     drives.forEach((d) => {
       const card = document.createElement("div");
       card.className = "drive-card clickable";
-      card.innerHTML = `${driveCardHtml(d)}<button type="button" class="link-btn">Cancel drive</button>`;
+      card.innerHTML = `${driveCardHtml(d)}<button type="button" class="link-btn">${esc(t("drive.cancel"))}</button>`;
       card.addEventListener("click", () => showDriveOnMap(d));
       card.querySelector(".link-btn").addEventListener("click", (e) => {
         e.stopPropagation();
@@ -400,12 +404,12 @@ async function loadMyDrives() {
       list.appendChild(card);
     });
   } catch (err) {
-    list.innerHTML = `<div class="empty-state">Failed to load your drives: ${esc(err.message)}</div>`;
+    list.innerHTML = `<div class="empty-state">${esc(t("drive.loadFailed", { error: err.message }))}</div>`;
   }
 }
 
 async function cancelDrive(d) {
-  if (!confirm(`Cancel your drive ${d.origin_name} → ${d.destination_name}?`)) return;
+  if (!confirm(t("drive.cancelConfirm", { from: d.origin_name, to: d.destination_name }))) return;
   try {
     await fetchJson(`/api/drives/${d.id}?driver_name=${encodeURIComponent(fullName(currentUser))}`, {
       method: "DELETE",
@@ -423,13 +427,13 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
   const departure = document.getElementById("drive-departure").value;
   const seats = parseInt(document.getElementById("drive-seats").value, 10) || 1;
 
-  if (!origin) return showStatus("drive-status", "Choose where you're leaving from.", false);
-  if (!destination) return showStatus("drive-status", "Choose where you're going.", false);
-  if (!departure) return showStatus("drive-status", "Choose a departure time.", false);
+  if (!origin) return showStatus("drive-status", t("form.needOrigin"), false);
+  if (!destination) return showStatus("drive-status", t("form.needDestination"), false);
+  if (!departure) return showStatus("drive-status", t("drive.needDeparture"), false);
 
   const btn = document.getElementById("drive-submit");
   btn.disabled = true;
-  btn.textContent = "Posting…";
+  btn.textContent = t("drive.posting");
   try {
     const data = await fetchJson("/api/drives", {
       method: "POST",
@@ -442,7 +446,7 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
         seats_available: seats,
       }),
     });
-    showStatus("drive-status", `Drive offered: ${origin.name} → ${destination.name}.`, true);
+    showStatus("drive-status", t("drive.offered", { from: origin.name, to: destination.name }), true);
     ["drive-origin", "drive-destination"].forEach((role) => {
       clearPoint(role);
       document.getElementById(`name-${role}`).value = "";
@@ -453,7 +457,7 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
     showStatus("drive-status", err.message, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = "Offer drive";
+    btn.textContent = t("drive.submit");
   }
 });
 
@@ -465,7 +469,7 @@ async function loadRecentSearches() {
   try {
     const searches = await fetchJson(`/api/ride_requests?passenger_name=${encodeURIComponent(fullName(currentUser))}`);
     if (!searches.length) {
-      list.innerHTML = '<div class="empty-state">Your searches will show up here.</div>';
+      list.innerHTML = `<div class="empty-state">${esc(t("ride.recentEmpty"))}</div>`;
       return;
     }
     list.innerHTML = "";
@@ -474,13 +478,13 @@ async function loadRecentSearches() {
       card.className = "drive-card clickable";
       card.innerHTML = `
         <div class="route">${esc(r.origin_name)} → ${esc(r.destination_name)}</div>
-        <div class="meta">Searched for ${fmtTime(r.requested_time)} · click to search again</div>
+        <div class="meta">${esc(t("ride.recentItem", { time: fmtTime(r.requested_time) }))}</div>
       `;
       card.addEventListener("click", () => repeatSearch(r));
       list.appendChild(card);
     });
   } catch (err) {
-    list.innerHTML = `<div class="empty-state">Failed to load your searches: ${esc(err.message)}</div>`;
+    list.innerHTML = `<div class="empty-state">${esc(t("ride.recentLoadFailed", { error: err.message }))}</div>`;
   }
 }
 
@@ -500,18 +504,20 @@ async function findRide() {
   const destination = getPoint("ride-destination", "name-ride-destination");
   const requestedTime = document.getElementById("ride-time").value;
 
-  if (!origin) return showStatus("ride-status", "Choose where you're leaving from.", false);
-  if (!destination) return showStatus("ride-status", "Choose where you're going.", false);
-  if (!requestedTime) return showStatus("ride-status", "Choose when you want to travel.", false);
+  if (!origin) return showStatus("ride-status", t("form.needOrigin"), false);
+  if (!destination) return showStatus("ride-status", t("form.needDestination"), false);
+  if (!requestedTime) return showStatus("ride-status", t("ride.needTime"), false);
 
   const btn = document.getElementById("ride-submit");
   btn.disabled = true;
-  btn.textContent = "Searching…";
+  btn.textContent = t("ride.searching");
   hideStatus("ride-status");
   document.getElementById("ride-results").hidden = false;
-  document.getElementById("ride-matches").innerHTML = '<div class="empty-state">Searching…</div>';
-  document.getElementById("ride-transit").innerHTML = '<div class="empty-state">Searching…</div>';
+  const searching = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
+  document.getElementById("ride-matches").innerHTML = searching;
+  document.getElementById("ride-transit").innerHTML = searching;
   resultsLayer.clearLayers();
+  lastResults = null;
 
   try {
     const data = await fetchJson("/api/match", {
@@ -524,8 +530,8 @@ async function findRide() {
         requested_time: requestedTime,
       }),
     });
-    renderMatches(data.driver_matches, origin, destination);
-    renderTransitOption(data.transit_option);
+    lastResults = { data, origin, destination };
+    renderResults();
     loadRecentSearches();
   } catch (err) {
     showStatus("ride-status", err.message, false);
@@ -534,24 +540,33 @@ async function findRide() {
     document.getElementById("ride-results").hidden = true;
   } finally {
     btn.disabled = false;
-    btn.textContent = "Find a ride";
+    btn.textContent = t("ride.submit");
   }
+}
+
+// The last search's results, kept to re-render them in another language.
+let lastResults = null;
+
+function renderResults() {
+  const { data, origin, destination } = lastResults;
+  renderMatches(data.driver_matches, origin, destination);
+  renderTransitOption(data.transit_option);
 }
 
 function renderMatches(matches, passengerOrigin, passengerDestination) {
   const container = document.getElementById("ride-matches");
   if (!matches.length) {
-    container.innerHTML = '<div class="empty-state">No drivers found within the detour/time window.</div>';
+    container.innerHTML = `<div class="empty-state">${esc(t("ride.noMatches"))}</div>`;
     return;
   }
   container.innerHTML = "";
 
-  L.marker([passengerOrigin.lat, passengerOrigin.lon], { title: "Your pickup" })
+  L.marker([passengerOrigin.lat, passengerOrigin.lon], { title: t("map.pickupTitle") })
     .addTo(resultsLayer)
-    .bindPopup(`Pickup: ${esc(passengerOrigin.name)}`);
-  L.marker([passengerDestination.lat, passengerDestination.lon], { title: "Your destination" })
+    .bindPopup(esc(t("map.pickupPopup", { name: passengerOrigin.name })));
+  L.marker([passengerDestination.lat, passengerDestination.lon], { title: t("map.destinationTitle") })
     .addTo(resultsLayer)
-    .bindPopup(`Destination: ${esc(passengerDestination.name)}`);
+    .bindPopup(esc(t("map.destinationPopup", { name: passengerDestination.name })));
 
   const routeColors = ["#1a73e8", "#8e24aa", "#00897b", "#f9a825", "#6d4c41"];
 
@@ -561,15 +576,15 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
     const warn = m.detour_km > 4 || m.detour_pct > 25;
     card.innerHTML = `
       <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}${demoBadge(m)}</div>
-      <div class="meta">Driver: ${esc(m.driver_name)} · ${fmtTime(m.departure_time)} · ${m.seats_available} seat(s)</div>
-      <div class="meta">Base route: ${m.base_distance_km} km · via you: ${m.via_distance_km} km</div>
-      <span class="score ${warn ? "warn" : ""}">detour +${m.detour_km} km (${m.detour_pct}%)</span>
+      <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
+      <div class="meta">${esc(t("match.distances", { base: fmtNumber(m.base_distance_km), via: fmtNumber(m.via_distance_km) }))}</div>
+      <span class="score ${warn ? "warn" : ""}">${esc(t("match.detour", { km: fmtNumber(m.detour_km), pct: fmtNumber(m.detour_pct) }))}</span>
       <span class="badge">${m.route_source}</span>
       ${
         m.recommended_dropoff
-          ? `<div class="meta">Suggested drop-off: <strong>${m.recommended_dropoff.station_name}</strong> (on the driver's way, ${m.dropoff_gap_km} km from your destination)</div>`
+          ? `<div class="meta">${t("match.suggestedDropoff", { station: esc(m.recommended_dropoff.station_name), km: fmtNumber(m.dropoff_gap_km) })}</div>`
           : m.dropoff_gap_km > 1
-          ? `<div class="meta">Drop-off is ${m.dropoff_gap_km} km from your destination.</div>`
+          ? `<div class="meta">${esc(t("match.dropoffGap", { km: fmtNumber(m.dropoff_gap_km) }))}</div>`
           : ""
       }
       ${renderLastMile(m.last_mile_transit)}
@@ -589,7 +604,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
 
 function renderLastMile(lastMile) {
   if (!lastMile) return "";
-  return `<div class="last-mile"><strong>Last mile:</strong> ${esc(lastMile.from_station)} → ${esc(
+  return `<div class="last-mile"><strong>${esc(t("match.lastMile"))}</strong> ${esc(lastMile.from_station)} → ${esc(
     lastMile.to_station
   )}${renderConnections(lastMile.connections)}</div>`;
 }
@@ -597,7 +612,7 @@ function renderLastMile(lastMile) {
 function renderTransitOption(transit) {
   const container = document.getElementById("ride-transit");
   if (!transit) {
-    container.innerHTML = '<div class="empty-state">No direct public transport option found.</div>';
+    container.innerHTML = `<div class="empty-state">${esc(t("ride.noTransit"))}</div>`;
     return;
   }
   container.innerHTML = `<div class="transit-box alt"><strong>${esc(transit.from_station)} → ${esc(
@@ -623,7 +638,7 @@ function renderConnections(connections) {
             : esc(o.name)
         )
         .join(" · ");
-      const transfers = c.transfers === 1 ? "1 transfer" : `${c.transfers} transfers`;
+      const transfers = esc(t("transit.transfers", { count: c.transfers }));
       return `
         <div class="pt-conn">
           <div class="pt-logos">${logos}</div>
@@ -635,7 +650,7 @@ function renderConnections(connections) {
           </div>
           ${
             c.booking_url
-              ? `<a class="pt-book" href="${esc(c.booking_url)}" target="_blank" rel="noopener">Tickets<br>on SBB</a>`
+              ? `<a class="pt-book" href="${esc(sbbUrl(c.booking_url))}" target="_blank" rel="noopener">${t("transit.tickets")}</a>`
               : ""
           }
         </div>`;
@@ -653,10 +668,19 @@ function operatorLogo(o) {
     : `<span class="pt-logo" title="${esc(o.name)}">${inner}</span>`;
 }
 
+// SBB's site in the visitor's language: the backend links to /en.
+function sbbUrl(url) {
+  return url.replace(/^(https:\/\/www\.sbb\.ch\/)(de|fr|it|en)(?=[/?]|$)/, `$1${I18N.lang()}`);
+}
+
+function fmtNumber(n) {
+  return typeof n === "number" ? n.toLocaleString(I18N.locale()) : n;
+}
+
 function fmtClock(iso) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso || "?";
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(I18N.locale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 // transport.opendata.ch durations look like "00d01:44:00".
@@ -673,7 +697,7 @@ function fmtTime(iso) {
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso;
-    return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleString(I18N.locale(), { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   } catch {
     return iso;
   }
@@ -686,19 +710,19 @@ document.getElementById("browse-refresh").addEventListener("click", loadBrowse);
 
 async function loadBrowse() {
   const list = document.getElementById("browse-list");
-  list.innerHTML = '<div class="empty-state">Loading…</div>';
+  list.innerHTML = `<div class="empty-state">${esc(t("common.loading"))}</div>`;
   resultsLayer.clearLayers();
   try {
     const drives = await fetchJson("/api/drives?upcoming_only=true");
     if (!drives.length) {
-      list.innerHTML = '<div class="empty-state">No upcoming rides posted yet.</div>';
+      list.innerHTML = `<div class="empty-state">${esc(t("browse.empty"))}</div>`;
       return;
     }
     list.innerHTML = "";
     drives.forEach((d) => {
       const card = document.createElement("div");
       card.className = "drive-card clickable";
-      card.innerHTML = `${driveCardHtml(d)}<div class="meta">Driver: ${esc(d.driver_name)}</div>`;
+      card.innerHTML = `${driveCardHtml(d)}<div class="meta">${esc(t("common.driver", { name: d.driver_name }))}</div>`;
       card.addEventListener("click", () => showDriveOnMap(d));
       list.appendChild(card);
 
@@ -711,7 +735,7 @@ async function loadBrowse() {
     });
     fitToResults();
   } catch (err) {
-    list.innerHTML = `<div class="empty-state">Failed to load rides: ${esc(err.message)}</div>`;
+    list.innerHTML = `<div class="empty-state">${esc(t("browse.loadFailed", { error: err.message }))}</div>`;
   }
 }
 
@@ -737,5 +761,23 @@ function showDriveOnMap(drive) {
   document.getElementById("ride-time").value = iso;
 })();
 
-renderAccount();
-route();
+function translateUnsetReadouts() {
+  Object.keys(PICK_COLORS).forEach((role) => {
+    if (!points[role]) document.getElementById(`readout-${role}`).textContent = t("form.notSet");
+  });
+}
+
+// Another language picked: redo everything built in JavaScript.
+window.addEventListener("i18n:change", () => {
+  renderAccount();
+  ["signin-status", "drive-status", "ride-status"].forEach(hideStatus);
+  translateUnsetReadouts();
+  route();
+  if (lastResults && location.hash === "#/ride") renderResults();
+});
+
+I18N.ready.then(() => {
+  translateUnsetReadouts();
+  renderAccount();
+  route();
+});

@@ -15,6 +15,7 @@ See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for t
 - Public transport: [transport.opendata.ch](https://transport.opendata.ch) (all Swiss operators)
 - Address search: [geo.admin.ch Search API](https://api3.geo.admin.ch) (Swiss addresses/places)
 - Auth: none — you enter a first + last name once (remembered in the browser), which auto-registers a user
+- Languages: German, French, Italian and English, see [Translations](#translations)
 
 ## Run it
 
@@ -55,6 +56,29 @@ To run it by hand:
 ```bash
 uv run --directory backend python maintenance.py
 ```
+
+### Translations
+
+The UI is in German, French, Italian and English, with no library and no build step:
+
+- [frontend/i18n/](frontend/i18n/) holds one dictionary per language (`en.json` is the reference and
+  the fallback for missing keys). [frontend/i18n.js](frontend/i18n.js) picks the language: `?lang=xx`
+  in the URL (also saved), then the visitor's saved choice, then the browser's languages, then
+  English. The DE · FR · IT · EN picker in the header switches it.
+- In HTML, `data-i18n="key"` (or `data-i18n-html`, `data-i18n-placeholder`) marks translated text;
+  the English stays in the HTML as a fallback. In JavaScript, `t("key", { name })`; with a `count`
+  param, plurals come from `key.one` / `key.other`. Dates and numbers use Swiss formats (`de-CH`
+  etc.).
+- The privacy notice is translated as whole texts: one `<article lang="xx" data-i18n-block>` per
+  language in [frontend/privacy.html](frontend/privacy.html).
+- API errors carry a code (`{"detail": {"code": "drive_not_found", ...}}`); the frontend shows
+  `errors.<code>` from the dictionary.
+
+To add a string, add its key to all four JSON files.
+[backend/tests/test_i18n.py](backend/tests/test_i18n.py) fails if a key or placeholder is missing in
+any language, if the HTML or app.js uses an unknown key, or if the English in the HTML drifts from
+`en.json`. The translations were written without native review; have native speakers check them,
+the privacy notice above all, before showing the site widely.
 
 ## Deploying to AWS
 
@@ -155,6 +179,8 @@ frontend/
   index.html      pages: #/ (home), #/browse (public), #/ride (Passenger), #/drive (Driver)
   privacy.html    privacy notice, linked from the demo banner
   app.js          Leaflet map, point picking, address autocomplete, API calls
+  i18n.js         language choice and translation of the page (see Translations)
+  i18n/           en/de/fr/it dictionaries
   style.css       teal/white theme, text wordmark (no logo yet)
 infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user)
   bootstrap/      one-time S3 bucket for Terraform state

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="i18n-pending" data-i18n-title="privacy.title">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,14 +10,19 @@
 <body class="doc-page">
 <header>
   <h1><a class="wordmark" href="./"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
+  <div class="lang-picker" role="group" aria-label="Language">
+    <button type="button" data-lang="de">DE</button><button type="button" data-lang="fr">FR</button><button type="button" data-lang="it">IT</button><button type="button" data-lang="en">EN</button>
+  </div>
 </header>
 
-<div class="demo-banner" role="note">
+<div class="demo-banner" role="note" data-i18n-html="banner.privacy">
   <strong>Demo</strong> — a prototype for testing. Please use a made-up name.
   <a href="./">Back to the app</a>
 </div>
 
-<article class="doc">
+<!-- One complete notice per language (legal text is translated as a whole,
+     not string by string); i18n.js shows the visitor's. -->
+<article class="doc" lang="en" data-i18n-block>
   <h2>Privacy notice</h2>
   <p>
     This site is a demo of a ride-sharing service that combines car rides with public transport.
@@ -41,8 +46,8 @@
     </li>
   </ul>
   <p>
-    Your browser remembers the name you entered (in local storage) so you don't have to type it
-    again. There are no cookies, no analytics and no advertising trackers.
+    Your browser remembers the name you entered and your language (in local storage) so you don't
+    have to enter them again. There are no cookies, no analytics and no advertising trackers.
   </p>
 
   <h3>Who can see it</h3>
@@ -91,5 +96,241 @@
 
   <p class="hint">Last updated: 22 October 2026</p>
 </article>
+
+<article class="doc" lang="de" data-i18n-block hidden>
+  <h2>Datenschutzerklärung</h2>
+  <p>
+    Diese Website ist eine Demo eines Mitfahrdienstes, der Autofahrten mit dem öffentlichen Verkehr
+    verbindet. Sie dient zum Testen, nicht zum Vereinbaren echter Fahrten. Diese Erklärung
+    beschreibt, welche Daten sie erhebt und was damit geschieht, wie es das Bundesgesetz über den
+    Datenschutz (DSG) verlangt.
+  </p>
+
+  <h3>Verantwortlich</h3>
+  <p><span class="todo">Kontaktangaben folgen.</span></p>
+
+  <h3>Was wir erheben</h3>
+  <ul>
+    <li><strong>Den Namen, den du eingibst</strong> (Vor- und Nachname). Bitte verwende einen erfundenen.</li>
+    <li><strong>Angebotene Fahrten:</strong> Start- und Zielort, Abfahrtszeit und Anzahl Plätze.</li>
+    <li><strong>Gesuchte Mitfahrten:</strong> Start- und Zielort und die Zeit.</li>
+    <li>
+      <strong>Server-Protokolle:</strong> Jede Anfrage an die Website wird mit deiner IP-Adresse,
+      dem Browsertyp und der aufgerufenen Adresse protokolliert, die deinen Namen enthalten kann.
+      Die Protokolle werden 14 Tage aufbewahrt, für den Betrieb und die Sicherheit der Website.
+    </li>
+  </ul>
+  <p>
+    Dein Browser speichert deinen Namen und deine Sprache (im lokalen Speicher), damit du sie nicht
+    erneut eingeben musst. Es gibt keine Cookies, keine Analyse-Tools und kein Werbe-Tracking.
+  </p>
+
+  <h3>Wer sie sieht</h3>
+  <ul>
+    <li>Alle Besuchenden sehen die angebotenen Fahrten und den Namen der fahrenden Person.</li>
+    <li>
+      Deine letzten Suchen sieht auf der Seite «Mitfahren» jede Person, die denselben Namen
+      eingibt. Diese Demo hat keine Passwörter.
+    </li>
+  </ul>
+
+  <h3>Wie lange wir sie aufbewahren</h3>
+  <p>
+    Fahrten werden 30 Tage nach der Abfahrt gelöscht, Suchen 30 Tage, nachdem sie gemacht wurden.
+    Ein Name wird gelöscht, sobald keine Fahrt und keine Suche ihn mehr verwendet. Deine eigenen
+    Fahrten kannst du jederzeit auf der Seite «Fahren» absagen. Gelöschte Daten bleiben noch 7 Tage
+    in den täglichen Sicherungskopien.
+  </p>
+
+  <h3>Wo sie gespeichert sind</h3>
+  <p>
+    Auf einem bei Amazon Web Services gemieteten Server in Stockholm, Schweden. Schweden gehört zur
+    EU, deren Datenschutz das DSG als angemessen anerkennt.
+  </p>
+
+  <h3>Dienste, die die Website nutzt</h3>
+  <p>Keiner davon erhält deinen Namen.</p>
+  <ul>
+    <li>
+      <strong>Aus deinem Browser:</strong> Kartenbilder von OpenStreetMap, das auch Orte benennt,
+      die du auf der Karte anklickst; die Adresssuche von geo.admin.ch (Bundesamt für
+      Landestopografie swisstopo), die erhält, was du in die Adressfelder tippst; die
+      Kartensoftware von unpkg.com; und Logos der Transportunternehmen von Google. Jeder dieser
+      Dienste sieht deine IP-Adresse.
+    </li>
+    <li>
+      <strong>Von unserem Server:</strong> Start- und Zielorte von Fahrten und Suchen gehen an den
+      Routing-Dienst OSRM (router.project-osrm.org), um Strecken zu berechnen, und an
+      transport.opendata.ch für ÖV-Verbindungen.
+    </li>
+  </ul>
+
+  <h3>Deine Rechte</h3>
+  <p>
+    Du kannst Auskunft über deine Daten verlangen und sie berichtigen oder löschen lassen. Die
+    Kontaktangaben dafür folgen; bis dahin werden die Daten wie oben beschrieben automatisch gelöscht.
+  </p>
+
+  <p class="hint">Stand: 22. Oktober 2026</p>
+</article>
+
+<article class="doc" lang="fr" data-i18n-block hidden>
+  <h2>Déclaration de confidentialité</h2>
+  <p>
+    Ce site est une démo d'un service de covoiturage qui combine trajets en voiture et transports
+    publics. Il sert à tester, pas à organiser de vrais trajets. Cette déclaration explique quelles
+    données il collecte et ce qu'elles deviennent, comme l'exige la loi fédérale sur la protection
+    des données (LPD).
+  </p>
+
+  <h3>Responsable</h3>
+  <p><span class="todo">Coordonnées à venir.</span></p>
+
+  <h3>Ce que nous collectons</h3>
+  <ul>
+    <li><strong>Le nom que vous saisissez</strong> (prénom et nom). Utilisez un nom inventé, s'il vous plaît.</li>
+    <li><strong>Les trajets que vous proposez&nbsp;:</strong> points de départ et d'arrivée, heure de départ et nombre de places.</li>
+    <li><strong>Les trajets que vous cherchez&nbsp;:</strong> points de départ et d'arrivée et l'heure.</li>
+    <li>
+      <strong>Journaux du serveur&nbsp;:</strong> chaque requête au site est enregistrée avec votre
+      adresse IP, le type de navigateur et l'adresse demandée, qui peut contenir le nom saisi. Les
+      journaux sont conservés 14 jours, pour le fonctionnement et la sécurité du site.
+    </li>
+  </ul>
+  <p>
+    Votre navigateur retient le nom saisi et votre langue (dans le stockage local) pour que vous
+    n'ayez pas à les saisir à nouveau. Il n'y a ni cookies, ni outils d'analyse, ni traceurs
+    publicitaires.
+  </p>
+
+  <h3>Qui peut les voir</h3>
+  <ul>
+    <li>Tous les visiteurs voient les trajets proposés et le nom de la personne au volant.</li>
+    <li>
+      Vos recherches récentes s'affichent sur la page «Passager» pour toute personne qui saisit le
+      même nom. Cette démo n'a pas de mots de passe.
+    </li>
+  </ul>
+
+  <h3>Combien de temps nous les conservons</h3>
+  <p>
+    Les trajets sont supprimés 30 jours après leur départ, et les recherches 30 jours après avoir
+    été faites. Un nom est supprimé dès qu'aucun trajet ni aucune recherche ne l'utilise plus. Vous
+    pouvez annuler vos propres trajets à tout moment sur la page «Conducteur». Les données
+    supprimées restent encore 7 jours dans les sauvegardes quotidiennes.
+  </p>
+
+  <h3>Où elles sont stockées</h3>
+  <p>
+    Sur un serveur loué à Amazon Web Services à Stockholm, en Suède. La Suède fait partie de l'UE,
+    dont la LPD reconnaît la protection des données comme adéquate.
+  </p>
+
+  <h3>Services utilisés par le site</h3>
+  <p>Aucun d'entre eux ne reçoit votre nom.</p>
+  <ul>
+    <li>
+      <strong>Depuis votre navigateur&nbsp;:</strong> les images de carte d'OpenStreetMap, qui
+      nomme aussi les lieux sur lesquels vous cliquez; la recherche d'adresses de geo.admin.ch
+      (Office fédéral de topographie swisstopo), qui reçoit ce que vous tapez dans les champs
+      d'adresse; le logiciel de carte d'unpkg.com; et les logos des entreprises de transport, de
+      Google. Chacun de ces services voit votre adresse IP.
+    </li>
+    <li>
+      <strong>Depuis notre serveur&nbsp;:</strong> les points de départ et d'arrivée des trajets et
+      des recherches sont envoyés au service d'itinéraires OSRM (router.project-osrm.org) pour
+      calculer les routes, et à transport.opendata.ch pour les correspondances en transports publics.
+    </li>
+  </ul>
+
+  <h3>Vos droits</h3>
+  <p>
+    Vous pouvez demander quelles données nous détenons sur vous, et les faire corriger ou
+    supprimer. Les coordonnées pour cela sont à venir; d'ici là, les données sont supprimées
+    automatiquement comme décrit ci-dessus.
+  </p>
+
+  <p class="hint">Dernière mise à jour&nbsp;: 22 octobre 2026</p>
+</article>
+
+<article class="doc" lang="it" data-i18n-block hidden>
+  <h2>Informativa sulla privacy</h2>
+  <p>
+    Questo sito è una demo di un servizio di passaggi in auto che combina viaggi in auto e trasporti
+    pubblici. Serve per fare test, non per organizzare viaggi reali. Questa informativa spiega quali
+    dati raccoglie e che cosa ne succede, come richiesto dalla legge federale sulla protezione dei
+    dati (LPD).
+  </p>
+
+  <h3>Responsabile</h3>
+  <p><span class="todo">Dati di contatto in arrivo.</span></p>
+
+  <h3>Che cosa raccogliamo</h3>
+  <ul>
+    <li><strong>Il nome che inserisci</strong> (nome e cognome). Usa un nome inventato.</li>
+    <li><strong>I viaggi che offri:</strong> luoghi di partenza e di arrivo, orario di partenza e numero di posti.</li>
+    <li><strong>I passaggi che cerchi:</strong> luoghi di partenza e di arrivo e l'orario.</li>
+    <li>
+      <strong>Log del server:</strong> ogni richiesta al sito viene registrata con il tuo indirizzo
+      IP, il tipo di browser e l'indirizzo richiesto, che può contenere il nome inserito. I log sono
+      conservati per 14 giorni, per il funzionamento e la sicurezza del sito.
+    </li>
+  </ul>
+  <p>
+    Il tuo browser ricorda il nome inserito e la tua lingua (nella memoria locale), così non devi
+    inserirli di nuovo. Non ci sono cookie, strumenti di analisi o tracciamento pubblicitario.
+  </p>
+
+  <h3>Chi può vederli</h3>
+  <ul>
+    <li>Tutti i visitatori vedono i viaggi offerti e il nome di chi guida.</li>
+    <li>
+      Le tue ricerche recenti sono visibili sulla pagina «Passeggero» a chiunque inserisca lo
+      stesso nome. Questa demo non ha password.
+    </li>
+  </ul>
+
+  <h3>Per quanto tempo li conserviamo</h3>
+  <p>
+    I viaggi vengono cancellati 30 giorni dopo la partenza, le ricerche 30 giorni dopo essere state
+    fatte. Un nome viene cancellato quando nessun viaggio o ricerca lo usa più. Puoi annullare i tuoi
+    viaggi in qualsiasi momento sulla pagina «Conducente». I dati cancellati restano ancora 7 giorni
+    nelle copie di sicurezza giornaliere.
+  </p>
+
+  <h3>Dove sono conservati</h3>
+  <p>
+    Su un server noleggiato da Amazon Web Services a Stoccolma, in Svezia. La Svezia fa parte
+    dell'UE, la cui protezione dei dati è riconosciuta come adeguata dalla LPD.
+  </p>
+
+  <h3>Servizi usati dal sito</h3>
+  <p>Nessuno di questi riceve il tuo nome.</p>
+  <ul>
+    <li>
+      <strong>Dal tuo browser:</strong> le immagini della mappa da OpenStreetMap, che indica anche i
+      luoghi su cui clicchi sulla mappa; la ricerca di indirizzi di geo.admin.ch (Ufficio federale
+      di topografia swisstopo), che riceve ciò che digiti nei campi dell'indirizzo; il software
+      della mappa da unpkg.com; e i loghi delle imprese di trasporto da Google. Ognuno di questi
+      servizi vede il tuo indirizzo IP.
+    </li>
+    <li>
+      <strong>Dal nostro server:</strong> i luoghi di partenza e di arrivo di viaggi e ricerche
+      vengono inviati al servizio di calcolo percorsi OSRM (router.project-osrm.org) e a
+      transport.opendata.ch per i collegamenti con i trasporti pubblici.
+    </li>
+  </ul>
+
+  <h3>I tuoi diritti</h3>
+  <p>
+    Puoi chiedere quali dati abbiamo su di te, e farli correggere o cancellare. I dati di contatto
+    per farlo sono in arrivo; fino ad allora, i dati vengono cancellati automaticamente come
+    descritto sopra.
+  </p>
+
+  <p class="hint">Ultimo aggiornamento: 22 ottobre 2026</p>
+</article>
+
+<script src="i18n.js"></script>
 </body>
 </html>

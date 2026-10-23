@@ -59,6 +59,33 @@ header .subtitle {
   color: var(--muted);
 }
 
+/* Hidden until i18n.js has translated the page (at most 3 s), so visitors
+   don't see the built-in English flash first. */
+.i18n-pending body { visibility: hidden; }
+
+.lang-picker {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.lang-picker button {
+  border: none;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.lang-picker button + button { border-left: 1px solid var(--border); }
+.lang-picker button[aria-pressed="true"] {
+  background: var(--accent);
+  color: white;
+}
+
 nav.tabs {
   display: flex;
   gap: 4px;

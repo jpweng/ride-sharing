@@ -17,13 +17,15 @@
   SBB-inspired red, and a home page explaining the concept in three steps.
 - **Uptime alerts:** a health check every 5 minutes, with an email when the site is down and when
   it's back.
+- **Translations:** German, French, Italian and English, with a language picker; English is the
+  default when the browser's language isn't one of them.
 
 ## Next steps, in order of priority
 
-1. **Translate into German, French, Italian and English.** Doing it now, while the frontend is small
-   (about 730 lines of JavaScript), is much cheaper than later. Plain JavaScript with one dictionary
-   per language and a language picker, defaulting to the browser's language. Error messages from the
-   API that reach the user need translating too.
+1. **Native review of the translations.** German, French and Italian were written without a native
+   speaker's review. Have each checked before showing the site widely, the privacy notice above
+   all. Also decide on informal "du"/"tu" (German, Italian) versus formal "vous" (French), which is
+   what they use now.
 
 ## Before real drivers
 

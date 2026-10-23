@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="i18n-pending" data-i18n-title="meta.title">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,61 +12,64 @@
 <body>
 <header>
   <h1><a class="wordmark" href="#/"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
-  <span class="subtitle">Shared rides to the train</span>
+  <span class="subtitle" data-i18n="header.subtitle">Shared rides to the train</span>
+  <div class="lang-picker" role="group" aria-label="Language">
+    <button type="button" data-lang="de">DE</button><button type="button" data-lang="fr">FR</button><button type="button" data-lang="it">IT</button><button type="button" data-lang="en">EN</button>
+  </div>
 </header>
 
-<div class="demo-banner" role="note">
+<div class="demo-banner" role="note" data-i18n-html="banner.app">
   <strong>Demo</strong> — a prototype for testing. Drives marked <span class="badge demo">Demo</span>
   are fictional. Please use a made-up name: names are visible to other visitors.
   <a href="privacy.html">Privacy</a>
 </div>
 
 <nav class="tabs">
-  <a class="tab-link" href="#/" data-page="home">Home</a>
-  <a class="tab-link" href="#/browse" data-page="browse">Browse rides</a>
-  <a class="tab-link" href="#/ride" data-page="ride">Passenger</a>
-  <a class="tab-link" href="#/drive" data-page="drive">Driver</a>
+  <a class="tab-link" href="#/" data-page="home" data-i18n="nav.home">Home</a>
+  <a class="tab-link" href="#/browse" data-page="browse" data-i18n="nav.browse">Browse rides</a>
+  <a class="tab-link" href="#/ride" data-page="ride" data-i18n="nav.ride">Passenger</a>
+  <a class="tab-link" href="#/drive" data-page="drive" data-i18n="nav.drive">Driver</a>
   <div class="account" id="account"></div>
 </nav>
 
 <!-- HOME: what Ride and Rail is, full width (the map pages are in <main>) -->
 <section id="home" class="home">
   <div class="home-hero">
-    <h2>Drive part of the way.<br>Take the train for the rest.</h2>
-    <p class="home-lead">
+    <h2 data-i18n-html="home.title">Drive part of the way.<br>Take the train for the rest.</h2>
+    <p class="home-lead" data-i18n="home.lead">
       Ride and Rail matches you with drivers who are already heading your way, even if they aren't
       going all the way. They drop you at a station on their route, and a real train or bus
       connection takes you the rest of the way.
     </p>
     <div class="home-actions">
-      <a class="submit-btn" href="#/ride">Find a ride</a>
-      <a class="submit-btn secondary" href="#/drive">Offer a drive</a>
-      <a class="home-link" href="#/browse">Browse upcoming rides →</a>
+      <a class="submit-btn" href="#/ride" data-i18n="home.findRide">Find a ride</a>
+      <a class="submit-btn secondary" href="#/drive" data-i18n="home.offerDrive">Offer a drive</a>
+      <a class="home-link" href="#/browse" data-i18n="home.browse">Browse upcoming rides →</a>
     </div>
   </div>
 
   <ol class="home-steps">
     <li>
-      <h3>Drivers share empty seats</h3>
-      <p>On a trip they're making anyway: where from, where to, when, and how many seats are free.</p>
+      <h3 data-i18n="home.step1.title">Drivers share empty seats</h3>
+      <p data-i18n="home.step1.text">On a trip they're making anyway: where from, where to, when, and how many seats are free.</p>
     </li>
     <li>
-      <h3>Matched along the route</h3>
-      <p>
+      <h3 data-i18n="home.step2.title">Matched along the route</h3>
+      <p data-i18n="home.step2.text">
         Not just drivers going to the same town: anyone whose route passes close to you, ranked by
         how small the detour is for them.
       </p>
     </li>
     <li>
-      <h3>Finish by train or bus</h3>
-      <p>
+      <h3 data-i18n="home.step3.title">Finish by train or bus</h3>
+      <p data-i18n="home.step3.text">
         If the driver isn't going all the way, you get a drop-off station on their route with a real
         connection to your destination, from the Swiss public transport timetable.
       </p>
     </li>
   </ol>
 
-  <p class="home-note">
+  <p class="home-note" data-i18n="home.note">
     Every search also shows the public transport option on its own, so you can compare.
   </p>
 </section>
@@ -76,94 +79,94 @@
 
     <!-- SIGN IN (shown instead of the Passenger/Driver page until we know who you are) -->
     <section id="page-signin" class="page">
-      <div class="page-title">Who are you?</div>
-      <div class="hint">Enter your name once. It's remembered in this browser for both your passenger and driver pages.</div>
-      <div class="hint demo-hint">This is a demo: please use a made-up name. Other visitors see it next to your drives, and anyone who enters the same name sees your searches.</div>
+      <div class="page-title" data-i18n="signin.title">Who are you?</div>
+      <div class="hint" data-i18n="signin.hint">Enter your name once. It's remembered in this browser for both your passenger and driver pages.</div>
+      <div class="hint demo-hint" data-i18n="signin.demoHint">This is a demo: please use a made-up name. Other visitors see it next to your drives, and anyone who enters the same name sees your searches.</div>
       <div class="name-row">
         <div>
-          <label for="signin-first-name">First name</label>
-          <input type="text" id="signin-first-name" placeholder="e.g. Jean" autocomplete="given-name" />
+          <label for="signin-first-name" data-i18n="signin.firstName">First name</label>
+          <input type="text" id="signin-first-name" placeholder="e.g. Jean" data-i18n-placeholder="signin.firstNamePlaceholder" autocomplete="given-name" />
         </div>
         <div>
-          <label for="signin-last-name">Last name</label>
-          <input type="text" id="signin-last-name" placeholder="e.g. Dupont" autocomplete="family-name" />
+          <label for="signin-last-name" data-i18n="signin.lastName">Last name</label>
+          <input type="text" id="signin-last-name" placeholder="e.g. Dupont" data-i18n-placeholder="signin.lastNamePlaceholder" autocomplete="family-name" />
         </div>
       </div>
-      <button class="submit-btn" id="signin-submit">Continue</button>
+      <button class="submit-btn" id="signin-submit" data-i18n="signin.submit">Continue</button>
       <div class="status-msg" id="signin-status"></div>
     </section>
 
     <!-- BROWSE RIDES (public) -->
     <section id="page-browse" class="page">
-      <div class="page-title">Upcoming rides</div>
-      <button class="submit-btn secondary" id="browse-refresh">Refresh</button>
-      <div class="drive-list" id="browse-list"><div class="empty-state">Loading…</div></div>
+      <div class="page-title" data-i18n="browse.title">Upcoming rides</div>
+      <button class="submit-btn secondary" id="browse-refresh" data-i18n="browse.refresh">Refresh</button>
+      <div class="drive-list" id="browse-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
     </section>
 
     <!-- PASSENGER PAGE -->
     <section id="page-ride" class="page">
-      <div class="page-title">Find a ride</div>
+      <div class="page-title" data-i18n="ride.title">Find a ride</div>
 
-      <label>From</label>
+      <label data-i18n="form.from">From</label>
       <div class="point-picker">
-        <button type="button" data-role="ride-origin">Pick on map</button>
+        <button type="button" data-role="ride-origin" data-i18n="form.pickOnMap">Pick on map</button>
         <div class="autocomplete">
-          <input type="text" id="name-ride-origin" placeholder="type an address or place…" autocomplete="off" />
+          <input type="text" id="name-ride-origin" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
           <ul class="autocomplete-list" id="suggest-ride-origin"></ul>
         </div>
       </div>
       <div class="coord-readout" id="readout-ride-origin">not set</div>
 
-      <label>To</label>
+      <label data-i18n="form.to">To</label>
       <div class="point-picker">
-        <button type="button" data-role="ride-destination">Pick on map</button>
+        <button type="button" data-role="ride-destination" data-i18n="form.pickOnMap">Pick on map</button>
         <div class="autocomplete">
-          <input type="text" id="name-ride-destination" placeholder="type an address or place…" autocomplete="off" />
+          <input type="text" id="name-ride-destination" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
           <ul class="autocomplete-list" id="suggest-ride-destination"></ul>
         </div>
       </div>
       <div class="coord-readout" id="readout-ride-destination">not set</div>
 
-      <label for="ride-time">When</label>
+      <label for="ride-time" data-i18n="ride.when">When</label>
       <input type="datetime-local" id="ride-time" />
 
-      <button class="submit-btn" id="ride-submit">Find a ride</button>
+      <button class="submit-btn" id="ride-submit" data-i18n="ride.submit">Find a ride</button>
       <div class="status-msg" id="ride-status"></div>
 
       <div id="ride-results" hidden>
-        <div class="section-title">Driver matches</div>
+        <div class="section-title" data-i18n="ride.matchesTitle">Driver matches</div>
         <div id="ride-matches"></div>
 
-        <div class="section-title">Public transport alternative</div>
+        <div class="section-title" data-i18n="ride.transitTitle">Public transport alternative</div>
         <div id="ride-transit"></div>
       </div>
 
-      <div class="section-title">Your recent searches</div>
-      <div id="ride-recent"><div class="empty-state">Loading…</div></div>
+      <div class="section-title" data-i18n="ride.recentTitle">Your recent searches</div>
+      <div id="ride-recent"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
     </section>
 
     <!-- DRIVER PAGE -->
     <section id="page-drive" class="page">
-      <div class="page-title">Your drives</div>
-      <div class="drive-list" id="drive-mine"><div class="empty-state">Loading…</div></div>
+      <div class="page-title" data-i18n="drive.title">Your drives</div>
+      <div class="drive-list" id="drive-mine"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
 
-      <div class="section-title">Offer a drive</div>
+      <div class="section-title" data-i18n="drive.offerTitle">Offer a drive</div>
 
-      <label>From</label>
+      <label data-i18n="form.from">From</label>
       <div class="point-picker">
-        <button type="button" data-role="drive-origin">Pick on map</button>
+        <button type="button" data-role="drive-origin" data-i18n="form.pickOnMap">Pick on map</button>
         <div class="autocomplete">
-          <input type="text" id="name-drive-origin" placeholder="type an address or place…" autocomplete="off" />
+          <input type="text" id="name-drive-origin" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
           <ul class="autocomplete-list" id="suggest-drive-origin"></ul>
         </div>
       </div>
       <div class="coord-readout" id="readout-drive-origin">not set</div>
 
-      <label>To</label>
+      <label data-i18n="form.to">To</label>
       <div class="point-picker">
-        <button type="button" data-role="drive-destination">Pick on map</button>
+        <button type="button" data-role="drive-destination" data-i18n="form.pickOnMap">Pick on map</button>
         <div class="autocomplete">
-          <input type="text" id="name-drive-destination" placeholder="type an address or place…" autocomplete="off" />
+          <input type="text" id="name-drive-destination" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
           <ul class="autocomplete-list" id="suggest-drive-destination"></ul>
         </div>
       </div>
@@ -171,26 +174,27 @@
 
       <div class="name-row">
         <div>
-          <label for="drive-departure">Departure</label>
+          <label for="drive-departure" data-i18n="drive.departure">Departure</label>
           <input type="datetime-local" id="drive-departure" />
         </div>
         <div class="narrow">
-          <label for="drive-seats">Seats</label>
+          <label for="drive-seats" data-i18n="drive.seats">Seats</label>
           <input type="number" id="drive-seats" min="1" max="8" value="3" />
         </div>
       </div>
 
-      <button class="submit-btn" id="drive-submit">Offer drive</button>
+      <button class="submit-btn" id="drive-submit" data-i18n="drive.submit">Offer drive</button>
       <div class="status-msg" id="drive-status"></div>
     </section>
 
-    <div class="hint" id="picker-hint" hidden>Type an address to search, or click "Pick on map" then click a point on the map.</div>
+    <div class="hint" id="picker-hint" hidden data-i18n="form.pickerHint">Type an address to search, or click "Pick on map" then click a point on the map.</div>
   </div>
 
   <div id="map"></div>
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -75,6 +75,12 @@ FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 LAST_MILE_THRESHOLD_KM = 1.0
 
 
+def api_error(status: int, code: str, message: str) -> HTTPException:
+    # The frontend shows its translation of `code` (errors.<code> in
+    # frontend/i18n/*.json); `message` is for API users and logs.
+    return HTTPException(status, {"code": code, "message": message})
+
+
 class LatLon(BaseModel):
     name: str
     lat: float
@@ -111,7 +117,7 @@ def post_drive(payload: DriveCreate):
     try:
         datetime.fromisoformat(payload.departure_time)
     except ValueError:
-        raise HTTPException(400, "departure_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
+        raise api_error(400, "invalid_time", "departure_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
 
     route = matching.route_with_fallback([
         (payload.origin.lat, payload.origin.lon),
@@ -145,7 +151,7 @@ def get_drives(upcoming_only: bool = True, driver_name: str | None = None):
 def get_drive(drive_id: int):
     drive = db.get_drive(drive_id)
     if not drive:
-        raise HTTPException(404, "Drive not found")
+        raise api_error(404, "drive_not_found", "Drive not found")
     return drive
 
 
@@ -155,9 +161,9 @@ def cancel_drive(drive_id: int, driver_name: str):
     # one user from cancelling someone else's drive by accident.
     drive = db.get_drive(drive_id)
     if not drive:
-        raise HTTPException(404, "Drive not found")
+        raise api_error(404, "drive_not_found", "Drive not found")
     if drive["driver_name"] != driver_name.strip():
-        raise HTTPException(403, "Only the driver who posted this drive can cancel it")
+        raise api_error(403, "not_your_drive", "Only the driver who posted this drive can cancel it")
     db.delete_drive(drive_id)
     return {"deleted": drive_id}
 
@@ -172,7 +178,7 @@ def match_ride(payload: MatchRequest):
     try:
         datetime.fromisoformat(payload.requested_time)
     except ValueError:
-        raise HTTPException(400, "requested_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
+        raise api_error(400, "invalid_time", "requested_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
 
     db.save_ride_request(
         passenger_name=payload.passenger_name.strip(),
