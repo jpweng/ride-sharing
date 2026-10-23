@@ -74,10 +74,11 @@ The UI is in German, French, Italian and English, with no library and no build s
 - API errors carry a code (`{"detail": {"code": "drive_not_found", ...}}`); the frontend shows
   `errors.<code>` from the dictionary.
 
-To add a string, add its key to all four JSON files.
+Visitors are addressed formally in every language ("Sie", "vous", "Lei"); Italian buttons use the
+infinitive ("Trovare un passaggio"). To add a string, add its key to all four JSON files.
 [backend/tests/test_i18n.py](backend/tests/test_i18n.py) fails if a key or placeholder is missing in
-any language, if the HTML or app.js uses an unknown key, or if the English in the HTML drifts from
-`en.json`. The translations were written without native review; have native speakers check them,
+any language, if the HTML or app.js uses an unknown key, if the English in the HTML drifts from
+`en.json`, or if an informal form ("du", "tu") slips in. The translations were written without native review; have native speakers check them,
 the privacy notice above all, before showing the site widely.
 
 ## Deploying to AWS

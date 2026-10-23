@@ -38,6 +38,23 @@ def test_swiss_german_spelling():
     assert not [k for k, v in DICTS["de"].items() if "ß" in v]
 
 
+# Visitors are addressed formally everywhere: "Sie" (de), "vous" (fr), "Lei" (it).
+INFORMAL = {
+    "de": r"\b(du|dich|dir|dein\w*|bist|hast|kannst|musst|gib|wähle|verwende|klicke)\b",
+    "fr": r"\b(tu|toi|ton|ta|tes)\b",
+    # Only forms that can't also be formal ("usa", "clicca", "digita" are both).
+    "it": r"\b(tu|ti|te|tuo|tua|tuoi|tue|sei|hai|puoi|vuoi|devi|scegli|inserisci|offri)\b",
+}
+
+
+@pytest.mark.parametrize("lang", INFORMAL)
+def test_formal_tone(lang):
+    privacy = (FRONTEND / "privacy.html").read_text()
+    notice = re.search(rf'<article[^>]*lang="{lang}".*?</article>', privacy, re.S).group(0)
+    for key, text in [*DICTS[lang].items(), ("privacy.html", notice)]:
+        assert not re.findall(INFORMAL[lang], text, re.I), key
+
+
 class _KeyedElements(HTMLParser):
     """Collects i18n keys, and the built-in text of data-i18n elements."""
 

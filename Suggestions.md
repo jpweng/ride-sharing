@@ -24,8 +24,7 @@
 
 1. **Native review of the translations.** German, French and Italian were written without a native
    speaker's review. Have each checked before showing the site widely, the privacy notice above
-   all. Also decide on informal "du"/"tu" (German, Italian) versus formal "vous" (French), which is
-   what they use now.
+   all. Visitors are addressed formally everywhere ("Sie", "vous", "Lei").
 
 ## Before real drivers
 
