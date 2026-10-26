@@ -101,6 +101,51 @@ def test_routes_are_reused_from_earlier_demo_drives(isolated_db, monkeypatch):
     assert calls == []
 
 
+def test_demo_drives_share_their_trip_route(isolated_db, monkeypatch):
+    road = [[6.6323, 46.5197], [6.4, 46.4], [6.1432, 46.2044]]
+    monkeypatch.setattr(matching, "osrm_route", lambda points: {
+        "distance_m": 62000.0, "duration_s": 3000.0, "geometry": road,
+    })
+    monkeypatch.setattr(demo_drives, "ROUTING_PAUSE_S", 0)
+    monkeypatch.setattr(demo_drives, "DEMO_DRIVES", [
+        s for s in demo_drives.DEMO_DRIVES if s["driver_name"] == "Jean Dupont"
+    ])
+
+    demo_drives.refresh(WED_NOON)
+
+    with sqlite3.connect(db.DB_PATH) as conn:
+        stored = conn.execute("SELECT route_geometry FROM drives").fetchall()
+    assert stored and all(g is None for (g,) in stored)
+    drive = db.list_drives(upcoming_only=False)[0]
+    assert drive["route_geometry"] == road
+    assert db.get_drive(drive["id"])["route_geometry"] == road
+    assert drive["route_distance_m"] == 62000.0
+
+
+def test_init_db_moves_demo_routes_out_of_the_drives(isolated_db):
+    road = [[6.6323, 46.5197], [6.4, 46.4], [6.1432, 46.2044]]
+    old_demo = db.create_drive(
+        driver_name="Jean Dupont",
+        origin_name="Lausanne", origin_lat=46.5197, origin_lon=6.6323,
+        destination_name="Genève", destination_lat=46.2044, destination_lon=6.1432,
+        departure_time="2026-10-23T07:15", seats_available=3,
+        route_geometry=road, route_distance_m=62000.0, route_duration_s=3000.0,
+        route_source="osrm", is_demo=True,
+    )
+    visitor = _post_visitor_drive("Marie Curie", "2026-10-23T08:00")
+    with sqlite3.connect(db.DB_PATH) as conn:
+        conn.execute("UPDATE drives SET route_geometry = '[[1, 2], [3, 4]]', route_source = 'osrm' WHERE id = ?",
+                     (visitor,))
+
+    db.init_db()
+
+    with sqlite3.connect(db.DB_PATH) as conn:
+        stored = dict(conn.execute("SELECT id, route_geometry FROM drives").fetchall())
+    assert stored == {old_demo: None, visitor: "[[1, 2], [3, 4]]"}
+    assert db.get_drive(old_demo)["route_geometry"] == road
+    assert db.find_demo_route("Lausanne", "Genève")["geometry"] == road
+
+
 def test_visitor_drives_are_never_touched(isolated_db, force_haversine):
     past = _post_visitor_drive("Marie Curie", "2026-10-21T08:00")
     future = _post_visitor_drive("Marie Curie", "2026-11-30T08:00")

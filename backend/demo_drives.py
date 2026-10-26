@@ -7,8 +7,10 @@ Graubünden: weekday commutes (out in the morning, back in the evening),
 midday drives on the busy corridors, and weekend trips. Each corridor has
 departures spread over the day, so a search at most times finds something
 within matching.MAX_TIME_WINDOW_HOURS. A hand-written core of drives is
-filled out by generated ones: commuters from about 100 smaller towns and more
-departures on the busy corridors, about 3,600 drives a week in all.
+filled out by generated ones: about 3,000 commuters from the cities and
+about 100 smaller towns, and departures every hour or two on 41 corridors:
+about 36,000 drives a week in all. Each trip's road route is stored once, in
+the demo_routes table, not on each of its drives.
 
 Demo drives are flagged `is_demo` and are the only drives touched here:
 drives posted by visitors are never modified or deleted. refresh() is
@@ -382,26 +384,39 @@ FIRST_NAMES = {
         "Manon", "Mathieu", "Nathalie", "Noémie", "Patrick", "Romain", "Sandrine",
         "Sébastien", "Valérie", "Vincent", "Yann", "Chloé", "Benoît", "Martine",
         "Cédric", "Gaëlle", "Maxime", "Océane", "Grégoire", "Léa", "Arnaud", "Inès",
+        "Alain", "Anne-Laure", "Bernard", "Camille", "Caroline", "Damien", "David",
+        "Didier", "Estelle", "Frédéric", "Gilles", "Isabelle", "Jacques", "Julie",
+        "Justine", "Loïc", "Marion", "Mélissa", "Olivier", "Pascale", "Raphaël",
+        "Sophie", "Thierry", "Virginie",
     ],
     "de": [
         "Andreas", "Barbara", "Christian", "Corinne", "Daniel", "Esther", "Fabian",
         "Franziska", "Hans", "Jasmin", "Katrin", "Markus", "Michael", "Monika",
         "Patrick", "Regula", "Roger", "Sabine", "Samuel", "Stefanie", "Thomas",
         "Ueli", "Vreni", "Yvonne", "Adrian", "Bettina", "Dominik", "Karin", "Lea",
-        "Manuel", "Nicole", "Pascal", "Rahel", "Severin", "Tanja", "Livia",
+        "Manuel", "Nicole", "Pascal", "Rahel", "Severin", "Tanja", "Livia", "Beat",
+        "Benjamin", "Brigitte", "Cornelia", "David", "Elias", "Erika", "Fritz",
+        "Gabriela", "Heidi", "Irene", "Jan", "Jonas", "Judith", "Kurt", "Lars",
+        "Lena", "Lukas", "Marcel", "Mirjam", "Nadja", "Noah", "Olivia", "Philipp",
+        "Raphael", "Ruth", "Sandra", "Silvan", "Simone", "Stefan", "Sven", "Urs",
+        "Werner", "Zoe",
     ],
     "it": [
         "Alessandro", "Barbara", "Claudio", "Cristina", "Daniele", "Federica",
         "Francesca", "Gabriele", "Ilaria", "Lorenzo", "Luca", "Manuela", "Massimo",
         "Michela", "Nadia", "Paolo", "Riccardo", "Roberta", "Silvia", "Simone",
         "Stefano", "Valentina", "Andrea", "Mattia", "Giada", "Fabrizio", "Elisa",
-        "Diego", "Martina", "Gianluca",
+        "Diego", "Martina", "Gianluca", "Alberto", "Anna", "Carlo", "Chiara", "Dario",
+        "Elena", "Fabio", "Giorgio", "Giulia", "Laura", "Marco", "Monica", "Nicola",
+        "Patrizia", "Roberto", "Sara", "Sergio", "Tiziana", "Ivo", "Noemi",
     ],
     "gr": [
         "Gian", "Ursina", "Men", "Ladina", "Flurin", "Seraina", "Andri", "Curdin",
         "Mirjam", "Reto", "Annina", "Duri", "Mengia", "Not", "Chasper", "Barbla",
         "Linard", "Madlaina", "Jon", "Corina", "Marco", "Sandra", "Peter", "Nina",
-        "Claudia", "Lukas", "Anna", "Mario", "Silvia", "Martin",
+        "Claudia", "Lukas", "Anna", "Mario", "Silvia", "Martin", "Aita", "Benedetg",
+        "Cla", "Domenic", "Fadri", "Gianna", "Ivo", "Leta", "Mauro", "Nuot", "Riet",
+        "Romana", "Selina", "Tumasch", "Valeria",
     ],
 }
 
@@ -412,7 +427,12 @@ LAST_NAMES = {
         "Liechti", "Magnin", "Maillard", "Mercier", "Michellod", "Monnier", "Pasche",
         "Perrin", "Python", "Reymond", "Rey", "Richard", "Rossier", "Schaller",
         "Tissot", "Vuilleumier", "Zufferey", "Bonvin", "Crettenand", "Droz",
-        "Gindrat", "Humbert-Droz",
+        "Gindrat", "Humbert-Droz", "Aebischer", "Barras", "Baud", "Bersier", "Bonny",
+        "Borcard", "Chappuis", "Chollet", "Collaud", "Cotting", "Dénervaud", "Dubey",
+        "Ecoffey", "Favez", "Gachet", "Genoud", "Grandjean", "Jordan", "Kolly",
+        "Maret", "Mauron", "Moret", "Nicolet", "Overney", "Pittet", "Progin",
+        "Ruffieux", "Savary", "Sottas", "Theytaz", "Vonlanthen", "Vuignier", "Wicht",
+        "Yerly",
     ],
     "de": [
         "Ammann", "Bachmann", "Baumgartner", "Brändli", "Egli", "Fischer", "Fuchs",
@@ -420,21 +440,32 @@ LAST_NAMES = {
         "Lüthi", "Marti", "Moser", "Müller", "Nussbaumer", "Rüegg", "Schneider",
         "Schwarz", "Sommer", "Stalder", "Suter", "Tanner", "Vogt", "Weber",
         "Widmer", "Zaugg", "Zimmermann", "Arnold", "Betschart", "Fässler", "Imhof",
-        "Wyrsch",
+        "Wyrsch", "Aebi", "Bieri", "Blaser", "Bösch", "Bucher", "Burri",
+        "Eggenberger", "Flückiger", "Frey", "Gasser", "Gerber", "Gloor", "Haller",
+        "Hess", "Hug", "Hürlimann", "Jost", "Kälin", "Keller", "Koch", "Kuhn",
+        "Leuenberger", "Locher", "Maurer", "Meier", "Merz", "Niederberger", "Ott",
+        "Pfister", "Reber", "Ritter", "Roth", "Schär", "Scherrer", "Schmid",
+        "Schürch", "Sigrist", "Steiner", "Stucki", "Studer", "Wüthrich", "Wirth",
+        "Wyss", "Zbinden",
     ],
     "it": [
         "Balestra", "Bassi", "Beltrami", "Bernasconi", "Bianchi", "Bottani",
         "Canonica", "Cavadini", "Colombo", "Conti", "Cereghetti", "Dotta",
         "Ferrazzini", "Galli", "Gianella", "Guidotti", "Lafranchi", "Malè",
         "Maggetti", "Molinari", "Pellandini", "Quadri", "Righetti", "Sala",
-        "Soldati", "Storni", "Tamò", "Vanoni", "Zanini", "Zappa",
+        "Soldati", "Storni", "Tamò", "Vanoni", "Zanini", "Zappa", "Albertoni",
+        "Antognini", "Bernardoni", "Borradori", "Bulloni", "Camponovo", "Croce",
+        "Fontana", "Gendotti", "Lepori", "Lurati", "Martinoli", "Pedrazzini", "Polli",
+        "Rezzonico", "Rusconi", "Sartori", "Tognola", "Valsangiacomo", "Zanetti",
     ],
     "gr": [
         "Bergamin", "Cadruvi", "Camenisch", "Capaul", "Casanova", "Caviezel",
         "Cathomen", "Clavadetscher", "Collenberg", "Darms", "Derungs", "Dosch",
         "Florin", "Hassler", "Jenal", "Juon", "Luzi", "Mani", "Mengelt", "Nay",
         "Pinggera", "Riedi", "Sialm", "Schmid", "Tscharner", "Tuor", "Vieli",
-        "Brunold", "Gartmann", "Bisaz",
+        "Brunold", "Gartmann", "Bisaz", "Arpagaus", "Beeli", "Cadonau", "Candinas",
+        "Cavelti", "Cantieni", "Defila", "Gadient", "Janett", "Lardi", "Monn",
+        "Padrun", "Rauch", "Sutter", "Tomaschett",
     ],
 }
 
@@ -467,14 +498,14 @@ def _clock(minutes):
 
 
 def _generated_commutes(home, work, count):
-    """`count` commuters from home to work, leaving between 06:30 and 08:15 and
-    coming back between 16:15 and 18:45; a few work part-time."""
+    """`count` commuters from home to work, leaving between 06:00 and 08:55 and
+    coming back between 15:30 and 19:25; a few work part-time."""
     drives = []
     for n in range(count):
         rng = random.Random(f"commute {home} > {work} #{n}")
         driver = _new_driver(rng, home)
-        out = _clock(6 * 60 + 30 + 5 * rng.randrange(22))
-        back = _clock(16 * 60 + 15 + 5 * rng.randrange(31))
+        out = _clock(6 * 60 + 5 * rng.randrange(36))
+        back = _clock(15 * 60 + 30 + 5 * rng.randrange(48))
         weekdays = MON_FRI if rng.random() < 0.8 else rng.choice(
             [(0, 1, 2, 3), (1, 2, 3, 4), (0, 2, 4), (0, 1, 3)]
         )
@@ -493,7 +524,10 @@ def _generated_corridor(a, b, times, weekdays=DAILY):
     return drives
 
 
-# (home, work, number of commuters)
+# Commuters per unit of COMMUTES' sizes.
+COMMUTER_SCALE = 14
+
+# (home, work, size): COMMUTER_SCALE x size commuters on the trip.
 COMMUTES = [
     # Romandie
     ("Morges", "Lausanne", 3), ("Rolle", "Lausanne", 1), ("Rolle", "Genève", 2),
@@ -561,34 +595,64 @@ COMMUTES = [
     ("Thusis", "Chur", 1), ("Ilanz", "Flims", 1),
 ]
 
-# (one end, other end, departure times each way): every day, outside the
-# commuting hours.
+def _every(first, last, hours):
+    """Departure times from `first` to `last` o'clock, every `hours` hours."""
+    return [f"{h:02d}:00" for h in range(first, last + 1, hours)]
+
+
+HOURLY = _every(8, 21, 1)
+EVERY_TWO_HOURS = _every(9, 21, 2)
+
+# (one end, other end, departure times each way): every day, on top of the
+# commuters.
 CORRIDORS = [
-    ("Lausanne", "Genève", ["09:30", "13:00", "15:30", "19:00"]),
-    ("Lausanne", "Fribourg", ["09:00", "12:30", "19:00"]),
-    ("Fribourg", "Bern", ["09:30", "13:30", "18:30"]),
-    ("Lausanne", "Sion", ["09:30", "14:00", "19:00"]),
-    ("Neuchâtel", "Biel/Bienne", ["10:00", "14:30", "18:30"]),
-    ("Bern", "Zürich", ["08:30", "13:30", "18:00"]),
-    ("Bern", "Basel", ["10:00", "15:00"]),
-    ("Bern", "Thun", ["10:00", "13:00", "19:00"]),
-    ("Zürich", "Basel", ["09:30", "14:00", "18:30"]),
-    ("Zürich", "Luzern", ["09:00", "13:00", "18:00"]),
-    ("Zürich", "St. Gallen", ["10:00", "15:00", "19:00"]),
-    ("Zürich", "Winterthur", ["10:30", "13:30", "19:30"]),
-    ("Lugano", "Bellinzona", ["08:30", "12:00", "16:00", "19:00"]),
-    ("Lugano", "Locarno", ["09:00", "16:30", "19:00"]),
-    ("Lugano", "Chiasso", ["09:30", "13:00", "18:30"]),
-    ("Bellinzona", "Biasca", ["09:00", "13:30", "18:00"]),
-    ("Chur", "Landquart", ["09:30", "13:00", "19:00"]),
-    ("Chur", "Davos", ["09:00", "16:30", "19:00"]),
-    ("Chur", "Lenzerheide", ["10:00", "15:00"]),
-    ("Chur", "Zürich", ["10:00", "14:30", "19:30"]),
-    ("St. Moritz", "Samedan", ["10:00", "14:00", "19:00"]),
+    # The busy ones.
+    ("Lausanne", "Genève", HOURLY),
+    ("Lausanne", "Fribourg", HOURLY),
+    ("Fribourg", "Bern", HOURLY),
+    ("Lausanne", "Sion", HOURLY),
+    ("Neuchâtel", "Biel/Bienne", HOURLY),
+    ("Bern", "Zürich", HOURLY),
+    ("Bern", "Basel", HOURLY),
+    ("Bern", "Thun", HOURLY),
+    ("Zürich", "Basel", HOURLY),
+    ("Zürich", "Luzern", HOURLY),
+    ("Zürich", "St. Gallen", HOURLY),
+    ("Zürich", "Winterthur", HOURLY),
+    ("Lugano", "Bellinzona", HOURLY),
+    ("Lugano", "Locarno", HOURLY),
+    ("Lugano", "Chiasso", HOURLY),
+    ("Bellinzona", "Biasca", HOURLY),
+    ("Chur", "Landquart", HOURLY),
+    ("Chur", "Davos", HOURLY),
+    ("Chur", "Lenzerheide", HOURLY),
+    ("Chur", "Zürich", HOURLY),
+    ("St. Moritz", "Samedan", HOURLY),
+    # The others.
+    ("Genève", "Nyon", EVERY_TWO_HOURS),
+    ("Lausanne", "Yverdon-les-Bains", EVERY_TWO_HOURS),
+    ("Lausanne", "Vevey", EVERY_TWO_HOURS),
+    ("Montreux", "Martigny", EVERY_TWO_HOURS),
+    ("Sion", "Sierre", EVERY_TWO_HOURS),
+    ("Neuchâtel", "La Chaux-de-Fonds", EVERY_TWO_HOURS),
+    ("Bern", "Biel/Bienne", EVERY_TWO_HOURS),
+    ("Thun", "Interlaken", EVERY_TWO_HOURS),
+    ("Basel", "Olten", EVERY_TWO_HOURS),
+    ("Aarau", "Olten", EVERY_TWO_HOURS),
+    ("Zürich", "Zug", EVERY_TWO_HOURS),
+    ("Luzern", "Zug", EVERY_TWO_HOURS),
+    ("Winterthur", "St. Gallen", EVERY_TWO_HOURS),
+    ("Bellinzona", "Locarno", EVERY_TWO_HOURS),
+    ("Lugano", "Mendrisio", EVERY_TWO_HOURS),
+    ("Chur", "Thusis", EVERY_TWO_HOURS),
+    ("Chur", "Flims", EVERY_TWO_HOURS),
+    ("Davos", "Klosters", EVERY_TWO_HOURS),
+    ("St. Moritz", "Pontresina", EVERY_TWO_HOURS),
+    ("Brig", "Visp", EVERY_TWO_HOURS),
 ]
 
-for _home, _work, _count in COMMUTES:
-    DEMO_DRIVES += _generated_commutes(_home, _work, _count)
+for _home, _work, _size in COMMUTES:
+    DEMO_DRIVES += _generated_commutes(_home, _work, COMMUTER_SCALE * _size)
 for _a, _b, _times in CORRIDORS:
     DEMO_DRIVES += _generated_corridor(_a, _b, _times)
 
@@ -610,8 +674,8 @@ def _expected(now: datetime) -> dict:
 
 
 def _route(spec, cache: dict) -> dict:
-    """Road route for a template: reused from an earlier demo drive on the same
-    trip when there is one, so the routing server is only asked once."""
+    """Road route for a template's trip: the one stored in demo_routes when
+    there is one, so the routing server is only asked once per trip."""
     key = (spec["origin"]["name"], spec["destination"]["name"])
     if key not in cache:
         cache[key] = db.find_demo_route(*key)
@@ -621,8 +685,14 @@ def _route(spec, cache: dict) -> dict:
             (spec["destination"]["lat"], spec["destination"]["lon"]),
         ])
         if cache[key]["source"] == "osrm":
+            db.save_demo_route(*key, cache[key])
             clock.sleep(ROUTING_PAUSE_S)
     return cache[key]
+
+
+# Drives are written in batches: one transaction each, short enough not to
+# hold up visitors posting a drive for long.
+BATCH_SIZE = 1000
 
 
 def refresh(now: datetime | None = None) -> tuple[int, int]:
@@ -633,7 +703,7 @@ def refresh(now: datetime | None = None) -> tuple[int, int]:
     expected = _expected(now)
 
     # Upcoming demo drives from templates that changed or were removed.
-    existing = set()
+    existing, outdated = set(), []
     for d in db.list_drives(upcoming_only=False, with_geometry=False):
         if not d["is_demo"]:
             continue
@@ -645,32 +715,38 @@ def refresh(now: datetime | None = None) -> tuple[int, int]:
         ):
             existing.add((d["driver_name"], d["departure_time"]))
         else:
-            db.delete_drive(d["id"])
-            deleted += 1
+            outdated.append(d["id"])
+    for i in range(0, len(outdated), BATCH_SIZE):
+        deleted += db.delete_drives(outdated[i:i + BATCH_SIZE])
 
     created = 0
-    routes = {}
+    routes, batch = {}, []
     for (driver_name, departure_time), spec in expected.items():
         if (driver_name, departure_time) in existing:
             continue
         route = _route(spec, routes)
-        db.create_drive(
-            driver_name=driver_name,
-            origin_name=spec["origin"]["name"],
-            origin_lat=spec["origin"]["lat"],
-            origin_lon=spec["origin"]["lon"],
-            destination_name=spec["destination"]["name"],
-            destination_lat=spec["destination"]["lat"],
-            destination_lon=spec["destination"]["lon"],
-            departure_time=departure_time,
-            seats_available=spec["seats_available"],
-            route_geometry=route["geometry"],
-            route_distance_m=route["distance_m"],
-            route_duration_s=route["duration_s"],
-            route_source=route["source"],
-            is_demo=True,
-        )
-        created += 1
+        batch.append({
+            "driver_name": driver_name,
+            "origin_name": spec["origin"]["name"],
+            "origin_lat": spec["origin"]["lat"],
+            "origin_lon": spec["origin"]["lon"],
+            "destination_name": spec["destination"]["name"],
+            "destination_lat": spec["destination"]["lat"],
+            "destination_lon": spec["destination"]["lon"],
+            "departure_time": departure_time,
+            "seats_available": spec["seats_available"],
+            # A road route is shared through demo_routes; only a straight-line
+            # fallback (a few points) is kept on the drive.
+            "route_geometry": None if route["source"] == "osrm" else route["geometry"],
+            "route_distance_m": route["distance_m"],
+            "route_duration_s": route["duration_s"],
+            "route_source": route["source"],
+            "is_demo": True,
+        })
+        if len(batch) == BATCH_SIZE:
+            created += db.create_drives(batch)
+            batch = []
+    created += db.create_drives(batch)
     return deleted, created
 
 

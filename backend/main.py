@@ -26,7 +26,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Query
@@ -199,7 +199,16 @@ def match_ride(payload: MatchRequest):
         requested_time=payload.requested_time,
     )
 
-    all_drives = db.list_drives(upcoming_only=True, with_geometry=False)
+    # Only drives near the requested time (matching filters on it exactly);
+    # there are tens of thousands of demo drives a week.
+    asked = datetime.fromisoformat(payload.requested_time).replace(tzinfo=None)
+    window = timedelta(hours=matching.MAX_TIME_WINDOW_HOURS, minutes=1)
+    all_drives = db.list_drives(
+        upcoming_only=True,
+        with_geometry=False,
+        departing_from=(asked - window).isoformat(timespec="minutes"),
+        departing_until=(asked + window).isoformat(timespec="minutes"),
+    )
     passenger_origin = (payload.origin.lat, payload.origin.lon)
     passenger_destination = (payload.destination.lat, payload.destination.lon)
     origin_place = payload.origin.name if payload.origin.kind == "place" else None

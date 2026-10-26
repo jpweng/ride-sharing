@@ -169,3 +169,23 @@ def test_town_endpoints_use_their_train_stations(isolated_db, force_haversine, f
 
     by_address = search("address")
     assert (by_address["from_station"], by_address["to_station"]) == ("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean")
+
+
+def test_drives_at_the_edge_of_the_time_window_still_match(isolated_db, force_haversine, fake_transit):
+    # Only drives near the requested time are loaded; the bounds must not cut
+    # off one exactly MAX_TIME_WINDOW_HOURS away, whatever its time format.
+    aigle = ("Aigle", 46.3180, 6.9700)
+    bern = ("Bern", 46.9480, 7.4474)
+    _post_drive("Early", aigle, bern, f"{DAY_1}T15:00:00")
+    _post_drive("Late", aigle, bern, f"{DAY_1}T21:00")
+    _post_drive("Too late", aigle, bern, f"{DAY_1}T21:05")
+
+    payload = main.MatchRequest(
+        passenger_name="Marie",
+        origin={"name": "Villeneuve VD", "lat": 46.3940, "lon": 6.9235},
+        destination={"name": "Bern", "lat": 46.9546, "lon": 7.4207},
+        requested_time=f"{DAY_1}T18:00",
+    )
+    result = main.match_ride(payload)
+
+    assert sorted(m["driver_name"] for m in result["driver_matches"]) == ["Early", "Late"]

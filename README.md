@@ -42,14 +42,15 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 At startup and then every hour, the app runs [backend/maintenance.py](backend/maintenance.py):
 
 - **Demo drives**: [backend/demo_drives.py](backend/demo_drives.py) keeps a rolling week of fictional
-  drives (about 3,300 by some 420 drivers) so "Browse rides" and the Passenger page always have
+  drives (about 33,000 by some 4,000 drivers) so "Browse rides" and the Passenger page always have
   something to show. They form a network over the whole country, from the cities down to small
   towns, denser in Ticino and Graubünden: weekday commutes, midday
   drives on the busy corridors and weekend trips, with departures spread over the day so a search
   at most times finds something. Sign in as one of the drivers (e.g. Jean Dupont) to see their
   Driver page. Demo drives that have departed or no longer match the list are deleted, and missing
   ones for the next 7 days are added. They're flagged `is_demo` in the database. Each trip's road
-  route is fetched from OSRM once (one call per second, its usage limit) and then reused.
+  route is fetched from OSRM once (one call per second, its usage limit) and stored once in
+  `demo_routes`, shared by all the trip's drives.
 - **Visitors' data is kept for 30 days**: drives are deleted 30 days after their departure, searches
   30 days after they were made, and then names with no drive or search left. Nothing in the UI shows
   any of this by then. On the server, deleted data also remains in the daily disk snapshots for 7
