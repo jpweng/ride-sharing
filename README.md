@@ -7,6 +7,15 @@ suggestion via [transport.opendata.ch](https://transport.opendata.ch).
 
 See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for the full design rationale.
 
+**Planned next: ride predictions and ride requests.** This feature is designed but not built yet.
+- The app spots people's recurring trips and offers to publish their next drives, or request their
+  next rides, after they confirm.
+- Passengers can ask for a ride nobody has posted. A few drivers who made that trip before are
+  notified, with strict limits so drivers don't get too many notifications.
+
+See [docs/ride-predictions.md](docs/ride-predictions.md) for the design, the rules and the reasons
+behind them.
+
 ## Stack
 
 - Backend: Python + FastAPI, plain `sqlite3` (no ORM)
@@ -191,6 +200,7 @@ frontend/
 infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user)
   bootstrap/      one-time S3 bucket for Terraform state
 deploy/           what runs on the server: compose.yaml, deploy.sh, caddy/ (proxy image)
+docs/             design documents for planned features (ride-predictions.md)
 Dockerfile        app image (uvicorn, non-root, DB on /data)
 .github/workflows/deploy.yml   test → build arm64 images → push → deploy via SSM on push to main
 ```
