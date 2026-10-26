@@ -307,6 +307,20 @@ input[type=text], input[type=number], input[type=datetime-local] {
 .drive-card.clickable { cursor: pointer; }
 .drive-card.clickable:hover { border-color: var(--muted); }
 
+/* The left border takes the colour of the match's route on the map. */
+.match-card.clickable {
+  cursor: pointer;
+  border-left-width: 5px;
+  transition: opacity 0.15s, box-shadow 0.15s;
+}
+.match-card.clickable:hover { box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
+.match-card.selected {
+  background: var(--panel);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.match-card.selected:hover { box-shadow: 0 0 0 2px var(--accent); }
+.has-selection .match-card:not(.selected) { opacity: 0.6; }
+
 .link-btn {
   margin-top: 6px;
   padding: 0;

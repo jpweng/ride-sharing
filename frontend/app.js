@@ -515,6 +515,7 @@ async function findRide() {
   document.getElementById("ride-results").hidden = false;
   const searching = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
   document.getElementById("ride-matches").innerHTML = searching;
+  document.getElementById("ride-matches-hint").hidden = true;
   document.getElementById("ride-transit").innerHTML = searching;
   resultsLayer.clearLayers();
   lastResults = null;
@@ -555,6 +556,8 @@ function renderResults() {
 
 function renderMatches(matches, passengerOrigin, passengerDestination) {
   const container = document.getElementById("ride-matches");
+  container.classList.remove("has-selection");
+  document.getElementById("ride-matches-hint").hidden = !matches.length;
   if (!matches.length) {
     container.innerHTML = `<div class="empty-state">${esc(t("ride.noMatches"))}</div>`;
     return;
@@ -569,10 +572,49 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
     .bindPopup(esc(t("map.destinationPopup", { name: passengerDestination.name })));
 
   const routeColors = ["#1a73e8", "#8e24aa", "#00897b", "#f9a825", "#6d4c41"];
+  // One entry per match: its card, route line (if any) and colour.
+  const shown = [];
+  let selected = null;
+  let dropoffMarker = null;
+
+  // Clicking a match highlights its route and fades the others; clicking it
+  // again shows them all as before.
+  function select(entry) {
+    selected = selected === entry ? null : entry;
+    if (dropoffMarker) resultsLayer.removeLayer(dropoffMarker);
+    dropoffMarker = null;
+    shown.forEach((s) => {
+      s.card.classList.toggle("selected", s === selected);
+      if (!s.line) return;
+      if (!selected) s.line.setStyle({ color: s.color, weight: 4, opacity: 0.7 });
+      else if (s === selected) s.line.setStyle({ color: s.color, weight: 7, opacity: 1 }).bringToFront();
+      else s.line.setStyle({ color: "#9aa0a6", weight: 3, opacity: 0.35 });
+    });
+    container.classList.toggle("has-selection", !!selected);
+    if (!selected) return fitToResults();
+
+    const m = selected.match;
+    const bounds = L.latLngBounds([
+      [passengerOrigin.lat, passengerOrigin.lon],
+      [passengerDestination.lat, passengerDestination.lon],
+      [m.origin_lat, m.origin_lon],
+      [m.destination_lat, m.destination_lon],
+    ]);
+    if (selected.line) bounds.extend(selected.line.getBounds());
+    if (m.recommended_dropoff) {
+      const { lat, lon, station_name } = m.recommended_dropoff;
+      dropoffMarker = L.circleMarker([lat, lon], { radius: 7, color: selected.color, fillColor: "#fff", fillOpacity: 1, weight: 3 })
+        .addTo(resultsLayer)
+        .bindTooltip(esc(t("map.dropoff", { station: station_name })));
+    }
+    map.fitBounds(bounds, { padding: [30, 30] });
+  }
 
   matches.forEach((m, idx) => {
     const card = document.createElement("div");
-    card.className = "match-card";
+    card.className = "match-card clickable";
+    const color = routeColors[idx % routeColors.length];
+    card.style.borderLeftColor = color;
     const warn = m.detour_km > 4 || m.detour_pct > 25;
     card.innerHTML = `
       <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}${demoBadge(m)}</div>
@@ -591,11 +633,22 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
     `;
     container.appendChild(card);
 
+    const entry = { match: m, card, color, line: null };
+    shown.push(entry);
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return; // ticket and operator links
+      select(entry);
+    });
+
     if (m.route_geometry && m.route_geometry.length) {
       const latlngs = m.route_geometry.map(([lon, lat]) => [lat, lon]);
-      L.polyline(latlngs, { color: routeColors[idx % routeColors.length], weight: 4, opacity: 0.7 })
+      entry.line = L.polyline(latlngs, { color, weight: 4, opacity: 0.7 })
         .addTo(resultsLayer)
-        .bindPopup(`${esc(m.driver_name)}: ${esc(m.origin_name)} → ${esc(m.destination_name)}`);
+        .bindTooltip(`${esc(m.driver_name)}: ${esc(m.origin_name)} → ${esc(m.destination_name)}`, { sticky: true })
+        .on("click", () => {
+          if (selected !== entry) select(entry);
+          card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        });
     }
   });
 

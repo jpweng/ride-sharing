@@ -42,8 +42,9 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 At startup and then every hour, the app runs [backend/maintenance.py](backend/maintenance.py):
 
 - **Demo drives**: [backend/demo_drives.py](backend/demo_drives.py) keeps a rolling week of fictional
-  drives (about 570) so "Browse rides" and the Passenger page always have something to show. They
-  form a network over the whole country, denser in Ticino and Graubünden: weekday commutes, midday
+  drives (about 3,300 by some 420 drivers) so "Browse rides" and the Passenger page always have
+  something to show. They form a network over the whole country, from the cities down to small
+  towns, denser in Ticino and Graubünden: weekday commutes, midday
   drives on the busy corridors and weekend trips, with departures spread over the day so a search
   at most times finds something. Sign in as one of the drivers (e.g. Jean Dupont) to see their
   Driver page. Demo drives that have departed or no longer match the list are deleted, and missing

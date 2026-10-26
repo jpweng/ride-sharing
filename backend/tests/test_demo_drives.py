@@ -4,7 +4,10 @@ drives posted by visitors are never touched, and that the network covers
 the corridors and regions it's meant to. Isolated temp DB and haversine
 routing -- no network.
 """
+import os
 import sqlite3
+import subprocess
+import sys
 from collections import Counter
 from datetime import datetime, timedelta
 
@@ -190,3 +193,22 @@ def test_init_db_adds_is_demo_to_an_existing_database(isolated_db):
 
     [old] = _all_drives()
     assert old["is_demo"] == 0
+
+
+def test_generated_drives_are_the_same_in_every_process():
+    # refresh() would otherwise replace every generated drive after each restart.
+    script = (
+        "import demo_drives as d; "
+        "print([(s['driver_name'], s['origin']['name'], str(s['time']), s['weekdays'], s['seats_available'])"
+        " for s in d.DEMO_DRIVES])"
+    )
+    runs = [
+        subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=os.path.dirname(demo_drives.__file__),
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            capture_output=True, text=True, check=True,
+        ).stdout
+        for seed in ("1", "2")
+    ]
+    assert runs[0] == runs[1]

@@ -6,7 +6,9 @@ The drives form a network over the whole country, denser in Ticino and
 Graubünden: weekday commutes (out in the morning, back in the evening),
 midday drives on the busy corridors, and weekend trips. Each corridor has
 departures spread over the day, so a search at most times finds something
-within matching.MAX_TIME_WINDOW_HOURS.
+within matching.MAX_TIME_WINDOW_HOURS. A hand-written core of drives is
+filled out by generated ones: commuters from about 100 smaller towns and more
+departures on the busy corridors, about 3,600 drives a week in all.
 
 Demo drives are flagged `is_demo` and are the only drives touched here:
 drives posted by visitors are never modified or deleted. refresh() is
@@ -17,6 +19,7 @@ missing from the next DAYS_AHEAD days.
 Run it by hand with the backend on PYTHONPATH, e.g.:
     PYTHONPATH=backend uv run python backend/demo_drives.py
 """
+import random
 import time as clock
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -96,6 +99,141 @@ PLACES = {
     "Zernez": (46.6990, 10.0920),
     "Scuol": (46.7966, 10.2980),
     "Poschiavo": (46.3240, 10.0580),
+    # Smaller towns, for the generated commuters below.
+    # Romandie
+    "Morges": (46.5113, 6.4985),
+    "Rolle": (46.4590, 6.3370),
+    "Gland": (46.4207, 6.2700),
+    "Renens": (46.5397, 6.5880),
+    "Échallens": (46.6420, 6.6330),
+    "Moudon": (46.6680, 6.7975),
+    "Payerne": (46.8219, 6.9381),
+    "Estavayer-le-Lac": (46.8490, 6.8460),
+    "Romont": (46.6966, 6.9186),
+    "Châtel-Saint-Denis": (46.5270, 6.9010),
+    "Aigle": (46.3180, 6.9700),
+    "Monthey": (46.2550, 6.9540),
+    "Bex": (46.2500, 7.0110),
+    "Verbier": (46.0960, 7.2280),
+    "Crans-Montana": (46.3110, 7.4800),
+    "Sainte-Croix": (46.8220, 6.5030),
+    "Le Locle": (47.0560, 6.7480),
+    "Saint-Imier": (47.1530, 6.9970),
+    "Moutier": (47.2790, 7.3700),
+    "Porrentruy": (47.4150, 7.0750),
+    # German-speaking Switzerland
+    "Visp": (46.2940, 7.8810),
+    "Murten": (46.9280, 7.1170),
+    "Lyss": (47.0740, 7.3060),
+    "Grenchen": (47.1920, 7.3960),
+    "Burgdorf": (47.0590, 7.6280),
+    "Langnau im Emmental": (46.9400, 7.7870),
+    "Langenthal": (47.2150, 7.7960),
+    "Zofingen": (47.2880, 7.9460),
+    "Spiez": (46.6880, 7.6800),
+    "Frutigen": (46.5870, 7.6490),
+    "Meiringen": (46.7270, 8.1870),
+    "Grindelwald": (46.6240, 8.0410),
+    "Zweisimmen": (46.5550, 7.3730),
+    "Gstaad": (46.4750, 7.2860),
+    "Liestal": (47.4840, 7.7340),
+    "Rheinfelden": (47.5540, 7.7940),
+    "Laufen": (47.4210, 7.5000),
+    "Baden": (47.4730, 8.3080),
+    "Brugg": (47.4860, 8.2080),
+    "Lenzburg": (47.3880, 8.1800),
+    "Wohlen": (47.3510, 8.2780),
+    "Dietikon": (47.4040, 8.4000),
+    "Bülach": (47.5220, 8.5400),
+    "Kloten": (47.4510, 8.5850),
+    "Uster": (47.3480, 8.7180),
+    "Wetzikon": (47.3260, 8.7980),
+    "Rapperswil": (47.2260, 8.8180),
+    "Horgen": (47.2600, 8.5980),
+    "Meilen": (47.2700, 8.6450),
+    "Pfäffikon SZ": (47.2010, 8.7780),
+    "Einsiedeln": (47.1280, 8.7470),
+    "Schwyz": (47.0200, 8.6530),
+    "Altdorf": (46.8800, 8.6440),
+    "Stans": (46.9580, 8.3660),
+    "Sarnen": (46.8960, 8.2460),
+    "Engelberg": (46.8200, 8.4030),
+    "Sursee": (47.1710, 8.1110),
+    "Frauenfeld": (47.5580, 8.8980),
+    "Wil": (47.4610, 9.0450),
+    "Weinfelden": (47.5670, 9.1070),
+    "Kreuzlingen": (47.6500, 9.1750),
+    "Romanshorn": (47.5650, 9.3790),
+    "Arbon": (47.5160, 9.4330),
+    "Rorschach": (47.4780, 9.4900),
+    "Herisau": (47.3860, 9.2790),
+    "Appenzell": (47.3310, 9.4090),
+    "Wattwil": (47.2990, 9.0870),
+    "Buchs SG": (47.1670, 9.4780),
+    "Glarus": (47.0400, 9.0680),
+    # Ticino and Italian-speaking Graubünden
+    "Faido": (46.4780, 8.8010),
+    "Olivone": (46.5300, 8.9420),
+    "Acquarossa": (46.4550, 8.9390),
+    "Giubiasco": (46.1730, 9.0070),
+    "Gordola": (46.1800, 8.8660),
+    "Ascona": (46.1570, 8.7720),
+    "Brissago": (46.1190, 8.7100),
+    "Maggia": (46.2490, 8.7070),
+    "Rivera": (46.1260, 8.9220),
+    "Tesserete": (46.0680, 8.9650),
+    "Agno": (45.9990, 8.9010),
+    "Caslano": (45.9730, 8.8800),
+    "Melide": (45.9550, 8.9480),
+    "Stabio": (45.8490, 8.9370),
+    "Grono": (46.2480, 9.1490),
+    "Mesocco": (46.3940, 9.2330),
+    "Brusio": (46.2590, 10.1240),
+    # Graubünden
+    "Domat/Ems": (46.8340, 9.4500),
+    "Bonaduz": (46.8100, 9.3980),
+    "Trimmis": (46.9000, 9.5600),
+    "Maienfeld": (47.0090, 9.5300),
+    "Schiers": (46.9700, 9.6870),
+    "Lenzerheide": (46.7280, 9.5570),
+    "Tiefencastel": (46.6600, 9.5780),
+    "Savognin": (46.5960, 9.5980),
+    "Bergün": (46.6300, 9.7470),
+    "Andeer": (46.6030, 9.4270),
+    "Splügen": (46.5510, 9.3220),
+    "Laax": (46.8070, 9.2570),
+    "Trun": (46.7430, 8.9870),
+    "Vals": (46.6170, 9.1800),
+    "Samedan": (46.5340, 9.8720),
+    "Pontresina": (46.4910, 9.9020),
+    "Silvaplana": (46.4590, 9.7950),
+    "Zuoz": (46.6020, 9.9600),
+    "Müstair": (46.6230, 10.4470),
+}
+
+# Where generated drivers' names come from, by the place they start from;
+# everywhere else is German-speaking.
+FRENCH_SPEAKING = {
+    "Genève", "Nyon", "Lausanne", "Yverdon-les-Bains", "Vevey", "Montreux", "Bulle",
+    "Fribourg", "Martigny", "Sion", "Sierre", "Neuchâtel", "La Chaux-de-Fonds",
+    "Delémont", "Biel/Bienne", "Morges", "Rolle", "Gland", "Renens", "Échallens",
+    "Moudon", "Payerne", "Estavayer-le-Lac", "Romont", "Châtel-Saint-Denis", "Aigle",
+    "Monthey", "Bex", "Verbier", "Crans-Montana", "Sainte-Croix", "Le Locle",
+    "Saint-Imier", "Moutier", "Porrentruy",
+}
+ITALIAN_SPEAKING = {
+    "Airolo", "Biasca", "Bellinzona", "Locarno", "Cevio", "Lugano", "Ponte Tresa",
+    "Mendrisio", "Chiasso", "Roveredo", "Poschiavo", "Faido", "Olivone", "Acquarossa",
+    "Giubiasco", "Gordola", "Ascona", "Brissago", "Maggia", "Rivera", "Tesserete",
+    "Agno", "Caslano", "Melide", "Stabio", "Grono", "Mesocco", "Brusio",
+}
+# Romansh and German names mixed.
+GRAUBUNDEN = {
+    "Chur", "Landquart", "Klosters", "Davos", "Arosa", "Flims", "Ilanz",
+    "Disentis/Mustér", "Thusis", "St. Moritz", "Zernez", "Scuol", "Domat/Ems",
+    "Bonaduz", "Trimmis", "Maienfeld", "Schiers", "Lenzerheide", "Tiefencastel",
+    "Savognin", "Bergün", "Andeer", "Splügen", "Laax", "Trun", "Vals", "Samedan",
+    "Pontresina", "Silvaplana", "Zuoz", "Müstair",
 }
 
 
@@ -230,6 +368,229 @@ DEMO_DRIVES = [
     _drive("Jan Zogg", "St. Gallen", "Chur", "08:30", SAT),
     _drive("Jan Zogg", "Chur", "St. Gallen", "17:30", SUN),
 ]
+
+# --- Generated drivers -----------------------------------------------------
+# Many more commuters from the smaller towns, and more departures on the busy
+# corridors. Names, times and seats are drawn at random but seeded by the
+# trip, so they stay the same from one run to the next and adding a trip
+# doesn't change the others.
+
+FIRST_NAMES = {
+    "fr": [
+        "Antoine", "Aurélie", "Baptiste", "Céline", "Christophe", "Delphine", "Émilie",
+        "Fabien", "Florence", "Guillaume", "Hélène", "Jérôme", "Joëlle", "Laurent",
+        "Manon", "Mathieu", "Nathalie", "Noémie", "Patrick", "Romain", "Sandrine",
+        "Sébastien", "Valérie", "Vincent", "Yann", "Chloé", "Benoît", "Martine",
+        "Cédric", "Gaëlle", "Maxime", "Océane", "Grégoire", "Léa", "Arnaud", "Inès",
+    ],
+    "de": [
+        "Andreas", "Barbara", "Christian", "Corinne", "Daniel", "Esther", "Fabian",
+        "Franziska", "Hans", "Jasmin", "Katrin", "Markus", "Michael", "Monika",
+        "Patrick", "Regula", "Roger", "Sabine", "Samuel", "Stefanie", "Thomas",
+        "Ueli", "Vreni", "Yvonne", "Adrian", "Bettina", "Dominik", "Karin", "Lea",
+        "Manuel", "Nicole", "Pascal", "Rahel", "Severin", "Tanja", "Livia",
+    ],
+    "it": [
+        "Alessandro", "Barbara", "Claudio", "Cristina", "Daniele", "Federica",
+        "Francesca", "Gabriele", "Ilaria", "Lorenzo", "Luca", "Manuela", "Massimo",
+        "Michela", "Nadia", "Paolo", "Riccardo", "Roberta", "Silvia", "Simone",
+        "Stefano", "Valentina", "Andrea", "Mattia", "Giada", "Fabrizio", "Elisa",
+        "Diego", "Martina", "Gianluca",
+    ],
+    "gr": [
+        "Gian", "Ursina", "Men", "Ladina", "Flurin", "Seraina", "Andri", "Curdin",
+        "Mirjam", "Reto", "Annina", "Duri", "Mengia", "Not", "Chasper", "Barbla",
+        "Linard", "Madlaina", "Jon", "Corina", "Marco", "Sandra", "Peter", "Nina",
+        "Claudia", "Lukas", "Anna", "Mario", "Silvia", "Martin",
+    ],
+}
+
+LAST_NAMES = {
+    "fr": [
+        "Berset", "Blanc", "Bourgeois", "Carrard", "Chevalley", "Clément", "Cornaz",
+        "Délèze", "Ducret", "Fournier", "Gay", "Girard", "Jaccard", "Jaquet",
+        "Liechti", "Magnin", "Maillard", "Mercier", "Michellod", "Monnier", "Pasche",
+        "Perrin", "Python", "Reymond", "Rey", "Richard", "Rossier", "Schaller",
+        "Tissot", "Vuilleumier", "Zufferey", "Bonvin", "Crettenand", "Droz",
+        "Gindrat", "Humbert-Droz",
+    ],
+    "de": [
+        "Ammann", "Bachmann", "Baumgartner", "Brändli", "Egli", "Fischer", "Fuchs",
+        "Gisler", "Hofer", "Hofmann", "Iten", "Kaufmann", "Kunz", "Lehmann",
+        "Lüthi", "Marti", "Moser", "Müller", "Nussbaumer", "Rüegg", "Schneider",
+        "Schwarz", "Sommer", "Stalder", "Suter", "Tanner", "Vogt", "Weber",
+        "Widmer", "Zaugg", "Zimmermann", "Arnold", "Betschart", "Fässler", "Imhof",
+        "Wyrsch",
+    ],
+    "it": [
+        "Balestra", "Bassi", "Beltrami", "Bernasconi", "Bianchi", "Bottani",
+        "Canonica", "Cavadini", "Colombo", "Conti", "Cereghetti", "Dotta",
+        "Ferrazzini", "Galli", "Gianella", "Guidotti", "Lafranchi", "Malè",
+        "Maggetti", "Molinari", "Pellandini", "Quadri", "Righetti", "Sala",
+        "Soldati", "Storni", "Tamò", "Vanoni", "Zanini", "Zappa",
+    ],
+    "gr": [
+        "Bergamin", "Cadruvi", "Camenisch", "Capaul", "Casanova", "Caviezel",
+        "Cathomen", "Clavadetscher", "Collenberg", "Darms", "Derungs", "Dosch",
+        "Florin", "Hassler", "Jenal", "Juon", "Luzi", "Mani", "Mengelt", "Nay",
+        "Pinggera", "Riedi", "Sialm", "Schmid", "Tscharner", "Tuor", "Vieli",
+        "Brunold", "Gartmann", "Bisaz",
+    ],
+}
+
+
+def _language(place):
+    if place in FRENCH_SPEAKING:
+        return "fr"
+    if place in ITALIAN_SPEAKING:
+        return "it"
+    if place in GRAUBUNDEN:
+        return "gr"
+    return "de"
+
+
+_taken_names = {spec["driver_name"] for spec in DEMO_DRIVES}
+
+
+def _new_driver(rng, place):
+    """A name not used by any other demo driver, typical of `place`."""
+    language = _language(place)
+    while True:
+        name = f"{rng.choice(FIRST_NAMES[language])} {rng.choice(LAST_NAMES[language])}"
+        if name not in _taken_names:
+            _taken_names.add(name)
+            return name
+
+
+def _clock(minutes):
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def _generated_commutes(home, work, count):
+    """`count` commuters from home to work, leaving between 06:30 and 08:15 and
+    coming back between 16:15 and 18:45; a few work part-time."""
+    drives = []
+    for n in range(count):
+        rng = random.Random(f"commute {home} > {work} #{n}")
+        driver = _new_driver(rng, home)
+        out = _clock(6 * 60 + 30 + 5 * rng.randrange(22))
+        back = _clock(16 * 60 + 15 + 5 * rng.randrange(31))
+        weekdays = MON_FRI if rng.random() < 0.8 else rng.choice(
+            [(0, 1, 2, 3), (1, 2, 3, 4), (0, 2, 4), (0, 1, 3)]
+        )
+        drives += _commute(driver, home, work, out, back, weekdays, rng.choice((1, 2, 2, 3, 3, 3, 4)))
+    return drives
+
+
+def _generated_corridor(a, b, times, weekdays=DAILY):
+    """One driver each way at each of `times`."""
+    drives = []
+    for origin, destination in ((a, b), (b, a)):
+        for at in times:
+            rng = random.Random(f"corridor {origin} > {destination} @{at}")
+            driver = _new_driver(rng, origin)
+            drives.append(_drive(driver, origin, destination, at, weekdays, rng.choice((1, 2, 3, 3, 4))))
+    return drives
+
+
+# (home, work, number of commuters)
+COMMUTES = [
+    # Romandie
+    ("Morges", "Lausanne", 3), ("Rolle", "Lausanne", 1), ("Rolle", "Genève", 2),
+    ("Gland", "Genève", 2), ("Nyon", "Lausanne", 1), ("Renens", "Genève", 1),
+    ("Échallens", "Lausanne", 2), ("Moudon", "Lausanne", 2), ("Payerne", "Lausanne", 1),
+    ("Payerne", "Fribourg", 2), ("Estavayer-le-Lac", "Fribourg", 1),
+    ("Estavayer-le-Lac", "Yverdon-les-Bains", 1), ("Romont", "Fribourg", 2),
+    ("Romont", "Lausanne", 1), ("Bulle", "Fribourg", 3), ("Châtel-Saint-Denis", "Vevey", 1),
+    ("Châtel-Saint-Denis", "Lausanne", 2), ("Vevey", "Lausanne", 3), ("Montreux", "Lausanne", 2),
+    ("Aigle", "Lausanne", 2), ("Aigle", "Montreux", 1), ("Monthey", "Lausanne", 1),
+    ("Monthey", "Martigny", 1), ("Monthey", "Vevey", 1), ("Bex", "Monthey", 1),
+    ("Martigny", "Sion", 2), ("Verbier", "Martigny", 1), ("Crans-Montana", "Sierre", 1),
+    ("Crans-Montana", "Sion", 1), ("Sainte-Croix", "Yverdon-les-Bains", 1),
+    ("Yverdon-les-Bains", "Neuchâtel", 2), ("Le Locle", "La Chaux-de-Fonds", 2),
+    ("Le Locle", "Neuchâtel", 1), ("Saint-Imier", "Biel/Bienne", 1),
+    ("Saint-Imier", "La Chaux-de-Fonds", 1), ("Moutier", "Biel/Bienne", 1),
+    ("Moutier", "Delémont", 1), ("Porrentruy", "Delémont", 2), ("Porrentruy", "Basel", 1),
+    ("Delémont", "Basel", 2), ("Fribourg", "Bern", 3), ("Neuchâtel", "Lausanne", 1),
+    ("Sion", "Martigny", 1),
+    # German-speaking Switzerland
+    ("Visp", "Brig", 1), ("Visp", "Sion", 1), ("Murten", "Bern", 2), ("Murten", "Fribourg", 1),
+    ("Lyss", "Bern", 2), ("Lyss", "Biel/Bienne", 1), ("Grenchen", "Biel/Bienne", 1),
+    ("Grenchen", "Solothurn", 1), ("Burgdorf", "Bern", 3), ("Langnau im Emmental", "Bern", 2),
+    ("Langenthal", "Bern", 1), ("Langenthal", "Olten", 1), ("Zofingen", "Olten", 1),
+    ("Zofingen", "Aarau", 1), ("Spiez", "Bern", 2), ("Spiez", "Thun", 1),
+    ("Frutigen", "Thun", 1), ("Interlaken", "Thun", 2), ("Meiringen", "Interlaken", 1),
+    ("Grindelwald", "Interlaken", 1), ("Zweisimmen", "Thun", 1), ("Gstaad", "Zweisimmen", 1),
+    ("Liestal", "Basel", 3), ("Rheinfelden", "Basel", 2), ("Laufen", "Basel", 2),
+    ("Aarau", "Zürich", 2), ("Lenzburg", "Zürich", 1), ("Lenzburg", "Aarau", 1),
+    ("Wohlen", "Zürich", 1), ("Baden", "Zürich", 3), ("Brugg", "Baden", 1),
+    ("Brugg", "Zürich", 1), ("Dietikon", "Zürich", 1), ("Bülach", "Zürich", 2),
+    ("Kloten", "Winterthur", 1), ("Uster", "Zürich", 2), ("Wetzikon", "Zürich", 2),
+    ("Rapperswil", "Zürich", 2), ("Horgen", "Zug", 1), ("Meilen", "Zürich", 1),
+    ("Pfäffikon SZ", "Zürich", 1), ("Einsiedeln", "Pfäffikon SZ", 1), ("Schwyz", "Zug", 1),
+    ("Schwyz", "Luzern", 1), ("Altdorf", "Luzern", 1), ("Altdorf", "Schwyz", 1),
+    ("Stans", "Luzern", 2), ("Sarnen", "Luzern", 2), ("Engelberg", "Stans", 1),
+    ("Sursee", "Luzern", 2), ("Zug", "Luzern", 1), ("Frauenfeld", "Winterthur", 2),
+    ("Frauenfeld", "Zürich", 1), ("Wil", "St. Gallen", 2), ("Wil", "Winterthur", 1),
+    ("Weinfelden", "Frauenfeld", 1), ("Kreuzlingen", "Frauenfeld", 1),
+    ("Kreuzlingen", "St. Gallen", 1), ("Romanshorn", "St. Gallen", 1), ("Arbon", "St. Gallen", 2),
+    ("Rorschach", "St. Gallen", 1), ("Herisau", "St. Gallen", 2), ("Appenzell", "St. Gallen", 1),
+    ("Wattwil", "St. Gallen", 1), ("Wattwil", "Rapperswil", 1), ("Buchs SG", "Sargans", 1),
+    ("Buchs SG", "St. Gallen", 1), ("Glarus", "Rapperswil", 1), ("Glarus", "Zürich", 1),
+    ("Schaffhausen", "Winterthur", 1),
+    # Ticino and Italian-speaking Graubünden
+    ("Ascona", "Locarno", 2), ("Ascona", "Bellinzona", 1), ("Brissago", "Locarno", 1),
+    ("Maggia", "Locarno", 1), ("Gordola", "Bellinzona", 1), ("Gordola", "Lugano", 1),
+    ("Giubiasco", "Lugano", 2), ("Faido", "Bellinzona", 2), ("Acquarossa", "Bellinzona", 1),
+    ("Olivone", "Biasca", 1), ("Biasca", "Bellinzona", 2), ("Tesserete", "Lugano", 2),
+    ("Agno", "Lugano", 1), ("Caslano", "Lugano", 1), ("Melide", "Lugano", 1),
+    ("Stabio", "Lugano", 1), ("Stabio", "Mendrisio", 1), ("Chiasso", "Mendrisio", 1),
+    ("Mendrisio", "Bellinzona", 1), ("Locarno", "Lugano", 1), ("Lugano", "Locarno", 1),
+    ("Rivera", "Lugano", 1), ("Grono", "Bellinzona", 1), ("Mesocco", "Bellinzona", 1),
+    ("Brusio", "Poschiavo", 1),
+    # Graubünden
+    ("Domat/Ems", "Chur", 2), ("Bonaduz", "Chur", 1), ("Trimmis", "Chur", 1),
+    ("Maienfeld", "Chur", 1), ("Maienfeld", "Sargans", 1), ("Schiers", "Landquart", 1),
+    ("Schiers", "Chur", 1), ("Lenzerheide", "Chur", 2), ("Tiefencastel", "Chur", 1),
+    ("Savognin", "Chur", 1), ("Andeer", "Thusis", 1), ("Splügen", "Thusis", 1),
+    ("Laax", "Chur", 1), ("Flims", "Chur", 2), ("Trun", "Ilanz", 1), ("Vals", "Ilanz", 1),
+    ("Bergün", "Chur", 1), ("Samedan", "St. Moritz", 2), ("Pontresina", "St. Moritz", 1),
+    ("Silvaplana", "St. Moritz", 1), ("Zuoz", "Samedan", 1), ("Zernez", "Samedan", 1),
+    ("Müstair", "Zernez", 1), ("Müstair", "Scuol", 1), ("Davos", "Klosters", 1),
+    ("Klosters", "Chur", 1), ("Landquart", "Zürich", 1), ("Chur", "St. Gallen", 1),
+    ("Thusis", "Chur", 1), ("Ilanz", "Flims", 1),
+]
+
+# (one end, other end, departure times each way): every day, outside the
+# commuting hours.
+CORRIDORS = [
+    ("Lausanne", "Genève", ["09:30", "13:00", "15:30", "19:00"]),
+    ("Lausanne", "Fribourg", ["09:00", "12:30", "19:00"]),
+    ("Fribourg", "Bern", ["09:30", "13:30", "18:30"]),
+    ("Lausanne", "Sion", ["09:30", "14:00", "19:00"]),
+    ("Neuchâtel", "Biel/Bienne", ["10:00", "14:30", "18:30"]),
+    ("Bern", "Zürich", ["08:30", "13:30", "18:00"]),
+    ("Bern", "Basel", ["10:00", "15:00"]),
+    ("Bern", "Thun", ["10:00", "13:00", "19:00"]),
+    ("Zürich", "Basel", ["09:30", "14:00", "18:30"]),
+    ("Zürich", "Luzern", ["09:00", "13:00", "18:00"]),
+    ("Zürich", "St. Gallen", ["10:00", "15:00", "19:00"]),
+    ("Zürich", "Winterthur", ["10:30", "13:30", "19:30"]),
+    ("Lugano", "Bellinzona", ["08:30", "12:00", "16:00", "19:00"]),
+    ("Lugano", "Locarno", ["09:00", "16:30", "19:00"]),
+    ("Lugano", "Chiasso", ["09:30", "13:00", "18:30"]),
+    ("Bellinzona", "Biasca", ["09:00", "13:30", "18:00"]),
+    ("Chur", "Landquart", ["09:30", "13:00", "19:00"]),
+    ("Chur", "Davos", ["09:00", "16:30", "19:00"]),
+    ("Chur", "Lenzerheide", ["10:00", "15:00"]),
+    ("Chur", "Zürich", ["10:00", "14:30", "19:30"]),
+    ("St. Moritz", "Samedan", ["10:00", "14:00", "19:00"]),
+]
+
+for _home, _work, _count in COMMUTES:
+    DEMO_DRIVES += _generated_commutes(_home, _work, _count)
+for _a, _b, _times in CORRIDORS:
+    DEMO_DRIVES += _generated_corridor(_a, _b, _times)
 
 
 def _departure_iso(dt: datetime) -> str:
