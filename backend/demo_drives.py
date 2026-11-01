@@ -6,7 +6,7 @@ The drives form a network over the whole country, denser in Ticino and
 Graubünden: weekday commutes (out in the morning, back in the evening),
 midday drives on the busy corridors, and weekend trips. Each corridor has
 departures spread over the day, so a search at most times finds something
-within matching.MAX_TIME_WINDOW_HOURS. A hand-written core of drives is
+within matching.DEFAULT_TIME_TOLERANCE_MIN. A hand-written core of drives is
 filled out by generated ones: about 3,000 commuters from the cities and
 about 100 smaller towns, and departures every hour or two on 41 corridors:
 about 36,000 drives a week in all. Each trip's road route is stored once, in

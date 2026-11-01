@@ -31,7 +31,7 @@ not a production system — no need to plan for scale, migrations, etc.).
 | Database | SQLite, plain `sqlite3` (no ORM) | Prototype only; keeps things transparent and dependency-light |
 | Frontend | Plain HTML/JS + Leaflet map | No build step, fastest to demo |
 | Location input | Interactive map (Leaflet + OpenStreetMap tiles) | Users click points on a map rather than typing addresses |
-| Matching algorithm | **Route corridor matching**, implemented as **detour-cost matching** (see below) | User asked for corridor/trajectory-based matching, not simple point proximity |
+| Matching algorithm | **Route corridor matching** with passenger-chosen pickup/drop-off radii (see below) | User asked for corridor/trajectory-based matching, not simple point proximity |
 | Public transport | Real integration with **transport.opendata.ch** | Free, no API key, covers all Swiss operators including SBB (the official SBB API requires a business partnership and is overkill for a demo) |
 | Auth | None — a name field auto-registers a user row | Prototype; no login flow needed |
 
@@ -41,7 +41,7 @@ A working FastAPI backend, in `backend/`:
 
 - **`database.py`** — SQLite schema and access layer. Tables: `users`, `drives`, `ride_requests`. Plain
   `sqlite3`, `contextmanager`-based connections, no ORM.
-- **`matching.py`** — the matching engine (detour-cost based — see "Matching algorithm" below). Calls the
+- **`matching.py`** — the matching engine (route corridor — see "Matching algorithm" below). Calls the
   public OSRM demo routing server (`router.project-osrm.org`, no API key) for real driving routes/
   distances, and **falls back to haversine (straight-line) distance if OSRM is unreachable**, so the app
   degrades gracefully rather than breaking.
@@ -108,22 +108,24 @@ stored.
     "passenger_name": "Marie",
     "origin": {"name": "Morges", "lat": 46.5089, "lon": 6.4979},
     "destination": {"name": "Nyon", "lat": 46.3833, "lon": 6.2333},
-    "requested_time": "2026-09-22T08:00:00"
+    "requested_time": "2026-09-22T08:00:00",
+    "pickup_radius_km": 5,
+    "dropoff_radius_km": 5,
+    "time_tolerance_min": 120
   }
   ```
-  Returns:
+  The last three are optional (defaults shown). Returns:
   ```json
   {
     "driver_matches": [
       {
         "...drive fields...": "...",
-        "base_distance_km": 74.2,
-        "via_distance_km": 78.9,
-        "detour_km": 4.7,
-        "detour_pct": 6.3,
-        "via_duration_min": 58.1,
-        "route_source": "osrm",
-        "dropoff_gap_km": 0.3,
+        "route_geometry": [[6.4979, 46.5089], "...simplified [lon, lat] pairs..."],
+        "pickup": {"lat": 46.5091, "lon": 6.4982, "gap_km": 0.1, "time": "2026-09-22T08:05"},
+        "dropoff": {"lat": 46.3841, "lon": 6.2350, "gap_km": 0.2, "time": "2026-09-22T08:31"},
+        "ride_km": 31.6,
+        "time_diff_min": 5,
+        "score": 8.6,
         "last_mile_transit": null
       }
     ],
@@ -137,26 +139,23 @@ stored.
 
 ## Matching algorithm — how "trajectory-based" is implemented
 
-The chosen approach ("route corridor matching") is implemented as **detour-cost matching**, which is the
-practical, well-established version of "does the passenger's trip lie along the driver's route":
+**Route corridor matching** with the passenger's own search radii (since 2026-11; it replaced the earlier
+detour-cost matching, which made the driver detour to the passenger's exact start and destination):
 
-```
-detour = distance(driver_origin → passenger_pickup → passenger_dropoff → driver_destination)
-         − distance(driver_origin → driver_destination)
-```
-
-- Both distances come from OSRM (real driving routes), with a multi-waypoint request for the "via" route
-  in one call.
-- Drives are ranked by ascending detour (smallest extra distance = best fit).
-- Filtered out if: no seats left, departure time more than `MAX_TIME_WINDOW_HOURS` (default 3h) from the
-  request, or detour exceeds both `MAX_DETOUR_KM` (default 8 km) and `MAX_DETOUR_PCT` (default 40%) — see
-  the constants at the top of `matching.py`, tune freely.
-- If OSRM is unreachable, the same formula is computed with straight-line (haversine) distances instead,
-  so matching still works, just less precisely.
-
-This was chosen over literally buffering a route polygon and doing point-in-polygon checks because detour
-cost is simpler to implement correctly, gives a natural ranking score (not just yes/no), and doesn't need
-a geometry library (Shapely, projections, etc.) — appropriate for "as simple as possible."
+- The passenger picks a **pickup radius** and a **drop-off radius** (sliders, 5 km by default, 1–30 km),
+  drawn as circles on the map, and a **time tolerance** (± 30 min to ± 4 h, ± 2 h by default).
+- A drive matches when its stored road route passes within the pickup radius of the passenger's start
+  and, at least `MIN_RIDE_KM` further along, within the drop-off radius of their destination. The
+  pickup/drop-off points are the closest points of the route; the driver stays on their route.
+- Time is compared at the **pickup**, estimated from the drive's departure and duration: a
+  Lausanne → Zurich drive leaving at 7:00 is a ~8:00 ride for a passenger in Bern.
+- Drives are ranked by the time the passenger loses: minutes from the requested time, plus
+  `MINUTES_PER_GAP_KM` (12, walking pace) per km to the pickup and from the drop-off. Up to
+  `MAX_RESULTS` (20) are returned.
+- It's plain geometry on the stored routes, no routing call per candidate, so every drive in the time
+  window is considered. A cheap ellipse test on the drive's endpoints (`could_pass_near`) skips loading
+  the route of drives that can't come near.
+- Drives without a road route (OSRM was unreachable when posted) are taken as a straight line.
 
 ## Public transport integration — transport.opendata.ch
 
@@ -164,9 +163,9 @@ Used two ways:
 
 1. **Pure transit alternative**: for every match request, also fetch a direct transit connection from the
    passenger's origin to destination, shown as a comparison option (`transit_option` in the response).
-2. **Last-mile combo**: for each driver match whose drop-off point is more than `LAST_MILE_THRESHOLD_KM`
-   (default 1 km) from the passenger's actual destination, fetch a transit connection from the driver's
-   drop-off point to the passenger's destination — i.e. "drive with this person, then take the train/bus
+2. **Last-mile combo**: for the best `MAX_LAST_MILE_LOOKUPS` (5) driver matches whose drop-off point is
+   more than `LAST_MILE_THRESHOLD_KM` (default 1 km) from the passenger's actual destination, fetch a
+   transit connection from the stop nearest the drop-off point to the passenger's destination — i.e. "drive with this person, then take the train/bus
    the rest of the way." This is the simplified version of the project's "ride + public transport
    composition" vision, without building full multimodal routing.
 
@@ -191,7 +190,7 @@ API notes (transport.opendata.ch, no key needed):
    - For picking origin/destination: a "pick origin" / "pick destination" button toggle, then click the
      map to place a marker (see the `.point-picker` / `.picking` classes already in `style.css` for this
      interaction).
-   - Render `POST /api/match` results: ranked driver cards with detour distance/％ as a "fit" badge, and
+   - Render `POST /api/match` results: ranked driver cards with pickup/drop-off times and distances, and
      for each, if present, the `last_mile_transit` suggestion; plus the standalone `transit_option` as a
      comparison card. CSS classes for this (`.match-card`, `.score`, `.transit-box`, `.last-mile`, etc.)
      are already defined in `style.css`.

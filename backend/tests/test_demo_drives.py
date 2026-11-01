@@ -172,28 +172,33 @@ def test_no_driver_has_two_drives_at_once():
 
 
 def _drives_between(origin, destination, day):
-    """Demo drives on `day` that a passenger from `origin` to `destination` would
-    be matched with: same direction, route passing within a few km of both."""
+    """Pickup times of the demo drives on `day` that a passenger from `origin` to
+    `destination` would be matched with (routes taken as straight lines)."""
     o, d = demo_drives.PLACES[origin], demo_drives.PLACES[destination]
     found = []
     for spec in demo_drives.DEMO_DRIVES:
         if day.weekday() not in spec["weekdays"]:
             continue
+        departure = datetime.combine(day, spec["time"]).isoformat(timespec="minutes")
         drive = {
             "origin_lat": spec["origin"]["lat"], "origin_lon": spec["origin"]["lon"],
             "destination_lat": spec["destination"]["lat"], "destination_lon": spec["destination"]["lon"],
+            "departure_time": departure, "seats_available": 1,
         }
-        if matching.straight_line_detour_km(drive, o, d) <= matching.MAX_DETOUR_KM:
-            found.append(datetime.combine(day, spec["time"]))
+        # Straight lines cut corners the roads don't: Lausanne -> Fribourg as
+        # the crow flies misses Vevey by ~15 km, the motorway by ~2-3 km.
+        m = matching.match_drive(drive, o, d, departure, pickup_radius_km=16, time_tolerance_min=24 * 60)
+        if m:
+            found.append(datetime.fromisoformat(m["pickup"]["time"]))
     return found
 
 
 def test_vevey_fribourg_covered_all_day():
     # Any weekday search between 07:00 and 19:00 has a drive within the
-    # matching time window.
+    # default time tolerance.
     day = datetime(2026, 10, 23).date()  # a Friday
     departures = _drives_between("Vevey", "Fribourg", day)
-    window = timedelta(hours=matching.MAX_TIME_WINDOW_HOURS)
+    window = timedelta(minutes=matching.DEFAULT_TIME_TOLERANCE_MIN)
     for hour in range(7, 20):
         asked = datetime.combine(day, datetime.min.time()) + timedelta(hours=hour)
         assert any(abs(dep - asked) <= window for dep in departures), hour

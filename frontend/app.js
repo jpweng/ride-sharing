@@ -66,7 +66,7 @@ function setPointCoords(role, lat, lon, name, kind = "point") {
     fillOpacity: 0.9,
   }).addTo(pickerLayer);
 
-  points[role] = { lat, lon, name, kind, marker };
+  points[role] = { lat, lon, name, kind, marker, circle: radiusCircle(role, lat, lon) };
 
   const readout = document.getElementById(`readout-${role}`);
   if (readout) readout.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
@@ -74,19 +74,63 @@ function setPointCoords(role, lat, lon, name, kind = "point") {
   zoomToTrip(role.split("-")[0]);
 }
 
+// ---------------------------------------------------------------------
+// Passenger search radii: a circle around the start and the destination,
+// sized by the sliders. Drives whose route passes through both match.
+// ---------------------------------------------------------------------
+const RADIUS_SLIDERS = {
+  "ride-origin": "ride-pickup-radius",
+  "ride-destination": "ride-dropoff-radius",
+};
+
+function radiusKm(role) {
+  return Number(document.getElementById(RADIUS_SLIDERS[role]).value);
+}
+
+function radiusCircle(role, lat, lon) {
+  if (!RADIUS_SLIDERS[role]) return null;
+  return L.circle([lat, lon], {
+    radius: radiusKm(role) * 1000,
+    color: PICK_COLORS[role],
+    weight: 2,
+    fillOpacity: 0.08,
+    interactive: false,
+  }).addTo(pickerLayer);
+}
+
+// Bounds of a point and its circle, if any (L.Circle.getBounds() needs the
+// circle to be on the map).
+function pointBounds(role) {
+  const p = points[role];
+  const km = p.circle ? radiusKm(role) : 0;
+  const dLat = km / 111.32;
+  const dLon = km / (111.32 * Math.cos((p.lat * Math.PI) / 180));
+  return L.latLngBounds([p.lat - dLat, p.lon - dLon], [p.lat + dLat, p.lon + dLon]);
+}
+
+Object.entries(RADIUS_SLIDERS).forEach(([role, sliderId]) => {
+  const slider = document.getElementById(sliderId);
+  const output = document.getElementById(`${sliderId}-value`);
+  const update = () => {
+    output.textContent = `${slider.value} km`;
+    if (points[role]?.circle) points[role].circle.setRadius(slider.value * 1000);
+  };
+  slider.addEventListener("input", update);
+  slider.addEventListener("change", () => zoomToTrip("ride"));
+  update();
+});
+
 // Once a page has both its start and arrival set, frame the trip on the map.
 function zoomToTrip(page) {
-  const origin = points[`${page}-origin`];
-  const destination = points[`${page}-destination`];
-  if (!origin || !destination) return;
-  map.fitBounds(
-    [[origin.lat, origin.lon], [destination.lat, destination.lon]],
-    { padding: [50, 50], maxZoom: 14 }
-  );
+  const origin = `${page}-origin`;
+  const destination = `${page}-destination`;
+  if (!points[origin] || !points[destination]) return;
+  map.fitBounds(pointBounds(origin).extend(pointBounds(destination)), { padding: [30, 30], maxZoom: 14 });
 }
 
 function clearPoint(role) {
   if (points[role] && points[role].marker) pickerLayer.removeLayer(points[role].marker);
+  if (points[role] && points[role].circle) pickerLayer.removeLayer(points[role].circle);
   delete points[role];
   const readout = document.getElementById(`readout-${role}`);
   if (readout) readout.textContent = t("form.notSet");
@@ -143,26 +187,100 @@ function stripHtml(html) {
   return div.textContent || div.innerText || "";
 }
 
-async function searchGeoAdmin(query) {
+// Origins: "gg25" = municipalities, "zipcode" = postcodes, "gazetteer" =
+// swissNAMES3D, "address" = street addresses. Places and addresses are
+// searched separately: the limit applies to all origins together, and the
+// gazetteer's many matches would crowd the addresses out.
+async function geoAdminSearch(query, origins, limit) {
   try {
     const resp = await fetch(
-      `${GEOADMIN_SEARCH_URL}?searchText=${encodeURIComponent(query)}&type=locations&origins=address,gg25&limit=8&sr=4326&lang=${I18N.lang()}`
+      `${GEOADMIN_SEARCH_URL}?searchText=${encodeURIComponent(query)}&type=locations&origins=${origins}&limit=${limit}&sr=4326&lang=${I18N.lang()}`
     );
     if (!resp.ok) throw new Error("geocoding failed");
     const data = await resp.json();
     return (data.results || [])
       .map((r) => r.attrs || {})
-      .filter((a) => typeof a.lat === "number" && typeof a.lon === "number")
-      // origin "gg25" = a municipality, "address" = a street address.
-      .map((a) => ({
-        label: stripHtml(a.label),
-        lat: a.lat,
-        lon: a.lon,
-        kind: a.origin === "gg25" ? "place" : "address",
-      }));
+      .filter((a) => typeof a.lat === "number" && typeof a.lon === "number");
   } catch {
     return []; // fail soft -- "Pick on map" is always a working fallback
   }
+}
+
+// Of the gazetteer, only settlement names: towns, villages and city
+// districts that aren't municipalities of their own (Oerlikon, Verbier,
+// Wengen, Ouchy...). The rest is noise here: schools, buildings, peaks.
+const SETTLEMENT_CLASS = "tlm_siedlungsname";
+const MAX_PLACE_SUGGESTIONS = 5;
+const MAX_SUGGESTIONS = 8;
+
+// A gazetteer label: "<i>Quartier</i> <b>Oerlikon</b> (ZH) - Zürich" ->
+// "Oerlikon (ZH)", with "Quartier · Zürich" as detail.
+function settlementSuggestion(a) {
+  const div = document.createElement("div");
+  div.innerHTML = a.label || "";
+  const name = (div.querySelector("b")?.textContent || "").trim();
+  const type = (div.querySelector("i")?.textContent || "").trim();
+  const where = /\(([^)]+)\)\s*-\s*(.*)$/.exec(div.textContent.trim());
+  if (!name || !where) return null;
+  const municipalities = where[2].split(",");
+  const municipality = municipalities.length === 1 && municipalities[0] !== name ? municipalities[0] : "";
+  return {
+    label: `${name} (${where[1]})`,
+    detail: [type, municipality].filter(Boolean).join(" · "),
+    lat: a.lat,
+    lon: a.lon,
+    kind: "place",
+  };
+}
+
+// "St. Moritz" -> "stmoritz": compares names regardless of accents and punctuation.
+function searchKey(text) {
+  return text.normalize("NFD").replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
+}
+
+// The gazetteer also matches on the municipality: "Zermatt" would list every
+// hamlet of Zermatt. Settlements must have the typed words in their name.
+function nameMatches(name, query) {
+  const key = searchKey(name);
+  return query.split(/\s+/).map(searchKey).every((word) => key.includes(word));
+}
+
+function placeSuggestion(a, query) {
+  if (a.origin === "gazetteer") {
+    if (a.objectclass?.toLowerCase() !== SETTLEMENT_CLASS) return null;
+    const p = settlementSuggestion(a);
+    return p && nameMatches(p.label.replace(/ \([^)]*\)$/, ""), query) ? p : null;
+  }
+  // "Zermatt (VS)"; postcodes come as "8050 - Zürich".
+  const label = stripHtml(a.label).replace(/^(\d{4}) - /, "$1 ").trim();
+  return { label, detail: "", lat: a.lat, lon: a.lon, kind: a.origin === "gg25" ? "place" : "address" };
+}
+
+async function searchGeoAdmin(query) {
+  const [placeResults, addressResults] = await Promise.all([
+    geoAdminSearch(query, "zipcode,gg25,gazetteer", 30),
+    geoAdminSearch(query, "address", MAX_SUGGESTIONS),
+  ]);
+  const places = [];
+  for (const a of placeResults) {
+    const p = placeSuggestion(a, query);
+    // A municipality and its namesake village ("Zermatt (VS)") show once.
+    if (p && !places.some((q) => q.label === p.label)) places.push(p);
+  }
+  const addresses = addressResults.map((a) => ({
+    label: stripHtml(a.label),
+    detail: "",
+    lat: a.lat,
+    lon: a.lon,
+    kind: "address",
+  }));
+  const shownPlaces = places.slice(0, MAX_PLACE_SUGGESTIONS);
+  const shownAddresses = addresses.slice(0, MAX_SUGGESTIONS - shownPlaces.length);
+  // Someone typing a house number wants an address first (but a bare
+  // postcode, its area).
+  return /\d/.test(query) && !/^\d{4}$/.test(query.trim())
+    ? [...shownAddresses, ...shownPlaces]
+    : [...shownPlaces, ...shownAddresses];
 }
 
 function setupAutocomplete(role) {
@@ -174,6 +292,7 @@ function setupAutocomplete(role) {
   let activeIndex = -1;
 
   function closeList() {
+    searchCount++; // drop the answer to a search still running
     list.classList.remove("show");
     list.innerHTML = "";
     items = [];
@@ -182,7 +301,12 @@ function setupAutocomplete(role) {
 
   function renderList() {
     list.innerHTML = items
-      .map((it, i) => `<li data-index="${i}" class="${i === activeIndex ? "active" : ""}">${it.label}</li>`)
+      .map(
+        (it, i) =>
+          `<li data-index="${i}" class="${i === activeIndex ? "active" : ""}">${esc(it.label)}${
+            it.detail ? `<span class="suggest-detail">${esc(it.detail)}</span>` : ""
+          }</li>`
+      )
       .join("");
     list.classList.toggle("show", items.length > 0);
   }
@@ -193,12 +317,16 @@ function setupAutocomplete(role) {
     closeList();
   }
 
+  let searchCount = 0;
   const runSearch = debounce(async (query) => {
+    const search = ++searchCount;
     if (query.trim().length < 3) {
       closeList();
       return;
     }
-    items = await searchGeoAdmin(query);
+    const found = await searchGeoAdmin(query);
+    if (search !== searchCount) return; // a newer search has started
+    items = found;
     activeIndex = -1;
     renderList();
   }, 300);
@@ -344,7 +472,9 @@ function route() {
   setPicking(null);
   pickerLayer.clearLayers();
   Object.entries(points).forEach(([role, p]) => {
-    if (role.startsWith(`${shown}-`) && p.marker) pickerLayer.addLayer(p.marker);
+    if (!role.startsWith(`${shown}-`)) return;
+    if (p.marker) pickerLayer.addLayer(p.marker);
+    if (p.circle) pickerLayer.addLayer(p.circle);
   });
   resultsLayer.clearLayers();
 
@@ -424,7 +554,7 @@ async function cancelDrive(d) {
 document.getElementById("drive-submit").addEventListener("click", async () => {
   const origin = getPoint("drive-origin", "name-drive-origin");
   const destination = getPoint("drive-destination", "name-drive-destination");
-  const departure = document.getElementById("drive-departure").value;
+  const departure = getDateTime("drive");
   const seats = parseInt(document.getElementById("drive-seats").value, 10) || 1;
 
   if (!origin) return showStatus("drive-status", t("form.needOrigin"), false);
@@ -502,7 +632,7 @@ document.getElementById("ride-submit").addEventListener("click", findRide);
 async function findRide() {
   const origin = getPoint("ride-origin", "name-ride-origin");
   const destination = getPoint("ride-destination", "name-ride-destination");
-  const requestedTime = document.getElementById("ride-time").value;
+  const requestedTime = getDateTime("ride");
 
   if (!origin) return showStatus("ride-status", t("form.needOrigin"), false);
   if (!destination) return showStatus("ride-status", t("form.needDestination"), false);
@@ -529,6 +659,9 @@ async function findRide() {
         origin,
         destination,
         requested_time: requestedTime,
+        pickup_radius_km: radiusKm("ride-origin"),
+        dropoff_radius_km: radiusKm("ride-destination"),
+        time_tolerance_min: Number(document.getElementById("ride-tolerance").value),
       }),
     });
     lastResults = { data, origin, destination };
@@ -575,14 +708,14 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
   // One entry per match: its card, route line (if any) and colour.
   const shown = [];
   let selected = null;
-  let dropoffMarker = null;
+  let meetingMarkers = [];
 
-  // Clicking a match highlights its route and fades the others; clicking it
-  // again shows them all as before.
+  // Clicking a match highlights its route, with where you'd get in and out,
+  // and fades the others; clicking it again shows them all as before.
   function select(entry) {
     selected = selected === entry ? null : entry;
-    if (dropoffMarker) resultsLayer.removeLayer(dropoffMarker);
-    dropoffMarker = null;
+    meetingMarkers.forEach((marker) => resultsLayer.removeLayer(marker));
+    meetingMarkers = [];
     shown.forEach((s) => {
       s.card.classList.toggle("selected", s === selected);
       if (!s.line) return;
@@ -597,16 +730,20 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
     const bounds = L.latLngBounds([
       [passengerOrigin.lat, passengerOrigin.lon],
       [passengerDestination.lat, passengerDestination.lon],
-      [m.origin_lat, m.origin_lon],
-      [m.destination_lat, m.destination_lon],
+      [m.pickup.lat, m.pickup.lon],
+      [m.dropoff.lat, m.dropoff.lon],
     ]);
-    if (selected.line) bounds.extend(selected.line.getBounds());
-    if (m.recommended_dropoff) {
-      const { lat, lon, station_name } = m.recommended_dropoff;
-      dropoffMarker = L.circleMarker([lat, lon], { radius: 7, color: selected.color, fillColor: "#fff", fillOpacity: 1, weight: 3 })
+    [
+      [m.pickup, "map.pickupPoint", "ride-origin"],
+      [m.dropoff, "map.dropoffPoint", "ride-destination"],
+    ].forEach(([point, key, role]) => {
+      const marker = L.circleMarker([point.lat, point.lon], {
+        radius: 7, color: PICK_COLORS[role], fillColor: "#fff", fillOpacity: 1, weight: 3,
+      })
         .addTo(resultsLayer)
-        .bindTooltip(esc(t("map.dropoff", { station: station_name })));
-    }
+        .bindTooltip(esc(t(key, { time: fmtClock(point.time) })), { permanent: true, direction: "top" });
+      meetingMarkers.push(marker);
+    });
     map.fitBounds(bounds, { padding: [30, 30] });
   }
 
@@ -615,20 +752,13 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
     card.className = "match-card clickable";
     const color = routeColors[idx % routeColors.length];
     card.style.borderLeftColor = color;
-    const warn = m.detour_km > 4 || m.detour_pct > 25;
     card.innerHTML = `
       <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}${demoBadge(m)}</div>
       <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
-      <div class="meta">${esc(t("match.distances", { base: fmtNumber(m.base_distance_km), via: fmtNumber(m.via_distance_km) }))}</div>
-      <span class="score ${warn ? "warn" : ""}">${esc(t("match.detour", { km: fmtNumber(m.detour_km), pct: fmtNumber(m.detour_pct) }))}</span>
-      <span class="badge">${m.route_source}</span>
-      ${
-        m.recommended_dropoff
-          ? `<div class="meta">${t("match.suggestedDropoff", { station: esc(m.recommended_dropoff.station_name), km: fmtNumber(m.dropoff_gap_km) })}</div>`
-          : m.dropoff_gap_km > 1
-          ? `<div class="meta">${esc(t("match.dropoffGap", { km: fmtNumber(m.dropoff_gap_km) }))}</div>`
-          : ""
-      }
+      <div class="meta">${esc(t("match.pickup", { time: fmtClock(m.pickup.time), km: fmtNumber(m.pickup.gap_km) }))}</div>
+      <div class="meta">${esc(t("match.dropoff", { time: fmtClock(m.dropoff.time), km: fmtNumber(m.dropoff.gap_km) }))}</div>
+      ${timeDiffBadge(m.time_diff_min)}
+      <span class="badge">${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</span>
       ${renderLastMile(m.last_mile_transit)}
     `;
     container.appendChild(card);
@@ -653,6 +783,20 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
   });
 
   fitToResults();
+}
+
+// How far the pickup is from the time the passenger asked for.
+function timeDiffBadge(minutes) {
+  if (Math.abs(minutes) < MINUTE_STEP) return `<span class="score">${esc(t("match.onTime"))}</span>`;
+  const key = minutes > 0 ? "match.later" : "match.earlier";
+  const warn = Math.abs(minutes) > 60 ? "warn" : "";
+  return `<span class="score ${warn}">${esc(t(key, { duration: fmtMinutes(Math.abs(minutes)) }))}</span>`;
+}
+
+function fmtMinutes(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h} h ${pad2(m)}` : `${m} min`;
 }
 
 function renderLastMile(lastMile) {
@@ -819,14 +963,42 @@ async function showDriveOnMap(drive) {
   L.marker([drive.destination_lat, drive.destination_lon]).addTo(resultsLayer).bindPopup(esc(drive.destination_name));
 }
 
-// Default time inputs to "in 2 hours" so the demo has a sensible starting point.
-(function setDefaultTimes() {
-  const in2h = new Date(Date.now() + 2 * 60 * 60 * 1000);
-  in2h.setMinutes(in2h.getMinutes() - in2h.getTimezoneOffset());
-  const iso = in2h.toISOString().slice(0, 16);
-  document.getElementById("drive-departure").value = iso;
-  document.getElementById("ride-time").value = iso;
-})();
+// ---------------------------------------------------------------------
+// Date + time pickers: times in 5-minute steps, like SBB's timetable.
+// ---------------------------------------------------------------------
+const MINUTE_STEP = 5;
+
+const pad2 = (n) => String(n).padStart(2, "0");
+
+function setupDateTime(prefix) {
+  const options = (values) => values.map((v) => `<option value="${pad2(v)}">${pad2(v)}</option>`).join("");
+  document.getElementById(`${prefix}-hour`).innerHTML = options([...Array(24).keys()]);
+  document.getElementById(`${prefix}-minute`).innerHTML = options(
+    [...Array(60 / MINUTE_STEP).keys()].map((i) => i * MINUTE_STEP)
+  );
+}
+
+// Rounded up to the next 5 minutes.
+function setDateTime(prefix, date) {
+  const step = MINUTE_STEP * 60 * 1000;
+  const d = new Date(Math.ceil(date.getTime() / step) * step);
+  document.getElementById(`${prefix}-date`).value = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  document.getElementById(`${prefix}-hour`).value = pad2(d.getHours());
+  document.getElementById(`${prefix}-minute`).value = pad2(d.getMinutes());
+}
+
+// "2026-11-01T16:25" (local time, like the backend expects), or "" without a date.
+function getDateTime(prefix) {
+  const date = document.getElementById(`${prefix}-date`).value;
+  if (!date) return "";
+  return `${date}T${document.getElementById(`${prefix}-hour`).value}:${document.getElementById(`${prefix}-minute`).value}`;
+}
+
+// Default to "in 2 hours" so the demo has a sensible starting point.
+["drive", "ride"].forEach((prefix) => {
+  setupDateTime(prefix);
+  setDateTime(prefix, new Date(Date.now() + 2 * 60 * 60 * 1000));
+});
 
 function translateUnsetReadouts() {
   Object.keys(PICK_COLORS).forEach((role) => {

@@ -1,7 +1,7 @@
 """
 Integration tests through the actual /api/match request handler
 (main.match_ride), the same code path the frontend hits -- not just the
-underlying matching.py / dropoff.py functions in isolation. This is the
+underlying matching.py functions in isolation. This is the
 layer where the real reported bugs actually surfaced (a drive posted, a
 request posted, no match shown), so it's worth covering end-to-end even
 though the pieces are unit-tested separately.
@@ -23,6 +23,16 @@ DAY_3 = (date.today() + timedelta(days=3)).isoformat()
 
 CONNECTION = [{"departure": f"{DAY_1}T18:00:00", "arrival": f"{DAY_1}T18:20:00", "duration": "00:20:00",
                "transfers": 1, "products": ["B"]}]
+
+AIGLE_BERN_ROUTE_GEOMETRY = [
+    [6.966930, 46.317162],  # Aigle
+    [6.923530, 46.394032],  # Villeneuve
+    [6.841900, 46.462800],  # Vevey
+    [6.900000, 46.527000],  # Châtel-Saint-Denis
+    [7.056900, 46.619300],  # Bulle
+    [7.161900, 46.806500],  # Fribourg
+    [7.447398, 46.940830],  # Bern
+]
 
 LOCARNO_CHUR_ROUTE_GEOMETRY = [
     [8.801329, 46.166769],
@@ -54,16 +64,25 @@ def _post_drive(driver_name, origin, destination, departure_time, seats_availabl
     return main.post_drive(payload)
 
 
-def test_bernard_marie_bern_match(isolated_db, force_haversine, fake_transit):
-    fake_transit.add_station("Bern, Forsthaus", 46.95197, 7.417567)
-    fake_transit.set_connections("Hallwylstrasse 4 3005 Bern", "Bern, Forsthaus", CONNECTION)
+def _set_route(drive, geometry):
+    # post_drive computes route_geometry itself via matching.route_with_fallback,
+    # which is forced to haversine (a straight line) by the force_haversine
+    # fixture -- overwrite it with a realistic curved polyline, matching what
+    # a real OSRM-backed drive would have stored.
+    import json
+    import database as db
+    with db.get_conn() as conn:
+        conn.execute("UPDATE drives SET route_geometry = ? WHERE id = ?", (json.dumps(geometry), drive["id"]))
 
-    _post_drive(
+
+def test_bernard_marie_bern_match(isolated_db, force_haversine, fake_transit):
+    drive = _post_drive(
         "Bernard",
         origin=("Rue du Rhône 9 1860 Aigle", 46.317161560058594, 6.966929912567139),
         destination=("Hallwylstrasse 4 3005 Bern", 46.94083023071289, 7.4473981857299805),
         departure_time=f"{DAY_1}T18:00",
     )
+    _set_route(drive, AIGLE_BERN_ROUTE_GEOMETRY)
 
     payload = main.MatchRequest(
         passenger_name="Marie",
@@ -74,12 +93,12 @@ def test_bernard_marie_bern_match(isolated_db, force_haversine, fake_transit):
     result = main.match_ride(payload)
 
     assert [m["driver_name"] for m in result["driver_matches"]] == ["Bernard"]
-    assert result["driver_matches"][0]["detour_km"] < 8.0
+    match = result["driver_matches"][0]
+    assert match["pickup"]["gap_km"] < 1.0
+    assert match["dropoff"]["gap_km"] < 5.0
 
 
-def test_matteo_marie_versam_match_with_recommended_dropoff(
-    isolated_db, force_haversine, fake_transit, dense_dropoff_sampling
-):
+def test_matteo_marie_versam_match_with_last_mile(isolated_db, force_haversine, fake_transit):
     fake_transit.add_station("Domat/Ems, Parc industrial", 46.830489, 9.428246)
     fake_transit.add_station("Versam-Safien", 46.80705642700195, 9.311906814575195)
     fake_transit.set_connections("Domat/Ems, Parc industrial", "Versam-Safien", CONNECTION)
@@ -90,37 +109,24 @@ def test_matteo_marie_versam_match_with_recommended_dropoff(
         destination=("Museumstrasse 3 7000 Chur", 46.8482666015625, 9.533320426940918),
         departure_time=f"{DAY_2}T15:00",
     )
-    # post_drive computes route_geometry itself via matching.route_with_fallback,
-    # which is forced to haversine (a straight line) by the force_haversine
-    # fixture -- overwrite it with a realistic curved polyline so the
-    # route-sampling in dropoff.py has something meaningful to snap stations
-    # to, matching what a real OSRM-backed drive would have stored.
-    import database as db
-    with db.get_conn() as conn:
-        import json
-        conn.execute(
-            "UPDATE drives SET route_geometry = ? WHERE id = ?",
-            (json.dumps(LOCARNO_CHUR_ROUTE_GEOMETRY), drive["id"]),
-        )
+    _set_route(drive, LOCARNO_CHUR_ROUTE_GEOMETRY)
 
-    payload = main.MatchRequest(
-        passenger_name="Marie",
-        origin={"name": "Riazzino", "lat": 46.18094253540039, "lon": 8.88644790649414},
-        destination={"name": "Versam", "lat": 46.80705642700195, "lon": 9.311906814575195},
-        requested_time=f"{DAY_2}T15:15",
-    )
-    result = main.match_ride(payload)
+    def search(dropoff_radius_km):
+        return main.match_ride(main.MatchRequest(
+            passenger_name="Marie",
+            origin={"name": "Riazzino", "lat": 46.18094253540039, "lon": 8.88644790649414},
+            destination={"name": "Versam", "lat": 46.80705642700195, "lon": 9.311906814575195},
+            requested_time=f"{DAY_2}T15:15",
+            dropoff_radius_km=dropoff_radius_km,
+        ))["driver_matches"]
 
-    matches = result["driver_matches"]
+    # His route passes ~9 km from Versam: outside the default 5 km drop-off radius...
+    assert search(5) == []
+    # ...inside a 10 km one, with a bus for the rest of the way.
+    matches = search(10)
     assert [m["driver_name"] for m in matches] == ["Matteo"]
-    match = matches[0]
-    assert match["recommended_dropoff"] is not None
-    assert match["recommended_dropoff"]["station_name"] == "Domat/Ems, Parc industrial"
-    assert match["last_mile_transit"]["to_station"] == "Versam-Safien"
-    # The refined, route-aware detour must be materially smaller than the
-    # naive "detour all the way to Chur and back" baseline of ~31km/22%
-    # that the original bug report was filed against.
-    assert match["detour_km"] < 15.0
+    assert matches[0]["last_mile_transit"]["from_station"] == "Domat/Ems, Parc industrial"
+    assert matches[0]["last_mile_transit"]["to_station"] == "Versam-Safien"
 
 
 def test_date_typo_request_yields_no_match(isolated_db, force_haversine, fake_transit):
@@ -171,21 +177,41 @@ def test_town_endpoints_use_their_train_stations(isolated_db, force_haversine, f
     assert (by_address["from_station"], by_address["to_station"]) == ("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean")
 
 
-def test_drives_at_the_edge_of_the_time_window_still_match(isolated_db, force_haversine, fake_transit):
+def test_drives_at_the_edge_of_the_time_tolerance_still_match(isolated_db, force_haversine, fake_transit):
     # Only drives near the requested time are loaded; the bounds must not cut
-    # off one exactly MAX_TIME_WINDOW_HOURS away, whatever its time format.
+    # off one whose pickup is exactly time_tolerance_min away, whatever its
+    # time format. Pickup at Aigle, the drives' start: pickup time = departure.
     aigle = ("Aigle", 46.3180, 6.9700)
     bern = ("Bern", 46.9480, 7.4474)
-    _post_drive("Early", aigle, bern, f"{DAY_1}T15:00:00")
-    _post_drive("Late", aigle, bern, f"{DAY_1}T21:00")
-    _post_drive("Too late", aigle, bern, f"{DAY_1}T21:05")
+    _post_drive("Early", aigle, bern, f"{DAY_1}T16:00:00")
+    _post_drive("Late", aigle, bern, f"{DAY_1}T20:00")
+    _post_drive("Too late", aigle, bern, f"{DAY_1}T20:05")
+    _post_drive("Too early", aigle, bern, f"{DAY_1}T15:55")
 
     payload = main.MatchRequest(
         passenger_name="Marie",
-        origin={"name": "Villeneuve VD", "lat": 46.3940, "lon": 6.9235},
+        origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
         destination={"name": "Bern", "lat": 46.9546, "lon": 7.4207},
         requested_time=f"{DAY_1}T18:00",
     )
     result = main.match_ride(payload)
 
     assert sorted(m["driver_name"] for m in result["driver_matches"]) == ["Early", "Late"]
+
+
+def test_a_drive_that_left_earlier_matches_by_its_pickup_time(isolated_db, force_haversine, fake_transit):
+    # Aigle -> Bern straight line (~80 km at the fallback 60 km/h): a drive
+    # leaving Aigle at 16:30 passes Fribourg-ish ~17:30.
+    _post_drive("Bernard", ("Aigle", 46.3180, 6.9700), ("Bern", 46.9480, 7.4474), f"{DAY_1}T16:30")
+
+    def search(tolerance):
+        return main.match_ride(main.MatchRequest(
+            passenger_name="Marie",
+            origin={"name": "Near Fribourg", "lat": 46.75, "lon": 7.30},
+            destination={"name": "Bern", "lat": 46.9480, "lon": 7.4474},
+            requested_time=f"{DAY_1}T17:45",
+            time_tolerance_min=tolerance,
+        ))["driver_matches"]
+
+    assert [m["driver_name"] for m in search(30)] == ["Bernard"]
+    assert search(5) == []

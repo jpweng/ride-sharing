@@ -11,6 +11,7 @@
 //   data-i18n="key"              sets the element's text
 //   data-i18n-html="key"         sets its HTML (dictionary strings are trusted)
 //   data-i18n-placeholder="key"  sets its placeholder
+//   data-i18n-aria-label="key"   sets its aria-label
 //   data-i18n-block + lang="xx"  shown only in that language; for whole
 //                                texts such as the privacy notice
 //   <html data-i18n-title="key"> sets the page title
@@ -91,6 +92,7 @@ const I18N = (() => {
     set("data-i18n", (el, s) => (el.textContent = s));
     set("data-i18n-html", (el, s) => (el.innerHTML = s));
     set("data-i18n-placeholder", (el, s) => (el.placeholder = s));
+    set("data-i18n-aria-label", (el, s) => el.setAttribute("aria-label", s));
     document.querySelectorAll("[data-i18n-block]").forEach((el) => (el.hidden = el.lang !== lang));
     document.querySelectorAll(".lang-picker [data-lang]").forEach((btn) =>
       btn.setAttribute("aria-pressed", String(btn.dataset.lang === lang))

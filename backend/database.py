@@ -257,6 +257,30 @@ def get_drive(drive_id: int) -> dict | None:
         return _drive_row_to_dict(row) if row else None
 
 
+def route_geometries(drive_ids: list[int]) -> dict[int, list | None]:
+    """drive id -> its route geometry ([[lon, lat], ...] or None). Demo
+    drives on the same trip share one parsed copy of their route."""
+    parsed = {}
+    geometries = {}
+    with get_conn() as conn:
+        for i in range(0, len(drive_ids), 500):  # stay under SQLite's variable limit
+            chunk = drive_ids[i:i + 500]
+            rows = conn.execute(
+                f"""
+                SELECT d.id, COALESCE(d.route_geometry, r.geometry) AS geometry
+                FROM {_DRIVES_WITH_ROUTES}
+                WHERE d.id IN ({",".join("?" * len(chunk))})
+                """,
+                chunk,
+            ).fetchall()
+            for row in rows:
+                text = row["geometry"]
+                if text is not None and text not in parsed:
+                    parsed[text] = json.loads(text)
+                geometries[row["id"]] = parsed.get(text)
+    return geometries
+
+
 def delete_drive(drive_id: int) -> None:
     delete_drives([drive_id])
 

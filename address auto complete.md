@@ -96,3 +96,24 @@ and picking the top suggestion silently sent the wrong coordinates. Fixed by sea
 `origins=address,gg25` — `gg25` is the SwissNAMES3D place-name layer (cities, villages, hamlets), and
 geo.admin.ch weights those matches far higher than a street-name substring hit, so the city itself now
 sorts first while full street addresses still resolve correctly.
+
+### Bug fix: localities that aren't municipalities (Oerlikon, Verbier, Wengen…)
+
+`gg25` is in fact the municipality layer, not SwissNAMES3D: a place that isn't a municipality of its own
+couldn't be found. That covers city districts (Oerlikon, Altstetten, Wollishofen in Zürich; Ouchy in
+Lausanne), resort villages inside a larger municipality (Verbier → Val de Bagnes, Wengen and Mürren →
+Lauterbrunnen, Lenzerheide → Vaz/Obervaz, Les Diablerets → Ormont-Dessus) and the many former
+municipalities merged away. Fixed by also searching `gazetteer` (SwissNAMES3D), keeping only settlement
+names (`objectclass` `TLM_SIEDLUNGSNAME`: populated places, wards, parts of wards) whose name contains
+the typed words. The rest of the gazetteer is noise here (schools, buildings, peaks, motorway exits),
+and it also matches on the municipality, which would list every hamlet of Zermatt for "Zermatt".
+Postcodes (`zipcode`) are searched too.
+
+Places and addresses are two parallel requests: `limit` applies to all origins together, and the
+gazetteer's many hits would crowd addresses out. Up to 5 places come first, then addresses (addresses
+first when the query has a house number). A settlement shows as "Oerlikon (ZH)", with its type and
+municipality underneath ("Ward · Zürich"). It counts as a "place", so public transport starts or ends
+at its station.
+
+Still not found: anything outside Switzerland (Annemasse, Lörrach, Como, Konstanz: see Option 3), and
+misspellings (geo.admin.ch's search doesn't correct typos).

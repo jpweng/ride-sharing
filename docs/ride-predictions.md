@@ -63,16 +63,14 @@ Rules (in `backend/notify.py`):
 
 1. **Candidates:** drivers with a past drive in the last 13 weeks that:
    - leaves within **±60 min** of the requested time of day;
-   - heads the same way (`matching.heads_same_way`);
-   - stays within the usual detour limits (`matching.MAX_DETOUR_KM` / `MAX_DETOUR_PCT`), checked in
-     a straight line first and then routed for the top `matching.MAX_ROUTED_CANDIDATES`, the same
-     cost cap as a search.
+   - has a route passing within the passenger's pickup and drop-off radii, in that order
+     (`matching.match_drive`, the same rule as a search).
 2. **Excluded:**
    - the passenger themself;
    - drivers who already posted a matching drive, because the passenger sees that drive already;
    - drivers who muted this route or turned request notifications off.
 3. **Ranking:** drivers who made the drive most often come first, then a bonus for the same weekday
-   and a closer time, minus the detour. A habitual driver is the most likely to say yes.
+   and a closer time, minus the distance to the pickup and from the drop-off. A habitual driver is the most likely to say yes.
 
 ### How often
 

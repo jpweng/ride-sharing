@@ -3,12 +3,13 @@ FastAPI backend for the ride-sharing prototype.
 
 Two core use cases:
   1. POST /api/drives      -- a driver proposes a drive.
-  2. POST /api/match       -- a passenger asks for a ride; the app ranks
-                               posted drives by detour cost (see matching.py)
-                               and also offers a pure-public-transport
-                               option and, for matches that don't reach the
-                               passenger's exact destination, a "drive +
-                               last-mile transit" combo (see transit.py).
+  2. POST /api/match       -- a passenger asks for a ride; the app finds
+                               the drives whose route passes within their
+                               pickup and drop-off radii, around their time
+                               (see matching.py), adds a last-mile transit
+                               connection from the drop-off for the best
+                               ones, and also offers a pure-public-transport
+                               option (see transit.py).
   GET /api/drives          -- browse all upcoming posted drives
                                (?driver_name= narrows to one driver's own).
   GET /api/drives/{id}     -- a single drive with full route geometry.
@@ -34,7 +35,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import database as db
-import dropoff
 import maintenance
 import matching
 import transit
@@ -74,6 +74,10 @@ FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 # passenger's actual destination", and we look for a last-mile transit leg.
 LAST_MILE_THRESHOLD_KM = 1.0
 
+# Last-mile connections are only looked up for the best few matches: each
+# costs a few calls to transport.opendata.ch, a free, rate-limited API.
+MAX_LAST_MILE_LOOKUPS = 5
+
 
 def api_error(status: int, code: str, message: str) -> HTTPException:
     # The frontend shows its translation of `code` (errors.<code> in
@@ -105,6 +109,11 @@ class MatchRequest(BaseModel):
     origin: LatLon
     destination: LatLon
     requested_time: str  # ISO 8601
+    # How far from their start / destination the passenger will meet the
+    # driver, and how far from requested_time the pickup may be.
+    pickup_radius_km: float = Field(default=matching.DEFAULT_PICKUP_RADIUS_KM, ge=0.5, le=50)
+    dropoff_radius_km: float = Field(default=matching.DEFAULT_DROPOFF_RADIUS_KM, ge=0.5, le=50)
+    time_tolerance_min: int = Field(default=matching.DEFAULT_TIME_TOLERANCE_MIN, ge=0, le=360)
 
 
 @app.get("/api/health")
@@ -199,75 +208,61 @@ def match_ride(payload: MatchRequest):
         requested_time=payload.requested_time,
     )
 
-    # Only drives near the requested time (matching filters on it exactly);
-    # there are tens of thousands of demo drives a week.
+    # Only drives that can reach the pickup near the requested time
+    # (matching filters on the pickup time exactly): there are tens of
+    # thousands of demo drives a week.
     asked = datetime.fromisoformat(payload.requested_time).replace(tzinfo=None)
-    window = timedelta(hours=matching.MAX_TIME_WINDOW_HOURS, minutes=1)
-    all_drives = db.list_drives(
+    tolerance = timedelta(minutes=payload.time_tolerance_min + 1)
+    drives = db.list_drives(
         upcoming_only=True,
         with_geometry=False,
-        departing_from=(asked - window).isoformat(timespec="minutes"),
-        departing_until=(asked + window).isoformat(timespec="minutes"),
+        departing_from=(asked - tolerance - timedelta(hours=matching.MAX_DRIVE_HOURS)).isoformat(timespec="minutes"),
+        departing_until=(asked + tolerance).isoformat(timespec="minutes"),
     )
     passenger_origin = (payload.origin.lat, payload.origin.lon)
     passenger_destination = (payload.destination.lat, payload.destination.lon)
     origin_place = payload.origin.name if payload.origin.kind == "place" else None
     destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
+    # Routes (large) only for the drives that can pass near both ends.
+    candidates = [
+        d for d in drives
+        if d["seats_available"] > 0
+        and matching.could_pass_near(d, passenger_origin, payload.pickup_radius_km)
+        and matching.could_pass_near(d, passenger_destination, payload.dropoff_radius_km)
+    ]
+    geometries = db.route_geometries([d["id"] for d in candidates])
+    for d in candidates:
+        d["route_geometry"] = geometries.get(d["id"])
+
     driver_matches = matching.find_matches(
-        all_drives, passenger_origin, passenger_destination, payload.requested_time
+        candidates, passenger_origin, passenger_destination, payload.requested_time,
+        pickup_radius_km=payload.pickup_radius_km,
+        dropoff_radius_km=payload.dropoff_radius_km,
+        time_tolerance_min=payload.time_tolerance_min,
     )
-    # Route geometry only for the few matches: drop-off search and the map use it.
-    for m in driver_matches:
-        m["route_geometry"] = (db.get_drive(m["id"]) or {}).get("route_geometry")
 
-    # For each match, if the driver's own drop-off is meaningfully far from
-    # the passenger's actual destination, see if the driver could instead let
-    # them off somewhere closer -- but still on their own route -- with a
-    # real transit connection covering the rest (see dropoff.py). This is
-    # strictly an improvement over the driver's own destination: it's only
-    # used when it has a smaller detour *and* an onward connection, so it
-    # never makes a match worse, only refines where the passenger actually
-    # gets dropped.
-    for m in driver_matches:
-        dropoff_gap_km = matching.haversine_km(
-            m["destination_lat"], m["destination_lon"],
-            payload.destination.lat, payload.destination.lon,
-        )
-        m["dropoff_gap_km"] = round(dropoff_gap_km, 2)
-        m["recommended_dropoff"] = None
-        if dropoff_gap_km <= LAST_MILE_THRESHOLD_KM:
-            m["last_mile_transit"] = None
+    # A public transport connection from the drop-off to the passenger's
+    # actual destination, when it's too far to walk.
+    destination_station = None
+    for i, m in enumerate(driver_matches):
+        m["last_mile_transit"] = None
+        if i >= MAX_LAST_MILE_LOOKUPS or m["dropoff"]["gap_km"] <= LAST_MILE_THRESHOLD_KM:
             continue
-
-        best = dropoff.find_best_dropoff(
-            m, passenger_origin, passenger_destination, payload.requested_time,
-            destination_place=destination_place,
-        )
-        if best is not None:
-            m["recommended_dropoff"] = {
-                "station_name": best["station_name"],
-                "lat": best["lat"],
-                "lon": best["lon"],
+        if destination_station is None:
+            destination_station = transit.resolve_station(
+                payload.destination.lat, payload.destination.lon, destination_place
+            ) or {}
+        from_station = transit.nearest_named_station(m["dropoff"]["lat"], m["dropoff"]["lon"])
+        if not from_station or not destination_station or from_station["name"] == destination_station["name"]:
+            continue
+        connections = transit.get_connections(from_station["name"], destination_station["name"], m["dropoff"]["time"])
+        if connections:
+            m["last_mile_transit"] = {
+                "from_station": from_station["name"],
+                "to_station": destination_station["name"],
+                "connections": connections,
             }
-            m["detour_km"] = best["detour_km"]
-            m["detour_pct"] = round(
-                best["detour_km"] / m["base_distance_km"] * 100.0, 1
-            ) if m["base_distance_km"] > 0 else 0.0
-            m["dropoff_gap_km"] = best["dropoff_gap_km"]
-            m["last_mile_transit"] = best["last_mile_transit"]
-        else:
-            m["last_mile_transit"] = transit.transit_option_for_trip(
-                m["destination_lat"], m["destination_lon"],
-                payload.destination.lat, payload.destination.lon,
-                payload.requested_time,
-                destination_place=destination_place,
-            )
-
-    # Refine the ranking now that some matches may have a smaller,
-    # route-aware detour than the naive "all the way to my own destination"
-    # figure they were originally ranked on.
-    driver_matches.sort(key=lambda d: (d["detour_km"], d["detour_pct"]))
 
     # Pure public-transport alternative, origin to final destination, for comparison.
     transit_option = transit.transit_option_for_trip(

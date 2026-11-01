@@ -56,15 +56,15 @@
     <li>
       <h3 data-i18n="home.step2.title">Matched along the route</h3>
       <p data-i18n="home.step2.text">
-        Not just drivers going to the same town: anyone whose route passes close to you, ranked by
-        how small the detour is for them.
+        Not just drivers going to the same town: anyone whose route passes close to your start and
+        your destination, at about your time. You choose how close.
       </p>
     </li>
     <li>
       <h3 data-i18n="home.step3.title">Finish by train or bus</h3>
       <p data-i18n="home.step3.text">
-        If the driver isn't going all the way, you get a drop-off station on their route with a real
-        connection to your destination, from the Swiss public transport timetable.
+        If the drop-off isn't at your door, you get a real connection from there to your destination,
+        from the Swiss public transport timetable.
       </p>
     </li>
   </ol>
@@ -127,8 +127,28 @@
       </div>
       <div class="coord-readout" id="readout-ride-destination">not set</div>
 
-      <label for="ride-time" data-i18n="ride.when">When</label>
-      <input type="datetime-local" id="ride-time" />
+      <label for="ride-date" data-i18n="ride.when">When</label>
+      <div class="datetime">
+        <input type="date" id="ride-date" />
+        <select id="ride-hour" aria-label="Hour" data-i18n-aria-label="form.hour"></select>
+        <span>:</span>
+        <select id="ride-minute" aria-label="Minutes" data-i18n-aria-label="form.minute"></select>
+      </div>
+
+      <label for="ride-tolerance" data-i18n="ride.tolerance">Flexibility</label>
+      <select id="ride-tolerance" class="auto-width">
+        <option value="30">± 30 min</option>
+        <option value="60">± 1 h</option>
+        <option value="120" selected>± 2 h</option>
+        <option value="180">± 3 h</option>
+        <option value="240">± 4 h</option>
+      </select>
+
+      <label for="ride-pickup-radius"><span class="radius-swatch pickup"></span><span data-i18n="ride.pickupRadius">Pickup within</span> <output id="ride-pickup-radius-value" for="ride-pickup-radius">5 km</output></label>
+      <input type="range" id="ride-pickup-radius" class="radius-slider pickup" min="1" max="30" step="1" value="5" />
+      <label for="ride-dropoff-radius"><span class="radius-swatch dropoff"></span><span data-i18n="ride.dropoffRadius">Drop-off within</span> <output id="ride-dropoff-radius-value" for="ride-dropoff-radius">5 km</output></label>
+      <input type="range" id="ride-dropoff-radius" class="radius-slider dropoff" min="1" max="30" step="1" value="5" />
+      <div class="hint" data-i18n="ride.radiusHint">Drivers whose route passes through both circles on the map. Wider circles find more rides; you get to the pickup and from the drop-off on foot or by public transport.</div>
 
       <button class="submit-btn" id="ride-submit" data-i18n="ride.submit">Find a ride</button>
       <div class="status-msg" id="ride-status"></div>
@@ -175,8 +195,13 @@
 
       <div class="name-row">
         <div>
-          <label for="drive-departure" data-i18n="drive.departure">Departure</label>
-          <input type="datetime-local" id="drive-departure" />
+          <label for="drive-date" data-i18n="drive.departure">Departure</label>
+          <div class="datetime">
+            <input type="date" id="drive-date" />
+            <select id="drive-hour" aria-label="Hour" data-i18n-aria-label="form.hour"></select>
+            <span>:</span>
+            <select id="drive-minute" aria-label="Minutes" data-i18n-aria-label="form.minute"></select>
+          </div>
         </div>
         <div class="narrow">
           <label for="drive-seats" data-i18n="drive.seats">Seats</label>

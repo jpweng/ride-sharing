@@ -1,44 +1,69 @@
 """
-Route / detour-based matching.
+Route corridor matching with passenger-chosen search radii.
 
-"Most suitable driver based on trajectory" is implemented as a detour-cost
-match: for every posted drive we know the driver's own route (origin ->
-destination). For a candidate passenger trip we compute how much *longer*
-the driver's route would become if they detoured via the passenger's pickup
-and drop-off points:
+A passenger says where they start and where they're going, and how far from
+each they're willing to meet a driver: the pickup radius and the drop-off
+radius (5 km each by default, drawn as circles on the map). A drive matches
+when its road route passes within the pickup radius of their start and,
+further along, within the drop-off radius of their destination:
 
-    detour = distance(origin -> pickup -> dropoff -> destination)
-             - distance(origin -> destination)
+    pickup  = the point of the route closest to the passenger's start
+    dropoff = the point of the route after the pickup closest to their destination
 
-Drives are ranked by ascending detour (smallest extra distance first) and
-filtered out if the detour exceeds a configurable threshold. This is the
-practical version of "does the passenger's trip lie along the driver's
-corridor" -- rather than buffering a route geometry, we directly measure
-how far off-path the driver would have to go, which also gives a natural,
-explainable ranking score.
+The driver stays on their own route; the passenger gets to the pickup and
+from the drop-off on foot, by bike or by public transport (main.py looks up
+a last-mile connection from the drop-off). Departure times are compared at
+the pickup, not at the driver's start: a Lausanne -> Zurich drive leaving at
+7:00 reaches Bern around 8:00, which is what a passenger in Bern cares about.
+Drives whose pickup is within the passenger's time tolerance are kept.
 
-Routes/distances come from the public OSRM demo routing server
-(router.project-osrm.org, no API key required). If OSRM is unreachable
-(e.g. no internet access, or the demo server is rate-limiting), every
-function below transparently falls back to straight-line (haversine)
-distance so the app keeps working in a degraded but functional mode.
+Matches are ranked by the time the passenger loses: minutes between the
+pickup and the time they asked for, plus the distance to the pickup and from
+the drop-off at walking pace (MINUTES_PER_GAP_KM).
+
+This is all plain geometry on the drives' stored routes: no routing call per
+candidate, so a search can consider every drive in the time window and
+return many matches. Routes come from the public OSRM demo routing server
+(router.project-osrm.org, no API key required) when a drive is posted. If
+OSRM is unreachable, route_with_fallback() falls back to a straight line
+(haversine distance) so the app keeps working in a degraded mode.
 """
 import math
+from datetime import datetime, timedelta
+
 import requests
 
 OSRM_BASE_URL = "https://router.project-osrm.org"
 OSRM_TIMEOUT_S = 6
 
-# Matching thresholds -- tuned for a small country / prototype, not a
-# production heuristic.
-MAX_DETOUR_KM = 8.0
-MAX_DETOUR_PCT = 40.0
-MAX_TIME_WINDOW_HOURS = 3.0
+# Search defaults; a passenger can change each one (see main.MatchRequest).
+DEFAULT_PICKUP_RADIUS_KM = 5.0
+DEFAULT_DROPOFF_RADIUS_KM = 5.0
+DEFAULT_TIME_TOLERANCE_MIN = 120
 
-# Each candidate costs a routing call, so only the drives with the smallest
-# straight-line detour are routed. This keeps a search fast however many
-# drives are posted.
-MAX_ROUTED_CANDIDATES = 10
+MAX_RESULTS = 20
+
+# The car ride must be at least this long along the route: a shorter one
+# isn't worth arranging.
+MIN_RIDE_KM = 2.0
+
+# Ranking: one km between the passenger and the pickup or drop-off counts
+# like this many minutes away from the time they asked for (walking pace).
+MINUTES_PER_GAP_KM = 12.0
+
+# The longest drive expected: a drive that left this long before the
+# passenger's time window can still reach their pickup inside it.
+MAX_DRIVE_HOURS = 6.0
+
+# Route points closer together than this are merged before matching: real
+# OSRM routes have a point every few meters, which only slows matching down.
+ROUTE_POINT_SPACING_KM = 0.2
+
+# Drives without a known duration (straight-line fallback) are assumed to
+# drive at this average speed.
+FALLBACK_SPEED_KMH = 60.0
+
+KM_PER_DEGREE = 111.32
 
 
 def haversine_km(lat1, lon1, lat2, lon2) -> float:
@@ -103,145 +128,163 @@ def route_with_fallback(points: list[tuple[float, float]]) -> dict:
     }
 
 
-def heads_same_way(
-    drive: dict,
-    passenger_origin: tuple[float, float],
-    passenger_destination: tuple[float, float],
-) -> bool:
+def prepare_route(route_geometry: list | None, drive: dict) -> list[tuple[float, float, float]]:
     """
-    Whether the passenger travels the same way as the driver: as the crow
-    flies, their destination is further from the driver's start and closer
-    to the driver's destination than their pickup. Without this, a short
-    trip the other way can pass the detour thresholds -- e.g. Samedan -> St.
-    Moritz on a St. Moritz -> Scuol drive is "only" 12 km of detour, 20% of
-    the drive -- but the driver would have to turn back for it.
+    A drive's route as [(lat, lon, km from the start), ...], with points at
+    least ROUTE_POINT_SPACING_KM apart (always keeping the first and last).
+    route_geometry: [[lon, lat], ...] as stored on a drive; without one, the
+    straight line from the drive's origin to its destination.
+    """
+    if route_geometry and len(route_geometry) >= 2:
+        points = [(lat, lon) for lon, lat in route_geometry]
+    else:
+        points = [
+            (drive["origin_lat"], drive["origin_lon"]),
+            (drive["destination_lat"], drive["destination_lon"]),
+        ]
+    route = [(points[0][0], points[0][1], 0.0)]
+    km = 0.0
+    for i, (lat, lon) in enumerate(points[1:], start=1):
+        step = haversine_km(route[-1][0], route[-1][1], lat, lon)
+        if step >= ROUTE_POINT_SPACING_KM or i == len(points) - 1:
+            km += step
+            route.append((lat, lon, km))
+    return route
+
+
+def nearest_on_route(
+    route: list[tuple[float, float, float]],
+    point: tuple[float, float],
+    from_km: float = 0.0,
+) -> dict | None:
+    """
+    The point of `route` (from prepare_route) closest to `point` (lat, lon),
+    looking only at the part at least `from_km` along it. Returns
+    {lat, lon, gap_km, route_km} or None if that part is empty.
+
+    Projects onto each segment on a local flat approximation around `point`
+    -- accurate for the few km a search radius covers -- so sparse routes
+    (a straight-line fallback) work as well as dense ones.
+    """
+    lat0, lon0 = point
+    kx = KM_PER_DEGREE * math.cos(math.radians(lat0))
+    ky = KM_PER_DEGREE
+    best = None
+    for (lat1, lon1, km1), (lat2, lon2, km2) in zip(route, route[1:]):
+        if km2 < from_km:
+            continue
+        ax, ay = (lon1 - lon0) * kx, (lat1 - lat0) * ky
+        bx, by = (lon2 - lon0) * kx, (lat2 - lat0) * ky
+        dx, dy = bx - ax, by - ay
+        length_sq = dx * dx + dy * dy
+        t = 0.0 if length_sq == 0 else min(1.0, max(0.0, -(ax * dx + ay * dy) / length_sq))
+        if km2 > km1 and km1 < from_km:
+            t = max(t, (from_km - km1) / (km2 - km1))
+        qx, qy = ax + t * dx, ay + t * dy
+        gap_km = math.hypot(qx, qy)
+        if best is None or gap_km < best["gap_km"]:
+            best = {
+                "lat": lat0 + qy / ky,
+                "lon": lon0 + qx / kx,
+                "gap_km": gap_km,
+                "route_km": km1 + t * (km2 - km1),
+            }
+    return best
+
+
+def could_pass_near(drive: dict, point: tuple[float, float], radius_km: float) -> bool:
+    """
+    Cheap test, on the drive's endpoints and road distance only, that rules
+    out drives whose route can't come within `radius_km` of `point`: a route
+    of length L through a point Q has |start Q| + |Q end| <= L, so if it
+    passes within r of P, |start P| + |P end| <= L + 2r. Lets a search skip
+    loading the route of almost every drive in its time window.
     """
     start = (drive["origin_lat"], drive["origin_lon"])
     end = (drive["destination_lat"], drive["destination_lon"])
-    return (
-        haversine_km(*start, *passenger_destination) > haversine_km(*start, *passenger_origin)
-        and haversine_km(*passenger_destination, *end) < haversine_km(*passenger_origin, *end)
-    )
+    length_km = (drive.get("route_distance_m") or 0) / 1000.0 or haversine_km(*start, *end)
+    # +1 km: merged route points cut corners a little.
+    return haversine_km(*start, *point) + haversine_km(*point, *end) <= length_km + 2 * radius_km + 1.0
 
 
-def route_position_km(route_geometry: list | None, point: tuple[float, float]) -> float | None:
-    """How far along the route (km from its start) the route comes closest to
-    `point` (lat, lon). None without a route geometry."""
-    if not route_geometry:
+def _naive(iso: str) -> datetime:
+    return datetime.fromisoformat(iso).replace(tzinfo=None)
+
+
+def _iso(dt: datetime) -> str:
+    return dt.isoformat(timespec="minutes")
+
+
+def match_drive(
+    drive: dict,
+    passenger_origin: tuple[float, float],
+    passenger_destination: tuple[float, float],
+    requested_time: str,
+    pickup_radius_km: float = DEFAULT_PICKUP_RADIUS_KM,
+    dropoff_radius_km: float = DEFAULT_DROPOFF_RADIUS_KM,
+    time_tolerance_min: float = DEFAULT_TIME_TOLERANCE_MIN,
+) -> dict | None:
+    """
+    How `drive` serves this passenger, or None if it doesn't: the drive with
+    its pickup and drop-off points, the ride's length, the minutes between
+    the pickup and the requested time, and the ranking score.
+    """
+    if drive.get("seats_available", 0) <= 0:
         return None
-    best_km, best_gap, cumulative = 0.0, math.inf, 0.0
-    previous = None
-    for lon, lat in route_geometry:
-        if previous is not None:
-            cumulative += haversine_km(previous[0], previous[1], lat, lon)
-        gap = haversine_km(lat, lon, point[0], point[1])
-        if gap < best_gap:
-            best_km, best_gap = cumulative, gap
-        previous = (lat, lon)
-    return best_km
+    if not (
+        could_pass_near(drive, passenger_origin, pickup_radius_km)
+        and could_pass_near(drive, passenger_destination, dropoff_radius_km)
+    ):
+        return None
 
+    route = prepare_route(drive.get("route_geometry"), drive)
+    pickup = nearest_on_route(route, passenger_origin)
+    if pickup is None or pickup["gap_km"] > pickup_radius_km:
+        return None
+    dropoff = nearest_on_route(route, passenger_destination, from_km=pickup["route_km"] + MIN_RIDE_KM)
+    if dropoff is None or dropoff["gap_km"] > dropoff_radius_km:
+        return None
+    # Getting to the car and from it must be shorter than the trip itself,
+    # or the ride isn't worth it (e.g. a drive passing near both ends of a
+    # short trip, but the wrong way round).
+    if pickup["gap_km"] + dropoff["gap_km"] >= haversine_km(*passenger_origin, *passenger_destination):
+        return None
 
-def straight_line_detour_km(
-    drive: dict,
-    passenger_origin: tuple[float, float],
-    passenger_destination: tuple[float, float],
-) -> float:
-    """Cheap estimate of the detour, as the crow flies, to pick which drives
-    are worth routing."""
-    stops = [
-        (drive["origin_lat"], drive["origin_lon"]),
-        passenger_origin,
-        passenger_destination,
-        (drive["destination_lat"], drive["destination_lon"]),
-    ]
-    via = sum(haversine_km(*a, *b) for a, b in zip(stops, stops[1:]))
-    return via - haversine_km(*stops[0], *stops[-1])
+    total_km = route[-1][2]
+    duration_s = drive.get("route_duration_s") or total_km / FALLBACK_SPEED_KMH * 3600.0
+    departure = _naive(drive["departure_time"])
 
+    def time_at(route_km: float) -> datetime:
+        share = route_km / total_km if total_km > 0 else 0.0
+        return departure + timedelta(seconds=duration_s * share)
 
-def compute_detour(
-    drive: dict,
-    passenger_origin: tuple[float, float],
-    passenger_destination: tuple[float, float],
-) -> dict:
-    """
-    Returns detour metrics for one drive against one passenger trip.
-    Uses the drive's precomputed base route distance when available, and
-    computes the "via passenger" route fresh.
-    """
-    base_distance_m = drive.get("route_distance_m")
-    if base_distance_m is None:
-        base = route_with_fallback([
-            (drive["origin_lat"], drive["origin_lon"]),
-            (drive["destination_lat"], drive["destination_lon"]),
-        ])
-        base_distance_m = base["distance_m"]
+    pickup_time = time_at(pickup["route_km"])
+    time_diff_min = (pickup_time - _naive(requested_time)).total_seconds() / 60.0
+    if abs(time_diff_min) > time_tolerance_min:
+        return None
 
-    via_points = [
-        (drive["origin_lat"], drive["origin_lon"]),
-        passenger_origin,
-        passenger_destination,
-        (drive["destination_lat"], drive["destination_lon"]),
-    ]
-    via = route_with_fallback(via_points)
-
-    detour_m = max(0.0, via["distance_m"] - base_distance_m)
-    detour_pct = (detour_m / base_distance_m * 100.0) if base_distance_m > 0 else 0.0
-
+    score = abs(time_diff_min) + MINUTES_PER_GAP_KM * (pickup["gap_km"] + dropoff["gap_km"])
     return {
-        "base_distance_km": round(base_distance_m / 1000.0, 2),
-        "via_distance_km": round(via["distance_m"] / 1000.0, 2),
-        "detour_km": round(detour_m / 1000.0, 2),
-        "detour_pct": round(detour_pct, 1),
-        "via_duration_min": round(via["duration_s"] / 60.0, 1),
-        "route_source": via["source"],
+        **drive,
+        # Simplified: a fraction of the size of the stored route, still
+        # plenty for drawing it on the map.
+        "route_geometry": [[lon, lat] for lat, lon, _ in route],
+        "pickup": {
+            "lat": round(pickup["lat"], 6),
+            "lon": round(pickup["lon"], 6),
+            "gap_km": round(pickup["gap_km"], 1),
+            "time": _iso(pickup_time),
+        },
+        "dropoff": {
+            "lat": round(dropoff["lat"], 6),
+            "lon": round(dropoff["lon"], 6),
+            "gap_km": round(dropoff["gap_km"], 1),
+            "time": _iso(time_at(dropoff["route_km"])),
+        },
+        "ride_km": round(dropoff["route_km"] - pickup["route_km"], 1),
+        "time_diff_min": round(time_diff_min),
+        "score": round(score, 1),
     }
-
-
-def sample_route_points(route_geometry: list | None, step_km: float = 10.0) -> list[tuple[float, float, float]]:
-    """
-    Sample points along a route polyline at roughly `step_km` intervals of
-    cumulative driving distance, for evaluating candidate drop-off points
-    along the *whole* route rather than only at its final destination (see
-    dropoff.py). Used to answer "could the driver let the passenger off
-    somewhere closer to their actual destination, on the way?".
-
-    route_geometry: [[lon, lat], ...] as returned by route_with_fallback /
-    stored on a drive. Returns [(lat, lon, cumulative_km), ...], always
-    including the route's start and end point. Empty input -> [].
-    """
-    if not route_geometry or len(route_geometry) < 2:
-        return []
-
-    points = [(lat, lon) for lon, lat in route_geometry]
-    cumulative = [0.0]
-    for (lat1, lon1), (lat2, lon2) in zip(points, points[1:]):
-        cumulative.append(cumulative[-1] + haversine_km(lat1, lon1, lat2, lon2))
-    total_km = cumulative[-1]
-
-    # Don't oversample a very long route -- cap how many candidates
-    # downstream code has to evaluate (each one costs a routing + a transit
-    # lookup call).
-    step_km = max(step_km, total_km / 20.0) if total_km > 0 else step_km
-
-    samples = []
-    next_target = 0.0
-    for (lat, lon), dist_km in zip(points, cumulative):
-        if dist_km >= next_target:
-            samples.append((lat, lon, dist_km))
-            next_target = dist_km + step_km
-    if samples[-1][2] != total_km:
-        samples.append((points[-1][0], points[-1][1], total_km))
-    return samples
-
-
-def hours_between(iso_a: str, iso_b: str) -> float:
-    from datetime import datetime
-    try:
-        a = datetime.fromisoformat(iso_a)
-        b = datetime.fromisoformat(iso_b)
-        return abs((a - b).total_seconds()) / 3600.0
-    except ValueError:
-        return 0.0
 
 
 def find_matches(
@@ -249,28 +292,23 @@ def find_matches(
     passenger_origin: tuple[float, float],
     passenger_destination: tuple[float, float],
     requested_time: str,
-    max_results: int = 5,
+    pickup_radius_km: float = DEFAULT_PICKUP_RADIUS_KM,
+    dropoff_radius_km: float = DEFAULT_DROPOFF_RADIUS_KM,
+    time_tolerance_min: float = DEFAULT_TIME_TOLERANCE_MIN,
+    max_results: int = MAX_RESULTS,
 ) -> list[dict]:
     """
-    Rank candidate drives by detour cost. Filters out drives with no seats,
-    departure time too far from the request, going the other way, or with a
-    detour beyond threshold.
+    The drives that serve this passenger (see match_drive), best first.
+    Drives need their route_geometry; one without it is taken as a straight
+    line.
     """
-    in_window = [
-        d for d in drives
-        if d.get("seats_available", 0) > 0
-        and hours_between(d["departure_time"], requested_time) <= MAX_TIME_WINDOW_HOURS
-        and heads_same_way(d, passenger_origin, passenger_destination)
-    ]
-    in_window.sort(key=lambda d: straight_line_detour_km(d, passenger_origin, passenger_destination))
-
-    candidates = []
-    for drive in in_window[:MAX_ROUTED_CANDIDATES]:
-        metrics = compute_detour(drive, passenger_origin, passenger_destination)
-        if metrics["detour_km"] > MAX_DETOUR_KM and metrics["detour_pct"] > MAX_DETOUR_PCT:
-            continue
-
-        candidates.append({**drive, **metrics})
-
-    candidates.sort(key=lambda d: (d["detour_km"], d["detour_pct"]))
-    return candidates[:max_results]
+    matches = []
+    for drive in drives:
+        m = match_drive(
+            drive, passenger_origin, passenger_destination, requested_time,
+            pickup_radius_km, dropoff_radius_km, time_tolerance_min,
+        )
+        if m is not None:
+            matches.append(m)
+    matches.sort(key=lambda m: (m["score"], m["pickup"]["time"]))
+    return matches[:max_results]

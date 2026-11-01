@@ -1,7 +1,7 @@
 """
 Shared pytest fixtures for the backend test suite.
 
-Everything here is designed to run the matching/dropoff algorithms fully
+Everything here is designed to run the matching algorithm fully
 offline and deterministically: OSRM and transport.opendata.ch are both free,
 unauthenticated, rate-limited demo services (see matching.py / transit.py
 docstrings), so tests must never depend on reaching them -- a slow network,
@@ -101,22 +101,6 @@ def fake_transit(monkeypatch):
     monkeypatch.setattr(transit, "station_for_place", fake.station_for_place)
     monkeypatch.setattr(transit, "get_connections", fake.get_connections)
     return fake
-
-
-@pytest.fixture
-def dense_dropoff_sampling(monkeypatch):
-    """
-    dropoff.py samples a route every SAMPLE_STEP_KM (10km in production) to
-    keep the number of candidate stations -- and thus network calls -- down
-    on a real, densely-pointed OSRM polyline. Test fixtures below use short,
-    hand-written polylines (real coordinates, but far fewer points than a
-    real OSRM route), where a 10km step can skip past a landmark vertex
-    entirely between two samples. Shrinking the step for these tests makes
-    every hand-placed vertex get sampled, independent of that production
-    tuning value.
-    """
-    import dropoff
-    monkeypatch.setattr(dropoff, "SAMPLE_STEP_KM", 2.0)
 
 
 @pytest.fixture

@@ -2,7 +2,8 @@
 
 A demo of a ride-sharing app for Switzerland that combines car rides with public transport, live at
 <https://rideandrail.ch>. Drivers post drives; passengers either browse them or ask for a match based
-on route corridor (detour-cost) matching, with a public-transport comparison and last-mile-transit
+on route corridor matching (drivers whose route passes within the passenger's chosen pickup and
+drop-off radii, around their time), with a public-transport comparison and last-mile-transit
 suggestion via [transport.opendata.ch](https://transport.opendata.ch).
 
 See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for the full design rationale.
@@ -186,7 +187,7 @@ Notes:
 backend/
   main.py         FastAPI app + routes, mounts frontend/ as static files
   database.py     SQLite schema + access layer
-  matching.py     detour-cost route matching (OSRM, haversine fallback)
+  matching.py     route corridor matching with search radii (OSRM, haversine fallback)
   transit.py      transport.opendata.ch integration
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
@@ -213,7 +214,8 @@ Dockerfile        app image (uvicorn, non-root, DB on /data)
 - `GET  /api/drives/{id}` — one drive with full route geometry
 - `DELETE /api/drives/{id}?driver_name=…` — driver cancels their own drive
 - `GET  /api/ride_requests?passenger_name=…` — a passenger's recent searches (deduplicated)
-- `POST /api/match` — passenger requests a ride; returns ranked driver matches (detour cost),
-  a last-mile transit suggestion per match, and a pure public-transport alternative
+- `POST /api/match` — passenger requests a ride (optional pickup/drop-off radii and time tolerance);
+  returns ranked driver matches, a last-mile transit suggestion for the best ones, and a pure
+  public-transport alternative
 
 Full request/response shapes are documented in the implementation brief.
