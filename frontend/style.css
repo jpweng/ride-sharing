@@ -359,6 +359,26 @@ label output { color: var(--text); text-transform: none; }
 .match-card.selected:hover { box-shadow: 0 0 0 2px var(--accent); }
 .has-selection .match-card:not(.selected) { opacity: 0.6; }
 
+/* Rides just outside the passenger's selection (dashed on the map). */
+.outside-title {
+  margin: 14px 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+.match-card.outside { border-left-style: dashed; }
+.outside-note {
+  display: inline-block;
+  margin: 4px 0 2px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--demo-bg);
+  color: var(--demo-text);
+  font-size: 12px;
+}
+
 .link-btn {
   margin-top: 6px;
   padding: 0;

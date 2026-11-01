@@ -226,7 +226,8 @@ Dockerfile        app image (uvicorn, non-root, DB on /data)
   `POST /api/notifications/{id}/action` (`offer` / `decline` / `mute` / `view`),
   `PUT /api/notification_settings`
 - `POST /api/match` — passenger requests a ride (optional pickup/drop-off radii and time tolerance);
-  returns ranked driver matches, a last-mile transit suggestion for the best ones, and a pure
+  returns ranked driver matches, a last-mile transit suggestion for the best ones, up to 5 rides just
+  outside the selection (`outside_matches`, each saying what it's outside of), and a pure
   public-transport alternative
 
 Full request/response shapes are documented in the implementation brief.

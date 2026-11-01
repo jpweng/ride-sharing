@@ -6,10 +6,11 @@ Two core use cases:
   2. POST /api/match       -- a passenger asks for a ride; the app finds
                                the drives whose route passes within their
                                pickup and drop-off radii, around their time
-                               (see matching.py), adds a last-mile transit
-                               connection from the drop-off for the best
-                               ones, and also offers a pure-public-transport
-                               option (see transit.py).
+                               (see matching.py) and a few just outside
+                               them, adds a last-mile transit connection
+                               from the drop-off for the best ones, and
+                               also offers a pure-public-transport option
+                               (see transit.py).
   GET /api/drives          -- browse all upcoming posted drives
                                (?driver_name= narrows to one driver's own).
   GET /api/drives/{id}     -- a single drive with full route geometry.
@@ -241,7 +242,7 @@ def match_ride(payload: MatchRequest):
     origin_place = payload.origin.name if payload.origin.kind == "place" else None
     destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
-    driver_matches = search.upcoming_matches(
+    driver_matches, outside_matches = search.with_outside(
         passenger_origin, passenger_destination, payload.requested_time,
         pickup_radius_km=payload.pickup_radius_km,
         dropoff_radius_km=payload.dropoff_radius_km,
@@ -249,7 +250,7 @@ def match_ride(payload: MatchRequest):
     )
 
     # Their share of the ride: a demo price for now (see pricing.py).
-    for m in driver_matches:
+    for m in driver_matches + outside_matches:
         m["price_chf"] = pricing.demo_price_chf(m["ride_km"])
 
     # A public transport connection from the drop-off to the passenger's
@@ -285,6 +286,9 @@ def match_ride(payload: MatchRequest):
 
     return {
         "driver_matches": driver_matches,
+        # Just outside the passenger's circles or time flexibility, marked
+        # as such: they may like them anyway. No last-mile lookups.
+        "outside_matches": outside_matches,
         "transit_option": transit_option,
     }
 

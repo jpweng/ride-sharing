@@ -736,7 +736,7 @@ async function findRide() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    lastResults = { data, origin, destination };
+    lastResults = { data, origin, destination, selection: payload };
     renderResults();
     loadRecentSearches();
   } catch (err) {
@@ -754,20 +754,23 @@ async function findRide() {
 let lastResults = null;
 
 function renderResults() {
-  const { data, origin, destination } = lastResults;
-  renderMatches(data.driver_matches, origin, destination);
+  const { data, origin, destination, selection } = lastResults;
+  renderMatches(data.driver_matches, data.outside_matches || [], origin, destination, selection);
   renderTransitOption(data.transit_option);
 }
 
-function renderMatches(matches, passengerOrigin, passengerDestination) {
+// matches: within the passenger's selection; outside: a few just outside
+// it, listed after them and marked with what they're outside of.
+function renderMatches(matches, outside, passengerOrigin, passengerDestination, selection) {
   const container = document.getElementById("ride-matches");
   container.classList.remove("has-selection");
-  document.getElementById("ride-matches-hint").hidden = !matches.length;
-  if (!matches.length) {
+  const all = [...matches, ...outside];
+  document.getElementById("ride-matches-hint").hidden = !all.length;
+  if (!all.length) {
     container.innerHTML = `<div class="empty-state">${esc(t("ride.noMatches"))}</div>`;
     return;
   }
-  container.innerHTML = "";
+  container.innerHTML = matches.length ? "" : `<div class="empty-state">${esc(t("ride.noMatchesInside"))}</div>`;
 
   L.marker([passengerOrigin.lat, passengerOrigin.lon], { title: t("map.pickupTitle") })
     .addTo(resultsLayer)
@@ -819,13 +822,21 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
     map.fitBounds(bounds, { padding: [30, 30] });
   }
 
-  matches.forEach((m, idx) => {
+  all.forEach((m, idx) => {
+    const isOutside = idx >= matches.length;
+    if (idx === matches.length) {
+      container.insertAdjacentHTML(
+        "beforeend",
+        `<div class="outside-title">${esc(t("ride.outsideTitle"))}</div><div class="hint">${esc(t("ride.outsideHint"))}</div>`
+      );
+    }
     const card = document.createElement("div");
-    card.className = "match-card clickable";
+    card.className = `match-card clickable${isOutside ? " outside" : ""}`;
     const color = routeColors[idx % routeColors.length];
     card.style.borderLeftColor = color;
     card.innerHTML = `
       <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}${demoBadge(m)}</div>
+      ${isOutside ? outsideNote(m, selection) : ""}
       <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
       <div class="meta">${esc(t("match.pickup", { time: fmtClock(m.pickup.time), km: fmtNumber(m.pickup.gap_km) }))}</div>
       <div class="meta">${esc(t("match.dropoff", { time: fmtClock(m.dropoff.time), km: fmtNumber(m.dropoff.gap_km) }))}</div>
@@ -845,7 +856,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
 
     if (m.route_geometry && m.route_geometry.length) {
       const latlngs = m.route_geometry.map(([lon, lat]) => [lat, lon]);
-      entry.line = L.polyline(latlngs, { color, weight: 4, opacity: 0.7 })
+      entry.line = L.polyline(latlngs, { color, weight: 4, opacity: 0.7, dashArray: isOutside ? "6 8" : null })
         .addTo(resultsLayer)
         .bindTooltip(`${esc(m.driver_name)}: ${esc(m.origin_name)} → ${esc(m.destination_name)}`, { sticky: true })
         .on("click", () => {
@@ -856,6 +867,19 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
   });
 
   fitToResults();
+}
+
+// What a ride outside the passenger's selection is outside of.
+function outsideNote(m, selection) {
+  const reasons = m.outside.map((limit) => {
+    if (limit === "time") {
+      const option = document.querySelector(`#ride-tolerance option[value="${selection.time_tolerance_min}"]`);
+      return t("match.outsideTime", { tolerance: option ? option.textContent : `± ${fmtMinutes(selection.time_tolerance_min)}` });
+    }
+    const km = limit === "pickup" ? selection.pickup_radius_km : selection.dropoff_radius_km;
+    return t(limit === "pickup" ? "match.outsidePickup" : "match.outsideDropoff", { km: fmtNumber(km) });
+  });
+  return `<div class="outside-note">${esc(t("match.outside"))} ${esc(reasons.join(" · "))}</div>`;
 }
 
 // How far the pickup is from the time the passenger asked for.

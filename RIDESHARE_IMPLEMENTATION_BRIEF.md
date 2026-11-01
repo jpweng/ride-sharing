@@ -156,6 +156,10 @@ detour-cost matching, which made the driver detour to the passenger's exact star
   window is considered. A cheap ellipse test on the drive's endpoints (`could_pass_near`) skips loading
   the route of drives that can't come near.
 - Drives without a road route (OSRM was unreachable when posted) are taken as a straight line.
+- Up to 5 rides **just outside the selection** are also returned (`outside_matches`): within twice
+  the circles and time flexibility (and at least 5 km / 1 h more), each with `outside` listing what
+  it's outside of (`pickup`, `dropoff`, `time`). The page lists them after the others, with a note.
+  It's one search with the wider limits, split in two (`search.with_outside`).
 
 ## Public transport integration — transport.opendata.ch
 

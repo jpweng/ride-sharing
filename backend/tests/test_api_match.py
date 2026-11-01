@@ -217,3 +217,26 @@ def test_a_drive_that_left_earlier_matches_by_its_pickup_time(isolated_db, force
 
     assert [m["driver_name"] for m in search(30)] == ["Bernard"]
     assert search(5) == []
+
+
+def test_rides_just_outside_the_selection_are_proposed_and_marked(isolated_db, force_haversine, fake_transit):
+    # Straight lines (force_haversine), passing through Aigle and ending in Bern.
+    aigle, bern = ("Aigle", 46.3180, 6.9700), ("Bern", 46.9480, 7.4474)
+    _post_drive("Inside", aigle, bern, f"{DAY_1}T18:00")
+    _post_drive("Late", aigle, bern, f"{DAY_1}T21:00")  # 3 h off: outside ± 2 h, inside the wider ± 4 h
+    _post_drive("Far", ("Rennaz", 46.3600, 6.9250), bern, f"{DAY_1}T18:00")  # passes ~6 km from Aigle
+    _post_drive("Too far", ("Sion", 46.2331, 7.3606), bern, f"{DAY_1}T18:00")
+    _post_drive("Too late", aigle, bern, f"{DAY_1}T23:00")
+
+    result = main.match_ride(main.MatchRequest(
+        passenger_name="Marie",
+        origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
+        destination={"name": "Bern", "lat": 46.9546, "lon": 7.4207},
+        requested_time=f"{DAY_1}T18:00",
+    ))
+
+    assert [m["driver_name"] for m in result["driver_matches"]] == ["Inside"]
+    assert result["driver_matches"][0]["outside"] == []
+    outside = {m["driver_name"]: m["outside"] for m in result["outside_matches"]}
+    assert outside == {"Far": ["pickup"], "Late": ["time"]}
+    assert all("price_chf" in m for m in result["outside_matches"])
