@@ -13,6 +13,7 @@ real rideshare.db, never the live network.
 from datetime import date, timedelta
 
 import main
+import pricing
 
 # match_ride only considers upcoming drives (departure_time >= now), so all
 # dates are relative to today rather than hardcoded -- a fixed date would
@@ -96,6 +97,7 @@ def test_bernard_marie_bern_match(isolated_db, force_haversine, fake_transit):
     match = result["driver_matches"][0]
     assert match["pickup"]["gap_km"] < 1.0
     assert match["dropoff"]["gap_km"] < 5.0
+    assert match["price_chf"] == pricing.demo_price_chf(match["ride_km"])
 
 
 def test_matteo_marie_versam_match_with_last_mile(isolated_db, force_haversine, fake_transit):

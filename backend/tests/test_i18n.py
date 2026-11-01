@@ -58,7 +58,7 @@ def test_formal_tone(lang):
 class _KeyedElements(HTMLParser):
     """Collects i18n keys, and the built-in text of data-i18n elements."""
 
-    ATTRS = ("data-i18n", "data-i18n-html", "data-i18n-placeholder", "data-i18n-title")
+    ATTRS = ("data-i18n", "data-i18n-html", "data-i18n-placeholder", "data-i18n-aria-label", "data-i18n-title")
 
     def __init__(self):
         super().__init__()

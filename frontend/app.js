@@ -168,7 +168,8 @@ function getPoint(role, nameInputId) {
 }
 
 // ---------------------------------------------------------------------
-// Address autocomplete (geo.admin.ch Search API — Swiss addresses/places)
+// Address autocomplete: Swiss addresses and places from geo.admin.ch,
+// named places (hotels, shops, stations...) from Photon
 // See "address auto complete.md" for the option comparison behind this choice.
 // ---------------------------------------------------------------------
 const GEOADMIN_SEARCH_URL = "https://api3.geo.admin.ch/rest/services/api/SearchServer";
@@ -210,7 +211,7 @@ async function geoAdminSearch(query, origins, limit) {
 // districts that aren't municipalities of their own (Oerlikon, Verbier,
 // Wengen, Ouchy...). The rest is noise here: schools, buildings, peaks.
 const SETTLEMENT_CLASS = "tlm_siedlungsname";
-const MAX_PLACE_SUGGESTIONS = 5;
+const MAX_PLACE_SUGGESTIONS = 4;
 const MAX_SUGGESTIONS = 8;
 
 // A gazetteer label: "<i>Quartier</i> <b>Oerlikon</b> (ZH) - Zürich" ->
@@ -253,19 +254,66 @@ function placeSuggestion(a, query) {
   }
   // "Zermatt (VS)"; postcodes come as "8050 - Zürich".
   const label = stripHtml(a.label).replace(/^(\d{4}) - /, "$1 ").trim();
-  return { label, detail: "", lat: a.lat, lon: a.lon, kind: a.origin === "gg25" ? "place" : "address" };
+  const municipality = a.origin === "gg25";
+  return { label, detail: "", lat: a.lat, lon: a.lon, kind: municipality ? "place" : "address", municipality };
 }
 
-async function searchGeoAdmin(query) {
-  const [placeResults, addressResults] = await Promise.all([
+// Named places -- hotels, shops, stations, venues -- from Photon, komoot's
+// search on OpenStreetMap data (free, no key). geo.admin.ch has addresses
+// and place names but no businesses. See "address auto complete.md".
+const PHOTON_URL = "https://photon.komoot.io/api/";
+const PHOTON_BBOX = "5.8,45.7,10.6,47.9"; // Switzerland and a strip of its neighbours
+// Streets, addresses and towns come from geo.admin.ch; the rest is no
+// place to meet (bus platforms, fire alarms, forests...).
+const PHOTON_SKIPPED_KEYS = new Set([
+  "place", "highway", "boundary", "landuse", "natural", "waterway", "emergency", "power", "man_made",
+]);
+const MAX_POI_SUGGESTIONS = 4;
+
+async function searchPhoton(query) {
+  try {
+    // Places near where the map is looking first.
+    const center = map.getCenter();
+    const resp = await fetch(
+      `${PHOTON_URL}?q=${encodeURIComponent(query)}&limit=12&lang=${I18N.lang()}&bbox=${PHOTON_BBOX}&lat=${center.lat.toFixed(4)}&lon=${center.lng.toFixed(4)}`
+    );
+    if (!resp.ok) throw new Error("place search failed");
+    const data = await resp.json();
+    const pois = [];
+    for (const f of data.features || []) {
+      const p = f.properties || {};
+      const [lon, lat] = f.geometry?.coordinates || [];
+      if (!p.name || PHOTON_SKIPPED_KEYS.has(p.osm_key) || typeof lat !== "number") continue;
+      const label = p.city && p.city !== p.name ? `${p.name}, ${p.city}` : p.name;
+      if (pois.some((q) => q.label === label)) continue;
+      const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+      const town = [p.postcode, p.city].filter(Boolean).join(" ");
+      const country = p.countrycode && p.countrycode !== "CH" ? p.country : "";
+      // "address": public transport starts/ends at the nearest stop.
+      pois.push({ label, detail: [street, town, country].filter(Boolean).join(", "), lat, lon, kind: "address" });
+    }
+    return pois;
+  } catch {
+    return []; // fail soft, like geo.admin.ch
+  }
+}
+
+async function searchPlaces(query) {
+  const [placeResults, addressResults, pois] = await Promise.all([
     geoAdminSearch(query, "zipcode,gg25,gazetteer", 30),
     geoAdminSearch(query, "address", MAX_SUGGESTIONS),
+    searchPhoton(query),
   ]);
   const places = [];
   for (const a of placeResults) {
     const p = placeSuggestion(a, query);
-    // A municipality and its namesake village ("Zermatt (VS)") show once.
-    if (p && !places.some((q) => q.label === p.label)) places.push(p);
+    if (!p) continue;
+    // A municipality and its namesake town ("Vevey (VD)") show once, at the
+    // town's coordinates: the municipality's are the middle of its area,
+    // which for a lakeside town (Vevey, Neuchâtel, Zug) is in the lake.
+    const same = places.find((q) => q.label === p.label);
+    if (!same) places.push(p);
+    else if (same.municipality && !p.municipality) Object.assign(same, { lat: p.lat, lon: p.lon, municipality: false });
   }
   const addresses = addressResults.map((a) => ({
     label: stripHtml(a.label),
@@ -275,12 +323,13 @@ async function searchGeoAdmin(query) {
     kind: "address",
   }));
   const shownPlaces = places.slice(0, MAX_PLACE_SUGGESTIONS);
-  const shownAddresses = addresses.slice(0, MAX_SUGGESTIONS - shownPlaces.length);
+  const shownPois = pois.slice(0, MAX_POI_SUGGESTIONS);
+  const shownAddresses = addresses.slice(0, Math.max(2, MAX_SUGGESTIONS - shownPlaces.length - shownPois.length));
   // Someone typing a house number wants an address first (but a bare
   // postcode, its area).
   return /\d/.test(query) && !/^\d{4}$/.test(query.trim())
-    ? [...shownAddresses, ...shownPlaces]
-    : [...shownPlaces, ...shownAddresses];
+    ? [...shownAddresses, ...shownPlaces, ...shownPois]
+    : [...shownPlaces, ...shownPois, ...shownAddresses];
 }
 
 function setupAutocomplete(role) {
@@ -324,7 +373,7 @@ function setupAutocomplete(role) {
       closeList();
       return;
     }
-    const found = await searchGeoAdmin(query);
+    const found = await searchPlaces(query);
     if (search !== searchCount) return; // a newer search has started
     items = found;
     activeIndex = -1;
@@ -504,11 +553,19 @@ function demoBadge(d) {
   return d.is_demo ? `<span class="badge demo">${esc(t("badge.demo"))}</span>` : "";
 }
 
+// Prices are placeholders until pricing is designed (see pricing.py).
+function priceBadge(chf) {
+  if (typeof chf !== "number") return "";
+  const price = chf.toLocaleString(I18N.locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `<span class="badge price">${esc(t("price.demo", { price }))}</span>`;
+}
+
 function driveCardHtml(d) {
   const km = d.route_distance_m ? (d.route_distance_m / 1000).toFixed(1) : "?";
   return `
     <div class="route">${esc(d.origin_name)} → ${esc(d.destination_name)}${demoBadge(d)}</div>
     <div class="meta">${fmtTime(d.departure_time)} · ${esc(t("common.seats", { count: d.seats_available }))} · ${km} km</div>
+    ${priceBadge(d.price_chf)}
   `;
 }
 
@@ -757,6 +814,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
       <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
       <div class="meta">${esc(t("match.pickup", { time: fmtClock(m.pickup.time), km: fmtNumber(m.pickup.gap_km) }))}</div>
       <div class="meta">${esc(t("match.dropoff", { time: fmtClock(m.dropoff.time), km: fmtNumber(m.dropoff.gap_km) }))}</div>
+      ${priceBadge(m.price_chf)}
       ${timeDiffBadge(m.time_diff_min)}
       <span class="badge">${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</span>
       ${renderLastMile(m.last_mile_transit)}

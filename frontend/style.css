@@ -443,6 +443,14 @@ label output { color: var(--text); text-transform: none; }
   margin-left: 6px;
 }
 
+/* Demo price: a placeholder until pricing is designed. */
+.badge.price {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 6px 6px 0 0;
+}
+
 .badge.demo {
   background: var(--demo-bg);
   color: var(--demo-text);

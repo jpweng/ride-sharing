@@ -94,6 +94,7 @@
   "match.later": "{duration} später",
   "match.earlier": "{duration} früher",
   "match.rideKm": "{km} km gemeinsam",
+  "price.demo": "CHF {price} · Demo-Preis",
   "transit.transfers.one": "{count} Umstieg",
   "transit.transfers.other": "{count} Umstiege",
   "transit.tickets": "Billette<br>bei der SBB",

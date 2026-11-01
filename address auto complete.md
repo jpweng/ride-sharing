@@ -117,3 +117,34 @@ at its station.
 
 Still not found: anything outside Switzerland (Annemasse, Lörrach, Como, Konstanz: see Option 3), and
 misspellings (geo.admin.ch's search doesn't correct typos).
+
+### Bug fix: lakeside towns placed in the lake
+
+For a municipality (`gg25`), geo.admin.ch returns the middle of the municipality's area, and lakeside
+municipalities own part of the lake: "Vevey (VD)" landed in Lake Geneva, Neuchâtel and Zug in theirs.
+The same search also returns the town as a settlement name, at the town itself; the suggestion now uses
+those coordinates (matched by label, e.g. "Vevey (VD)"), and keeps the area's middle only when there's
+no such settlement.
+
+## Named places (hotels, shops, stations…): Photon
+
+geo.admin.ch has addresses and place names but no businesses, so "Astra Hotel Vevey" couldn't be found.
+Named places now also come from [Photon](https://photon.komoot.io), komoot's search on OpenStreetMap
+data, called from the browser in parallel with geo.admin.ch.
+
+- **Why not Google Places:** best data, but Google's terms don't allow showing Places results on a
+  non-Google map, so it would mean replacing the Leaflet/OpenStreetMap map; plus a billing account and an
+  API key in the page.
+- **Photon:** free, no key, open CORS, made for search-as-you-type, OSM's POIs (hotels, shops,
+  restaurants, stations, venues, hospitals…) in de/fr/it/en, and near-border places too. Verified
+  2026-11-01: "astra hotel vevey" → "Astra Hotel, Place de la Gare 4, 1800 Vevey" first.
+- **Limits:** the public instance (photon.komoot.io) is for fair use, with no guarantee. If the app
+  outgrows it: self-host Photon (open source, one Swiss/European OSM extract), or Geoapify's autocomplete
+  (same OSM data, paid above a free tier). Coverage is as good as OpenStreetMap: very good in
+  Switzerland, but a small business may be missing.
+- **What's kept:** results within Switzerland and a strip of its neighbours (bbox), biased towards where
+  the map is looking; anything with a name except what geo.admin.ch already covers (streets, addresses,
+  towns) and things that are no place to meet (bus platforms, forests, fire alarms…). Up to 4, shown
+  after geo.admin.ch's places and before its addresses, as "Astra Hotel, Vevey" with the address under
+  it. They count as an address: public transport starts/ends at the nearest stop.
+- Queries go to komoot in Germany; the privacy notice lists it.

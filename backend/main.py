@@ -37,6 +37,7 @@ from pydantic import BaseModel, Field
 import database as db
 import maintenance
 import matching
+import pricing
 import transit
 
 logger = logging.getLogger("uvicorn.error")
@@ -148,7 +149,7 @@ def post_drive(payload: DriveCreate):
         route_duration_s=route["duration_s"],
         route_source=route["source"],
     )
-    return db.get_drive(drive_id)
+    return pricing.with_demo_price(db.get_drive(drive_id))
 
 
 @app.get("/api/drives")
@@ -159,9 +160,10 @@ def get_drives(
 ):
     # Without route geometry, which can be ~60 KB per drive: the map gets it
     # from /api/drives/{id} for the drive it shows.
-    return db.list_drives(
+    drives = db.list_drives(
         upcoming_only=upcoming_only, driver_name=driver_name, with_geometry=False, limit=limit
     )
+    return [pricing.with_demo_price(d) for d in drives]
 
 
 @app.get("/api/drives/{drive_id}")
@@ -169,7 +171,7 @@ def get_drive(drive_id: int):
     drive = db.get_drive(drive_id)
     if not drive:
         raise api_error(404, "drive_not_found", "Drive not found")
-    return drive
+    return pricing.with_demo_price(drive)
 
 
 @app.delete("/api/drives/{drive_id}")
@@ -241,6 +243,10 @@ def match_ride(payload: MatchRequest):
         dropoff_radius_km=payload.dropoff_radius_km,
         time_tolerance_min=payload.time_tolerance_min,
     )
+
+    # Their share of the ride: a demo price for now (see pricing.py).
+    for m in driver_matches:
+        m["price_chf"] = pricing.demo_price_chf(m["ride_km"])
 
     # A public transport connection from the drop-off to the passenger's
     # actual destination, when it's too far to walk.

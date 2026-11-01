@@ -94,6 +94,7 @@
   "match.later": "{duration} più tardi",
   "match.earlier": "{duration} prima",
   "match.rideKm": "{km} km insieme",
+  "price.demo": "CHF {price} · prezzo demo",
   "transit.transfers.one": "{count} cambio",
   "transit.transfers.other": "{count} cambi",
   "transit.tickets": "Biglietti<br>FFS",
