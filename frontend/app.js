@@ -492,25 +492,21 @@ document.getElementById("signin-submit").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------------
-// Pages: #/ (home, full width), #/browse (public), #/ride (passenger),
-// #/drive (driver)
+// Pages: #/ride (passenger, the default), #/browse (public), #/drive
+// (driver), #/inbox
 // ---------------------------------------------------------------------
 const PAGES = {
-  home: { needsUser: false, onShow: null },
+  ride: { needsUser: true, onShow: () => { loadMyRequests(); loadRecentSearches(); } },
   browse: { needsUser: false, onShow: loadBrowse },
-  ride: { needsUser: true, onShow: loadRecentSearches },
   drive: { needsUser: true, onShow: loadMyDrives },
+  inbox: { needsUser: true, onShow: loadInbox },
 };
+const DEFAULT_PAGE = "ride";
 
 function route() {
   const requested = location.hash.replace(/^#\/?/, "");
-  const page = PAGES[requested] ? requested : "home";
+  const page = PAGES[requested] ? requested : DEFAULT_PAGE;
   const shown = PAGES[page].needsUser && !currentUser ? "signin" : page;
-
-  // The home page replaces the panel + map layout; Leaflet needs to
-  // re-measure the map once it's visible again.
-  document.body.classList.toggle("home-active", shown === "home");
-  if (shown !== "home") map.invalidateSize();
 
   document.querySelectorAll(".tab-link").forEach((a) => a.classList.toggle("active", a.dataset.page === page));
   document.querySelectorAll(".page").forEach((s) => s.classList.toggle("active", s.id === `page-${shown}`));
@@ -528,6 +524,14 @@ function route() {
   resultsLayer.clearLayers();
 
   if (PAGES[shown]?.onShow) PAGES[shown].onShow();
+  refreshUnread();
+}
+
+// Go to a page now (route() runs synchronously, unlike on hashchange), so
+// what's done next isn't undone by route() clearing the map.
+function goTo(page) {
+  if (location.hash !== `#/${page}`) history.pushState(null, "", `#/${page}`);
+  route();
 }
 
 window.addEventListener("hashchange", route);
@@ -686,19 +690,38 @@ function repeatSearch(r) {
 
 document.getElementById("ride-submit").addEventListener("click", findRide);
 
-async function findRide() {
+// The passenger form as an API payload (search or ride request), or null
+// after showing what's missing in `statusId`.
+function rideFormPayload(statusId) {
   const origin = getPoint("ride-origin", "name-ride-origin");
   const destination = getPoint("ride-destination", "name-ride-destination");
   const requestedTime = getDateTime("ride");
+  const missing = !origin ? "form.needOrigin" : !destination ? "form.needDestination" : !requestedTime ? "ride.needTime" : null;
+  if (missing) {
+    showStatus(statusId, t(missing), false);
+    return null;
+  }
+  return {
+    passenger_name: fullName(currentUser),
+    origin,
+    destination,
+    requested_time: requestedTime,
+    pickup_radius_km: radiusKm("ride-origin"),
+    dropoff_radius_km: radiusKm("ride-destination"),
+    time_tolerance_min: Number(document.getElementById("ride-tolerance").value),
+  };
+}
 
-  if (!origin) return showStatus("ride-status", t("form.needOrigin"), false);
-  if (!destination) return showStatus("ride-status", t("form.needDestination"), false);
-  if (!requestedTime) return showStatus("ride-status", t("ride.needTime"), false);
+async function findRide() {
+  const payload = rideFormPayload("ride-status");
+  if (!payload) return;
+  const { origin, destination } = payload;
 
   const btn = document.getElementById("ride-submit");
   btn.disabled = true;
   btn.textContent = t("ride.searching");
   hideStatus("ride-status");
+  hideStatus("ride-ask-status");
   document.getElementById("ride-results").hidden = false;
   const searching = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
   document.getElementById("ride-matches").innerHTML = searching;
@@ -711,15 +734,7 @@ async function findRide() {
     const data = await fetchJson("/api/match", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        passenger_name: fullName(currentUser),
-        origin,
-        destination,
-        requested_time: requestedTime,
-        pickup_radius_km: radiusKm("ride-origin"),
-        dropoff_radius_km: radiusKm("ride-destination"),
-        time_tolerance_min: Number(document.getElementById("ride-tolerance").value),
-      }),
+      body: JSON.stringify(payload),
     });
     lastResults = { data, origin, destination };
     renderResults();
@@ -955,6 +970,248 @@ function fmtTime(iso) {
     return d.toLocaleString(I18N.locale(), { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   } catch {
     return iso;
+  }
+}
+
+// ---------------------------------------------------------------------
+// Ride requests: ask the drivers who often make a trip (see notify.py)
+// ---------------------------------------------------------------------
+document.getElementById("ride-ask").addEventListener("click", async () => {
+  const payload = rideFormPayload("ride-ask-status");
+  if (!payload) return;
+  const btn = document.getElementById("ride-ask");
+  btn.disabled = true;
+  try {
+    const data = await fetchJson("/api/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const message = data.drivers_told
+      ? t("ride.askSent", { count: data.drivers_told })
+      : t("ride.askSentNone");
+    showStatus("ride-ask-status", message, true);
+    loadMyRequests();
+  } catch (err) {
+    showStatus("ride-ask-status", err.message, false);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function loadMyRequests() {
+  const list = document.getElementById("ride-requests");
+  try {
+    const requests = await fetchJson(`/api/requests?passenger_name=${encodeURIComponent(fullName(currentUser))}`);
+    if (!requests.length) {
+      list.innerHTML = `<div class="empty-state">${esc(t("ride.requestsEmpty"))}</div>`;
+      return;
+    }
+    list.innerHTML = "";
+    requests.forEach((r) => {
+      const card = document.createElement("div");
+      card.className = "drive-card clickable";
+      card.innerHTML = `
+        <div class="route">${esc(r.origin_name)} → ${esc(r.destination_name)}</div>
+        <div class="meta">${fmtTime(r.requested_time)}</div>
+        <button type="button" class="link-btn">${esc(t("ride.cancelRequest"))}</button>
+      `;
+      card.addEventListener("click", () => searchForRequest(r));
+      card.querySelector(".link-btn").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        try {
+          await fetchJson(`/api/requests/${r.id}?passenger_name=${encodeURIComponent(fullName(currentUser))}`, {
+            method: "DELETE",
+          });
+          loadMyRequests();
+        } catch (err) {
+          showStatus("ride-ask-status", err.message, false);
+        }
+      });
+      list.appendChild(card);
+    });
+  } catch (err) {
+    list.innerHTML = `<div class="empty-state">${esc(t("ride.requestsLoadFailed", { error: err.message }))}</div>`;
+  }
+}
+
+// Fill the passenger form with a request (its trip, time, circles and
+// flexibility) and search.
+function searchForRequest(r) {
+  goTo("ride");
+  document.getElementById("ride-pickup-radius").value = r.pickup_radius_km;
+  document.getElementById("ride-dropoff-radius").value = r.dropoff_radius_km;
+  document.querySelectorAll(".radius-slider").forEach((slider) => slider.dispatchEvent(new Event("input")));
+  const tolerance = document.getElementById("ride-tolerance");
+  if ([...tolerance.options].some((o) => Number(o.value) === r.time_tolerance_min)) tolerance.value = r.time_tolerance_min;
+  setDateTime("ride", new Date(r.requested_time));
+  repeatSearch(r);
+}
+
+// ---------------------------------------------------------------------
+// Inbox
+// ---------------------------------------------------------------------
+const UNREAD_REFRESH_MS = 60 * 1000;
+
+function showUnread(count) {
+  const badge = document.getElementById("unread-count");
+  badge.textContent = count;
+  badge.hidden = !count;
+}
+
+async function refreshUnread() {
+  if (!currentUser) return showUnread(0);
+  try {
+    const data = await fetchJson(`/api/notifications?name=${encodeURIComponent(fullName(currentUser))}`);
+    showUnread(data.unread);
+  } catch {
+    // keep the last count
+  }
+}
+
+setInterval(refreshUnread, UNREAD_REFRESH_MS);
+
+function userQuery() {
+  return `name=${encodeURIComponent(fullName(currentUser))}`;
+}
+
+async function loadInbox() {
+  const list = document.getElementById("inbox-list");
+  try {
+    const data = await fetchJson(`/api/notifications?${userQuery()}`);
+    renderInbox(data);
+    if (data.unread) {
+      await fetchJson(`/api/notifications/read?${userQuery()}`, { method: "POST" });
+      showUnread(0);
+    }
+  } catch (err) {
+    list.innerHTML = `<div class="empty-state">${esc(t("inbox.loadFailed", { error: err.message }))}</div>`;
+  }
+}
+
+function renderInbox(data) {
+  document.getElementById("inbox-notify-requests").checked = data.notify_requests;
+  const paused = document.getElementById("inbox-paused");
+  paused.hidden = !data.paused_until;
+  if (data.paused_until) {
+    document.getElementById("inbox-paused-text").textContent = t("inbox.paused", { date: fmtDate(data.paused_until) });
+  }
+
+  const list = document.getElementById("inbox-list");
+  if (!data.notifications.length) {
+    list.innerHTML = `<div class="empty-state">${esc(t("inbox.empty"))}</div>`;
+    return;
+  }
+  list.innerHTML = "";
+  data.notifications.forEach((n) => list.appendChild(notificationCard(n)));
+}
+
+function notificationCard(n) {
+  const card = document.createElement("div");
+  card.className = `drive-card notification${n.read_at ? "" : " unread"}`;
+  const r = n.request;
+  const trip = r ? `<div class="meta">${esc(r.origin_name)} → ${esc(r.destination_name)} · ${fmtTime(r.requested_time)}</div>` : "";
+  const open = r && r.status === "open" && new Date(r.requested_time) > new Date();
+
+  if (n.kind === "request_for_driver") {
+    const usual = n.details?.trip;
+    const title = n.passengers > 1
+      ? t("inbox.requestTitleMany", { count: n.passengers })
+      : t("inbox.requestTitle", { name: r?.passenger_name || "?" });
+    card.innerHTML = `
+      <div class="route">${esc(title)}</div>
+      ${trip}
+      ${usual ? `<div class="meta">${esc(t("inbox.requestWhy", { from: usual.origin.name, to: usual.destination.name, time: usual.time, count: usual.times }))}</div>` : ""}
+      <div class="notification-actions"></div>
+    `;
+    const actions = card.querySelector(".notification-actions");
+    if (n.action) actions.innerHTML = `<span class="hint">${esc(t(`inbox.done.${n.action}`))}</span>`;
+    else if (!open) actions.innerHTML = `<span class="hint">${esc(t("inbox.noLongerOpen"))}</span>`;
+    else {
+      actions.append(
+        actionButton("inbox.offer", "submit-btn", () => offerDrive(n)),
+        actionButton("inbox.decline", "submit-btn secondary", () => actOn(n, "decline")),
+        actionButton("inbox.mute", "link-btn", () => actOn(n, "mute")),
+      );
+    }
+  } else {
+    const drives = (n.drives || [])
+      .map((d) => `<div class="meta">${esc(d.driver_name)} · ${esc(d.origin_name)} → ${esc(d.destination_name)}, ${fmtTime(d.departure_time)}${demoBadge(d)}</div>`)
+      .join("");
+    card.innerHTML = `
+      <div class="route">${esc(t("inbox.driveTitle", { count: (n.drives || []).length }))}</div>
+      ${trip}
+      ${drives}
+      <div class="notification-actions"></div>
+    `;
+    if (r) {
+      card.querySelector(".notification-actions").append(
+        actionButton("inbox.seeMatches", "submit-btn", async () => {
+          await actOn(n, "view", false);
+          searchForRequest(r);
+        }),
+      );
+    }
+  }
+  return card;
+}
+
+function actionButton(key, className, onClick) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = className;
+  btn.textContent = t(key);
+  btn.addEventListener("click", onClick);
+  return btn;
+}
+
+async function actOn(n, action, reload = true) {
+  try {
+    await fetchJson(`/api/notifications/${n.id}/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: fullName(currentUser), action }),
+    });
+    if (reload) loadInbox();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// "Offer this drive": the Driver form, filled with the driver's usual trip
+// and a departure that reaches the passenger at their time. The driver
+// still checks it and clicks "Offer drive".
+async function offerDrive(n) {
+  await actOn(n, "offer", false);
+  const { trip } = n.details;
+  goTo("drive");
+  [["drive-origin", trip.origin], ["drive-destination", trip.destination]].forEach(([role, place]) => {
+    setPointCoords(role, place.lat, place.lon, place.name);
+    document.getElementById(`name-${role}`).value = place.name;
+  });
+  setDateTime("drive", new Date(n.details.suggested_departure));
+  showStatus("drive-status", t("inbox.offerFilled", { name: n.request?.passenger_name || "" }), true);
+  document.getElementById("drive-submit").scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString(I18N.locale(), { day: "numeric", month: "long" });
+}
+
+document.getElementById("inbox-notify-requests").addEventListener("change", (e) => updateNotificationSettings({ notify_requests: e.target.checked }));
+document.getElementById("inbox-resume").addEventListener("click", () => updateNotificationSettings({ resume: true }));
+
+async function updateNotificationSettings(changes) {
+  try {
+    const data = await fetchJson("/api/notification_settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: fullName(currentUser), ...changes }),
+    });
+    renderInbox(data);
+  } catch (err) {
+    alert(err.message);
   }
 }
 

@@ -70,6 +70,60 @@ CREATE TABLE IF NOT EXISTS ride_requests (
     created_at TEXT NOT NULL,
     FOREIGN KEY (passenger_id) REFERENCES users(id)
 );
+
+-- A passenger's explicit ask for a ride nobody has posted (see notify.py);
+-- unlike ride_requests above, which logs every search.
+CREATE TABLE IF NOT EXISTS open_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    passenger_id INTEGER NOT NULL,
+    passenger_name TEXT NOT NULL,
+    origin_name TEXT NOT NULL,
+    origin_lat REAL NOT NULL,
+    origin_lon REAL NOT NULL,
+    destination_name TEXT NOT NULL,
+    destination_lat REAL NOT NULL,
+    destination_lon REAL NOT NULL,
+    requested_time TEXT NOT NULL,       -- naive Swiss local time
+    pickup_radius_km REAL NOT NULL,
+    dropoff_radius_km REAL NOT NULL,
+    time_tolerance_min INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',  -- 'open' or 'cancelled'; past ones have expired
+    extra_round_done INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (passenger_id) REFERENCES users(id)
+);
+
+-- What the inbox shows. request_for_driver: a passenger's request, sent to
+-- a driver who made the trip before; drive_for_passenger: a newly posted
+-- drive that fits a passenger's request.
+CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recipient_id INTEGER NOT NULL,
+    recipient_name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    request_id INTEGER NOT NULL,        -- the (latest) request it's about
+    drive_ids TEXT,                     -- JSON list, drive_for_passenger only
+    request_ids TEXT NOT NULL,          -- JSON list: merged requests
+    details TEXT,                       -- JSON: the driver's usual trip, suggested departure
+    created_at TEXT NOT NULL,
+    read_at TEXT,
+    acted_at TEXT,
+    action TEXT,                        -- 'offer', 'decline', 'mute', 'view'
+    FOREIGN KEY (recipient_id) REFERENCES users(id)
+);
+
+-- "Not interested in this route": requests starting and ending near these
+-- points aren't sent to this driver.
+CREATE TABLE IF NOT EXISTS route_mutes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    origin_lat REAL NOT NULL,
+    origin_lon REAL NOT NULL,
+    destination_lat REAL NOT NULL,
+    destination_lon REAL NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 """
 
 
@@ -92,9 +146,18 @@ def init_db():
         columns = {r["name"] for r in conn.execute("PRAGMA table_info(drives)")}
         if "is_demo" not in columns:
             conn.execute("ALTER TABLE drives ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0")
+        # Databases created before ride requests.
+        user_columns = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
+        if "notify_requests" not in user_columns:
+            conn.execute("ALTER TABLE users ADD COLUMN notify_requests INTEGER NOT NULL DEFAULT 1")
+        if "backoff_reset_at" not in user_columns:
+            # Unanswered notifications before this don't count (see notify.py).
+            conn.execute("ALTER TABLE users ADD COLUMN backoff_reset_at TEXT")
         conn.executescript("""
             CREATE INDEX IF NOT EXISTS drives_departure_time ON drives (departure_time);
             CREATE INDEX IF NOT EXISTS drives_driver_name ON drives (driver_name);
+            CREATE INDEX IF NOT EXISTS notifications_recipient ON notifications (recipient_name, created_at);
+            CREATE INDEX IF NOT EXISTS open_requests_time ON open_requests (requested_time);
         """)
         moved = _move_demo_geometry_to_demo_routes(conn)
     if moved:
@@ -406,11 +469,229 @@ def delete_ride_requests_before(created_at: str) -> int:
 
 
 def delete_inactive_users() -> int:
-    """Delete users with no drives and no searches left; returns how many."""
+    """Delete users with no drives, searches, ride requests or notifications
+    left, with their route mutes; returns how many."""
+    inactive = """
+        SELECT id FROM users
+        WHERE id NOT IN (SELECT driver_id FROM drives)
+          AND id NOT IN (SELECT passenger_id FROM ride_requests)
+          AND id NOT IN (SELECT passenger_id FROM open_requests)
+          AND id NOT IN (SELECT recipient_id FROM notifications)
+    """
     with get_conn() as conn:
-        cur = conn.execute("""
-            DELETE FROM users
-            WHERE id NOT IN (SELECT driver_id FROM drives)
-              AND id NOT IN (SELECT passenger_id FROM ride_requests)
-        """)
+        conn.execute(f"DELETE FROM route_mutes WHERE user_id IN ({inactive})")
+        cur = conn.execute(f"DELETE FROM users WHERE id IN ({inactive})")
         return cur.rowcount
+
+
+# ---------------------------------------------------------------------
+# Ride requests and notifications (see notify.py)
+# ---------------------------------------------------------------------
+def create_open_request(passenger_name: str, origin: dict, destination: dict, requested_time: str,
+                        pickup_radius_km: float, dropoff_radius_km: float, time_tolerance_min: int) -> dict:
+    with get_conn() as conn:
+        passenger_id = _get_or_create_user(conn, passenger_name)
+        cur = conn.execute(
+            """
+            INSERT INTO open_requests (
+                passenger_id, passenger_name, origin_name, origin_lat, origin_lon,
+                destination_name, destination_lat, destination_lon, requested_time,
+                pickup_radius_km, dropoff_radius_km, time_tolerance_min, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                passenger_id, passenger_name, origin["name"], origin["lat"], origin["lon"],
+                destination["name"], destination["lat"], destination["lon"], requested_time,
+                pickup_radius_km, dropoff_radius_km, time_tolerance_min, now_iso(),
+            ),
+        )
+        request_id = cur.lastrowid
+    return get_open_request(request_id)
+
+
+def get_open_request(request_id: int) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM open_requests WHERE id = ?", (request_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def list_open_requests(after_time: str, passenger_name: str | None = None) -> list[dict]:
+    """Open requests for a time after `after_time` (naive local), soonest first."""
+    sql = "SELECT * FROM open_requests WHERE status = 'open' AND requested_time > ?"
+    params = [after_time]
+    if passenger_name is not None:
+        sql += " AND passenger_name = ?"
+        params.append(passenger_name.strip())
+    with get_conn() as conn:
+        return [dict(r) for r in conn.execute(sql + " ORDER BY requested_time", params)]
+
+
+def set_request_status(request_id: int, status: str) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE open_requests SET status = ? WHERE id = ?", (status, request_id))
+
+
+def mark_extra_round_done(request_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE open_requests SET extra_round_done = 1 WHERE id = ?", (request_id,))
+
+
+def delete_open_requests_before(requested_time: str) -> int:
+    """Delete ride requests for a time before `requested_time`; returns how many."""
+    with get_conn() as conn:
+        return conn.execute("DELETE FROM open_requests WHERE requested_time < ?", (requested_time,)).rowcount
+
+
+def _notification_row_to_dict(row: sqlite3.Row) -> dict:
+    d = dict(row)
+    for key in ("drive_ids", "request_ids", "details"):
+        d[key] = json.loads(d[key]) if d[key] else None
+    return d
+
+
+def create_notification(recipient_name: str, kind: str, request_id: int,
+                        drive_ids: list[int] | None = None, details: dict | None = None) -> dict:
+    with get_conn() as conn:
+        recipient_id = _get_or_create_user(conn, recipient_name)
+        cur = conn.execute(
+            """
+            INSERT INTO notifications (
+                recipient_id, recipient_name, kind, request_id, drive_ids, request_ids, details, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                recipient_id, recipient_name, kind, request_id,
+                json.dumps(drive_ids) if drive_ids is not None else None,
+                json.dumps([request_id]), json.dumps(details) if details is not None else None, now_iso(),
+            ),
+        )
+        notification_id = cur.lastrowid
+    return get_notification(notification_id)
+
+
+def get_notification(notification_id: int) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM notifications WHERE id = ?", (notification_id,)).fetchone()
+        return _notification_row_to_dict(row) if row else None
+
+
+def list_notifications(recipient_name: str, kind: str | None = None, since: str | None = None) -> list[dict]:
+    """A user's notifications, newest first; `since`: created at or after (UTC ISO)."""
+    sql, params = "SELECT * FROM notifications WHERE recipient_name = ?", [recipient_name.strip()]
+    if kind is not None:
+        sql += " AND kind = ?"
+        params.append(kind)
+    if since is not None:
+        sql += " AND created_at >= ?"
+        params.append(since)
+    with get_conn() as conn:
+        return [_notification_row_to_dict(r) for r in conn.execute(sql + " ORDER BY created_at DESC, id DESC", params)]
+
+
+def notified_for_request(request_id: int, kind: str) -> list[dict]:
+    """Notifications of `kind` that include `request_id`."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT n.* FROM notifications n, json_each(n.request_ids) r WHERE n.kind = ? AND r.value = ?",
+            (kind, request_id),
+        ).fetchall()
+        return [_notification_row_to_dict(r) for r in rows]
+
+
+def merge_into_notification(notification_id: int, request_id: int, drive_id: int | None = None) -> dict:
+    """Add a request (and a drive) to an existing notification."""
+    n = get_notification(notification_id)
+    request_ids = n["request_ids"] if request_id in n["request_ids"] else [*n["request_ids"], request_id]
+    drive_ids = n["drive_ids"]
+    if drive_id is not None and drive_id not in (drive_ids or []):
+        drive_ids = [*(drive_ids or []), drive_id]
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE notifications SET request_id = ?, request_ids = ?, drive_ids = ? WHERE id = ?",
+            (request_id, json.dumps(request_ids), json.dumps(drive_ids) if drive_ids is not None else None,
+             notification_id),
+        )
+    return get_notification(notification_id)
+
+
+def mark_notifications_read(recipient_name: str) -> int:
+    with get_conn() as conn:
+        return conn.execute(
+            "UPDATE notifications SET read_at = ? WHERE recipient_name = ? AND read_at IS NULL",
+            (now_iso(), recipient_name.strip()),
+        ).rowcount
+
+
+def set_notification_action(notification_id: int, action: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE notifications SET action = ?, acted_at = ?, read_at = COALESCE(read_at, ?) WHERE id = ?",
+            (action, now_iso(), now_iso(), notification_id),
+        )
+
+
+def delete_notifications_before(created_at: str) -> int:
+    """Delete notifications sent before `created_at` (UTC ISO); returns how many."""
+    with get_conn() as conn:
+        return conn.execute("DELETE FROM notifications WHERE created_at < ?", (created_at,)).rowcount
+
+
+def add_route_mute(user_name: str, origin: tuple[float, float], destination: tuple[float, float]) -> None:
+    with get_conn() as conn:
+        user_id = _get_or_create_user(conn, user_name)
+        conn.execute(
+            """
+            INSERT INTO route_mutes (user_id, origin_lat, origin_lon, destination_lat, destination_lon, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (user_id, *origin, *destination, now_iso()),
+        )
+
+
+def list_route_mutes(user_name: str) -> list[dict]:
+    with get_conn() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT m.* FROM route_mutes m JOIN users u ON u.id = m.user_id WHERE u.name = ?",
+            (user_name.strip(),),
+        )]
+
+
+def get_user_settings(name: str) -> dict:
+    """notify_requests (bool) and backoff_reset_at, defaults for an unknown name."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT notify_requests, backoff_reset_at FROM users WHERE name = ?", (name.strip(),)
+        ).fetchone()
+    if row is None:
+        return {"notify_requests": True, "backoff_reset_at": None}
+    return {"notify_requests": bool(row["notify_requests"]), "backoff_reset_at": row["backoff_reset_at"]}
+
+
+def update_user_settings(name: str, notify_requests: bool | None = None, reset_backoff: bool = False) -> None:
+    with get_conn() as conn:
+        user_id = _get_or_create_user(conn, name.strip())
+        if notify_requests is not None:
+            conn.execute("UPDATE users SET notify_requests = ? WHERE id = ?", (int(notify_requests), user_id))
+        if reset_backoff:
+            conn.execute("UPDATE users SET backoff_reset_at = ? WHERE id = ?", (now_iso(), user_id))
+
+
+def past_visitor_drives(since: str, until: str) -> list[dict]:
+    """Drives by visitors (not demo drives) departing in [since, until), with
+    their route geometry: the history ride requests are matched against."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT {_DRIVE_COLUMNS} FROM {_DRIVES_WITH_ROUTES}
+            WHERE d.is_demo = 0 AND d.departure_time >= ? AND d.departure_time < ?
+            """,
+            (since, until),
+        ).fetchall()
+        return [_drive_row_to_dict(r) for r in rows]
+
+
+def all_demo_routes() -> dict[tuple[str, str], dict]:
+    """(origin name, destination name) -> {distance_m, duration_s}, without geometry."""
+    with get_conn() as conn:
+        rows = conn.execute("SELECT origin_name, destination_name, distance_m, duration_s FROM demo_routes")
+        return {(r["origin_name"], r["destination_name"]): dict(r) for r in rows}

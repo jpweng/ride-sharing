@@ -15,6 +15,12 @@ Two core use cases:
   GET /api/drives/{id}     -- a single drive with full route geometry.
   DELETE /api/drives/{id}  -- a driver cancels one of their drives.
   GET /api/ride_requests   -- a passenger's recent searches.
+  POST /api/requests       -- a passenger asks for a ride nobody has posted;
+                               a few drivers who made the trip before are
+                               told (see notify.py).
+  GET/DELETE /api/requests -- a passenger's open ride requests; cancel one.
+  GET /api/notifications   -- a user's inbox; .../read, .../{id}/action and
+                               /api/notification_settings act on it.
 
 No authentication: a driver/passenger is just a name, auto-registered on
 first use. This is a demo/prototype, not a production app.
@@ -37,7 +43,9 @@ from pydantic import BaseModel, Field
 import database as db
 import maintenance
 import matching
+import notify
 import pricing
+import search
 import transit
 
 logger = logging.getLogger("uvicorn.error")
@@ -117,6 +125,21 @@ class MatchRequest(BaseModel):
     time_tolerance_min: int = Field(default=matching.DEFAULT_TIME_TOLERANCE_MIN, ge=0, le=360)
 
 
+class RideRequestCreate(MatchRequest):
+    pass
+
+
+class NotificationAction(BaseModel):
+    name: str = Field(min_length=1)
+    action: Literal["offer", "decline", "mute", "view"]
+
+
+class NotificationSettings(BaseModel):
+    name: str = Field(min_length=1)
+    notify_requests: bool | None = None
+    resume: bool = False  # turn notifications back on after the back-off paused them
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
@@ -149,7 +172,10 @@ def post_drive(payload: DriveCreate):
         route_duration_s=route["duration_s"],
         route_source=route["source"],
     )
-    return pricing.with_demo_price(db.get_drive(drive_id))
+    drive = db.get_drive(drive_id)
+    # Passengers waiting for a ride like this one are told.
+    notify.tell_passengers(drive)
+    return pricing.with_demo_price(drive)
 
 
 @app.get("/api/drives")
@@ -210,35 +236,13 @@ def match_ride(payload: MatchRequest):
         requested_time=payload.requested_time,
     )
 
-    # Only drives that can reach the pickup near the requested time
-    # (matching filters on the pickup time exactly): there are tens of
-    # thousands of demo drives a week.
-    asked = datetime.fromisoformat(payload.requested_time).replace(tzinfo=None)
-    tolerance = timedelta(minutes=payload.time_tolerance_min + 1)
-    drives = db.list_drives(
-        upcoming_only=True,
-        with_geometry=False,
-        departing_from=(asked - tolerance - timedelta(hours=matching.MAX_DRIVE_HOURS)).isoformat(timespec="minutes"),
-        departing_until=(asked + tolerance).isoformat(timespec="minutes"),
-    )
     passenger_origin = (payload.origin.lat, payload.origin.lon)
     passenger_destination = (payload.destination.lat, payload.destination.lon)
     origin_place = payload.origin.name if payload.origin.kind == "place" else None
     destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
-    # Routes (large) only for the drives that can pass near both ends.
-    candidates = [
-        d for d in drives
-        if d["seats_available"] > 0
-        and matching.could_pass_near(d, passenger_origin, payload.pickup_radius_km)
-        and matching.could_pass_near(d, passenger_destination, payload.dropoff_radius_km)
-    ]
-    geometries = db.route_geometries([d["id"] for d in candidates])
-    for d in candidates:
-        d["route_geometry"] = geometries.get(d["id"])
-
-    driver_matches = matching.find_matches(
-        candidates, passenger_origin, passenger_destination, payload.requested_time,
+    driver_matches = search.upcoming_matches(
+        passenger_origin, passenger_destination, payload.requested_time,
         pickup_radius_km=payload.pickup_radius_km,
         dropoff_radius_km=payload.dropoff_radius_km,
         time_tolerance_min=payload.time_tolerance_min,
@@ -283,6 +287,76 @@ def match_ride(payload: MatchRequest):
         "driver_matches": driver_matches,
         "transit_option": transit_option,
     }
+
+
+@app.post("/api/requests")
+def create_ride_request(payload: RideRequestCreate):
+    try:
+        asked = datetime.fromisoformat(payload.requested_time).replace(tzinfo=None)
+    except ValueError:
+        raise api_error(400, "invalid_time", "requested_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
+    now = notify.local_now()
+    if asked < now + notify.REQUEST_MIN_AHEAD:
+        raise api_error(400, "request_too_soon", "A ride request must be at least 1 hour ahead")
+    if asked > now + notify.REQUEST_MAX_AHEAD:
+        raise api_error(400, "request_too_far", "A ride request can be at most 14 days ahead")
+
+    request = db.create_open_request(
+        payload.passenger_name.strip(), payload.origin.model_dump(), payload.destination.model_dump(),
+        asked.isoformat(timespec="minutes"),
+        payload.pickup_radius_km, payload.dropoff_radius_km, payload.time_tolerance_min,
+    )
+    told = notify.notify_drivers(request)
+    return {"request": request, "drivers_told": len(told)}
+
+
+@app.get("/api/requests")
+def get_ride_requests_open(passenger_name: str):
+    return db.list_open_requests(notify.local_now().isoformat(timespec="minutes"), passenger_name)
+
+
+@app.delete("/api/requests/{request_id}")
+def cancel_ride_request(request_id: int, passenger_name: str):
+    request = db.get_open_request(request_id)
+    if not request:
+        raise api_error(404, "request_not_found", "Ride request not found")
+    if request["passenger_name"] != passenger_name.strip():
+        raise api_error(403, "not_your_request", "Only the passenger who made this request can cancel it")
+    db.set_request_status(request_id, "cancelled")
+    return {"cancelled": request_id}
+
+
+@app.get("/api/notifications")
+def get_notifications(name: str):
+    return notify.inbox(name.strip())
+
+
+@app.post("/api/notifications/read")
+def read_notifications(name: str):
+    return {"read": db.mark_notifications_read(name)}
+
+
+@app.post("/api/notifications/{notification_id}/action")
+def act_on_notification(notification_id: int, payload: NotificationAction):
+    n = db.get_notification(notification_id)
+    if not n or n["recipient_name"] != payload.name.strip():
+        raise api_error(404, "notification_not_found", "Notification not found")
+    if payload.action == "mute":
+        request = db.get_open_request(n["request_id"])
+        if request:
+            db.add_route_mute(
+                payload.name.strip(),
+                (request["origin_lat"], request["origin_lon"]),
+                (request["destination_lat"], request["destination_lon"]),
+            )
+    db.set_notification_action(notification_id, payload.action)
+    return db.get_notification(notification_id)
+
+
+@app.put("/api/notification_settings")
+def update_notification_settings(payload: NotificationSettings):
+    db.update_user_settings(payload.name.strip(), payload.notify_requests, reset_backoff=payload.resume)
+    return notify.inbox(payload.name.strip())
 
 
 # Serve the static frontend last, so it doesn't shadow the /api/* routes above.

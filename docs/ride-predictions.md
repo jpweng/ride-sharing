@@ -1,7 +1,8 @@
 # Ride predictions and ride requests — design
 
-**Status: designed, not built yet.** Once it's built, keep this document in step with the code: if a
-threshold or limit changes, update it in the same commit.
+**Status: ride requests and notifications are built (2026-11-01, `backend/notify.py`); ride
+predictions are designed, not built yet.** Keep this document in step with the code: if a threshold or
+limit changes, update it in the same commit.
 
 ## What it does
 
@@ -68,9 +69,14 @@ Rules (in `backend/notify.py`):
 2. **Excluded:**
    - the passenger themself;
    - drivers who already posted a matching drive, because the passenger sees that drive already;
-   - drivers who muted this route or turned request notifications off.
+   - drivers who muted this route (a request whose start and end are each within `MUTE_RADIUS_KM`,
+     5 km, of the muted request's) or turned request notifications off.
 3. **Ranking:** drivers who made the drive most often come first, then a bonus for the same weekday
-   and a closer time, minus the distance to the pickup and from the drop-off. A habitual driver is the most likely to say yes.
+   (`SAME_WEEKDAY_BONUS`, worth 4 occurrences) and a closer time, minus the distance to the pickup
+   and from the drop-off (the match's score, in minutes, over `RANK_MINUTES_PER_POINT` = 10). A
+   habitual driver is the most likely to say yes. **Visitors' drivers come before demo drivers**:
+   the demo network's thousands of fictional drivers, with weeks of history each, would otherwise
+   always take the places, and real testers would never be told.
 
 ### How often
 
@@ -103,15 +109,18 @@ same limits.
 
 ## Data
 
-- `open_requests`: the passenger, start and end, time, status (`open` / `cancelled` / `expired`),
-  whether it came from a suggestion, `is_demo`.
-- `notifications`: recipient, kind (`request_for_driver` / `drive_for_passenger`), the request or
-  drive it's about, merged count, created, read and acted-on times.
+- `open_requests`: the passenger, start and end, time, pickup/drop-off radii and time tolerance (the
+  same as a search), status (`open` / `cancelled`; past ones have expired), whether the extra round
+  ran. With predictions: whether it came from a suggestion, `is_demo`.
+- `notifications`: recipient, kind (`request_for_driver` / `drive_for_passenger`), the request(s)
+  and drive(s) it's about (merged ones in JSON lists), the driver's usual trip and suggested
+  departure, created, read and acted-on times, and the action.
 - `route_mutes` and `suggestion_dismissals`: the user's "not interested" and "stop suggesting"
   choices, deleted with the user.
 - On `users`:
-  - `notify_requests`, `suggestions_enabled`: the user's settings;
-  - `requests_paused_until`: set by the back-off.
+  - `notify_requests` (built), `suggestions_enabled` (with predictions): the user's settings;
+  - `backoff_reset_at`: set by "turn back on"; unanswered notifications before it no longer count.
+    The pause itself isn't stored: it's 30 days from the notification that made 5 in a row.
 - `from_suggestion` on drives and requests, so we can measure how often suggestions are accepted.
 
 Retention follows the existing 30-day rule:
@@ -121,23 +130,22 @@ Retention follows the existing 30-day rule:
 
 ## Demo data
 
-The demo keeps **3 months** of past demo drives instead of deleting them once they've left. About
-10 % of occurrences are skipped and times shift by up to ±10 min, so the history looks lived-in
-rather than robotic.
-
-Past rows keep their distance and duration but not their route geometry (up to ~60 KB per drive),
-which only the map uses, and only for upcoming drives.
+Demo drivers' history isn't stored: it follows from their templates in `demo_drives.py`, each one
+driven on its weekdays over the last 13 weeks, minus about 10 % of occurrences skipped (seeded, so
+it's the same every time). Storing it would have meant ~470,000 past rows for 3 months of the
+~36,000-a-week network.
 
 To show the feature:
 - **Showcase drivers** (Jean Dupont and a few others): their drives are posted only 2 days ahead, so
   signing in as one of them shows "Publish your next drives?" for the rest of the week.
 - **Demo passengers** with recurring searches see "Request your next rides?".
 - A couple of **demo ride requests** a day reach the showcase drivers' inboxes, through the same
-  rules and limits as real ones.
+  rules and limits as real ones. (Not built yet. Meanwhile, signing in as a demo driver, e.g. Jean
+  Dupont, shows the requests real testers sent them.)
 
 ## Privacy
 
-The privacy notice must say, in all four languages:
+The privacy notice says (ride requests) and must say (predictions), in all four languages:
 - that past drives and searches are used to suggest the next ones and to tell drivers about requests
   on routes they often drive, and that both can be turned off;
 - that notified drivers see the passenger's name, trip and time.

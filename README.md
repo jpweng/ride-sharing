@@ -8,14 +8,15 @@ suggestion via [transport.opendata.ch](https://transport.opendata.ch).
 
 See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for the full design rationale.
 
-**Planned next: ride predictions and ride requests.** This feature is designed but not built yet.
-- The app spots people's recurring trips and offers to publish their next drives, or request their
-  next rides, after they confirm.
-- Passengers can ask for a ride nobody has posted. A few drivers who made that trip before are
-  notified, with strict limits so drivers don't get too many notifications.
+**Ride requests:** a passenger can ask for a ride nobody has posted. A few drivers who made that
+trip before are told in their inbox, with strict limits so drivers don't get too many
+notifications, and the passenger is told when a drive that fits is posted.
 
-See [docs/ride-predictions.md](docs/ride-predictions.md) for the design, the rules and the reasons
-behind them.
+**Planned next: ride predictions.** The app spots people's recurring trips and offers to publish
+their next drives, or request their next rides, after they confirm. Designed, not built yet.
+
+See [docs/ride-predictions.md](docs/ride-predictions.md) for the design of both, the rules and the
+reasons behind them.
 
 ## Stack
 
@@ -188,11 +189,14 @@ backend/
   main.py         FastAPI app + routes, mounts frontend/ as static files
   database.py     SQLite schema + access layer
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
+  search.py       upcoming drives that fit a trip (used by searches and ride requests)
+  notify.py       ride requests: which drivers are told, limits, the inbox
+  pricing.py      demo prices (a placeholder until pricing is designed)
   transit.py      transport.opendata.ch integration
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
 frontend/
-  index.html      pages: #/ (home), #/browse (public), #/ride (Passenger), #/drive (Driver)
+  index.html      pages: #/ride (Passenger, the default), #/browse (public), #/drive (Driver), #/inbox
   privacy.html    privacy notice, linked from the demo banner
   app.js          Leaflet map, point picking, address autocomplete, API calls
   i18n.js         language choice and translation of the page (see Translations)
@@ -214,6 +218,13 @@ Dockerfile        app image (uvicorn, non-root, DB on /data)
 - `GET  /api/drives/{id}` — one drive with full route geometry
 - `DELETE /api/drives/{id}?driver_name=…` — driver cancels their own drive
 - `GET  /api/ride_requests?passenger_name=…` — a passenger's recent searches (deduplicated)
+- `POST /api/requests` — passenger asks for a ride nobody has posted (same body as `/api/match`);
+  returns the request and how many drivers were told
+- `GET  /api/requests?passenger_name=…`, `DELETE /api/requests/{id}?passenger_name=…` — a
+  passenger's open ride requests; cancel one
+- `GET  /api/notifications?name=…` — a user's inbox and settings; `POST /api/notifications/read?name=…`,
+  `POST /api/notifications/{id}/action` (`offer` / `decline` / `mute` / `view`),
+  `PUT /api/notification_settings`
 - `POST /api/match` — passenger requests a ride (optional pickup/drop-off radii and time tolerance);
   returns ranked driver matches, a last-mile transit suggestion for the best ones, and a pure
   public-transport alternative

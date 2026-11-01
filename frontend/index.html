@@ -11,7 +11,7 @@
 </head>
 <body>
 <header>
-  <h1><a class="wordmark" href="#/"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
+  <h1><a class="wordmark" href="#/ride"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
   <span class="subtitle" data-i18n="header.subtitle">Shared rides to the train</span>
   <div class="lang-picker" role="group" aria-label="Language">
     <button type="button" data-lang="de">DE</button><button type="button" data-lang="fr">FR</button><button type="button" data-lang="it">IT</button><button type="button" data-lang="en">EN</button>
@@ -25,54 +25,12 @@
 </div>
 
 <nav class="tabs">
-  <a class="tab-link" href="#/" data-page="home" data-i18n="nav.home">Home</a>
   <a class="tab-link" href="#/browse" data-page="browse" data-i18n="nav.browse">Browse rides</a>
   <a class="tab-link" href="#/ride" data-page="ride" data-i18n="nav.ride">Passenger</a>
   <a class="tab-link" href="#/drive" data-page="drive" data-i18n="nav.drive">Driver</a>
+  <a class="tab-link" href="#/inbox" data-page="inbox"><span data-i18n="nav.inbox">Inbox</span> <span class="unread-count" id="unread-count" hidden></span></a>
   <div class="account" id="account"></div>
 </nav>
-
-<!-- HOME: what Ride and Rail is, full width (the map pages are in <main>) -->
-<section id="home" class="home">
-  <div class="home-hero">
-    <h2 data-i18n-html="home.title">Drive part of the way.<br>Take the train for the rest.</h2>
-    <p class="home-lead" data-i18n="home.lead">
-      Ride and Rail matches you with drivers who are already heading your way, even if they aren't
-      going all the way. They drop you at a station on their route, and a real train or bus
-      connection takes you the rest of the way.
-    </p>
-    <div class="home-actions">
-      <a class="submit-btn" href="#/ride" data-i18n="home.findRide">Find a ride</a>
-      <a class="submit-btn secondary" href="#/drive" data-i18n="home.offerDrive">Offer a drive</a>
-      <a class="home-link" href="#/browse" data-i18n="home.browse">Browse upcoming rides →</a>
-    </div>
-  </div>
-
-  <ol class="home-steps">
-    <li>
-      <h3 data-i18n="home.step1.title">Drivers share empty seats</h3>
-      <p data-i18n="home.step1.text">On a trip they're making anyway: where from, where to, when, and how many seats are free.</p>
-    </li>
-    <li>
-      <h3 data-i18n="home.step2.title">Matched along the route</h3>
-      <p data-i18n="home.step2.text">
-        Not just drivers going to the same town: anyone whose route passes close to your start and
-        your destination, at about your time. You choose how close.
-      </p>
-    </li>
-    <li>
-      <h3 data-i18n="home.step3.title">Finish by train or bus</h3>
-      <p data-i18n="home.step3.text">
-        If the drop-off isn't at your door, you get a real connection from there to your destination,
-        from the Swiss public transport timetable.
-      </p>
-    </li>
-  </ol>
-
-  <p class="home-note" data-i18n="home.note">
-    Every search also shows the public transport option on its own, so you can compare.
-  </p>
-</section>
 
 <main>
   <div class="panel">
@@ -158,12 +116,35 @@
         <div class="hint" id="ride-matches-hint" data-i18n="ride.matchesHint">Click a match to see its route on the map.</div>
         <div id="ride-matches"></div>
 
+        <div class="ask-box">
+          <div class="hint" data-i18n="ride.askHint">Nothing that suits you? Ask the drivers who often make this trip. A few of them are told, and your inbox tells you when a drive that fits is posted.</div>
+          <button class="submit-btn secondary" id="ride-ask" data-i18n="ride.ask">Ask drivers for this ride</button>
+          <div class="status-msg" id="ride-ask-status"></div>
+        </div>
+
         <div class="section-title" data-i18n="ride.transitTitle">Public transport alternative</div>
         <div id="ride-transit"></div>
       </div>
 
+      <div class="section-title" data-i18n="ride.requestsTitle">Your ride requests</div>
+      <div id="ride-requests"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
+
       <div class="section-title" data-i18n="ride.recentTitle">Your recent searches</div>
       <div id="ride-recent"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
+    </section>
+
+    <!-- INBOX: ride requests for drivers, new drives for passengers -->
+    <section id="page-inbox" class="page">
+      <div class="page-title" data-i18n="inbox.title">Inbox</div>
+      <div class="paused-box" id="inbox-paused" hidden>
+        <span id="inbox-paused-text"></span>
+        <button type="button" class="submit-btn secondary" id="inbox-resume" data-i18n="inbox.resume">Turn back on</button>
+      </div>
+      <div id="inbox-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="inbox-notify-requests" />
+        <span data-i18n="inbox.notifyRequests">Tell me when a passenger asks for a ride on a route I've driven</span>
+      </label>
     </section>
 
     <!-- DRIVER PAGE -->
