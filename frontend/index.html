@@ -25,10 +25,12 @@
 </div>
 
 <nav class="tabs">
-  <a class="tab-link" href="#/browse" data-page="browse" data-i18n="nav.browse">Browse rides</a>
-  <a class="tab-link" href="#/ride" data-page="ride" data-i18n="nav.ride">Passenger</a>
-  <a class="tab-link" href="#/drive" data-page="drive" data-i18n="nav.drive">Driver</a>
-  <a class="tab-link" href="#/inbox" data-page="inbox"><span data-i18n="nav.inbox">Inbox</span> <span class="unread-count" id="unread-count" hidden></span></a>
+  <div class="tab-list">
+    <a class="tab-link" href="#/browse" data-page="browse" data-i18n="nav.browse">Browse rides</a>
+    <a class="tab-link" href="#/ride" data-page="ride" data-i18n="nav.ride">Passenger</a>
+    <a class="tab-link" href="#/drive" data-page="drive" data-i18n="nav.drive">Driver</a>
+    <a class="tab-link" href="#/inbox" data-page="inbox"><span data-i18n="nav.inbox">Inbox</span> <span class="unread-count" id="unread-count" hidden></span></a>
+  </div>
   <div class="account" id="account"></div>
 </nav>
 
@@ -175,7 +177,7 @@
       <div class="coord-readout" id="readout-drive-destination">not set</div>
 
       <div class="name-row">
-        <div>
+        <div class="wide">
           <label for="drive-date" data-i18n="drive.departure">Departure</label>
           <div class="datetime">
             <input type="date" id="drive-date" />

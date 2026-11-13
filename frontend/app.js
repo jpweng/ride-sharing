@@ -9,6 +9,23 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
 }).addTo(map);
 
+// On phones the map is a band at the top of a scrolling page (see style.css),
+// so it can be out of sight when something is shown on it or picked from it.
+const PHONE_LAYOUT = window.matchMedia("(max-width: 760px)");
+
+function revealMap() {
+  if (!PHONE_LAYOUT.matches) return;
+  const box = map.getContainer().getBoundingClientRect();
+  if (box.top < 0 || box.bottom > window.innerHeight) {
+    map.getContainer().scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+}
+
+// After picking on the map, back to the field that was being filled.
+function revealOnPhone(el) {
+  if (PHONE_LAYOUT.matches && el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
 // Layer groups so we can clear/redraw per-view without touching each other.
 const pickerLayer = L.layerGroup().addTo(map);   // origin/destination pins being picked
 const resultsLayer = L.layerGroup().addTo(map);  // match / drive results (routes, markers)
@@ -35,6 +52,7 @@ document.querySelectorAll(".point-picker button[data-role]").forEach((btn) => {
   btn.addEventListener("click", () => {
     activePickRole = activePickRole === btn.dataset.role ? null : btn.dataset.role;
     setPicking(activePickRole);
+    if (activePickRole) revealMap();
   });
 });
 
@@ -46,6 +64,7 @@ map.on("click", async (e) => {
   setPointCoords(role, lat, lng, null);
   activePickRole = null;
   setPicking(null);
+  revealOnPhone(document.getElementById(`name-${role}`));
 
   const name = await reverseGeocode(lat, lng);
   if (points[role]) {
@@ -820,6 +839,7 @@ function renderMatches(matches, outside, passengerOrigin, passengerDestination, 
       meetingMarkers.push(marker);
     });
     map.fitBounds(bounds, { padding: [30, 30] });
+    revealMap();
   }
 
   all.forEach((m, idx) => {
@@ -861,7 +881,8 @@ function renderMatches(matches, outside, passengerOrigin, passengerDestination, 
         .bindTooltip(`${esc(m.driver_name)}: ${esc(m.origin_name)} → ${esc(m.destination_name)}`, { sticky: true })
         .on("click", () => {
           if (selected !== entry) select(entry);
-          card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          // On phones that would scroll the map away from under the finger.
+          if (!PHONE_LAYOUT.matches) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
         });
     }
   });
@@ -1300,6 +1321,7 @@ async function showDriveOnMap(drive) {
   }
   L.marker([drive.origin_lat, drive.origin_lon]).addTo(resultsLayer).bindPopup(esc(drive.origin_name)).openPopup();
   L.marker([drive.destination_lat, drive.destination_lon]).addTo(resultsLayer).bindPopup(esc(drive.destination_name));
+  revealMap();
 }
 
 // ---------------------------------------------------------------------
