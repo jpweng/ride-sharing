@@ -132,8 +132,8 @@ Retention follows the existing 30-day rule:
 
 Demo drivers' history isn't stored: it follows from their templates in `demo_drives.py`, each one
 driven on its weekdays over the last 13 weeks, minus about 10 % of occurrences skipped (seeded, so
-it's the same every time). Storing it would have meant ~470,000 past rows for 3 months of the
-~36,000-a-week network.
+it's the same every time). Storing it would have meant ~1.7 million past rows for 3 months of the
+~130,000-a-week network.
 
 To show the feature:
 - **Showcase drivers** (Jean Dupont and a few others): their drives are posted only 2 days ahead, so

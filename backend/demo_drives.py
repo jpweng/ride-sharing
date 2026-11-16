@@ -4,13 +4,16 @@ and matching always have something to show on the public demo.
 
 The drives form a network over the whole country, denser in Ticino and
 Graubünden: weekday commutes (out in the morning, back in the evening),
-midday drives on the busy corridors, and weekend trips. Each corridor has
-departures spread over the day, so a search at most times finds something
-within matching.DEFAULT_TIME_TOLERANCE_MIN. A hand-written core of drives is
-filled out by generated ones: about 3,000 commuters from the cities and
-about 100 smaller towns, and departures every hour or two on 41 corridors:
-about 36,000 drives a week in all. Each trip's road route is stored once, in
-the demo_routes table, not on each of its drives.
+shift workers (early, late and night shifts, weekends too), drives all day
+between neighbouring towns, drives every hour or so on 41 corridors (the
+busiest around the clock), and weekend trips. Between any two places 8 to
+30 km apart, a search from 06:00 to 22:00 finds something within
+matching.DEFAULT_TIME_TOLERANCE_MIN; on the busy corridors, at any time of
+day or night. A hand-written core of drives is filled out by generated
+ones: about 3,000 commuters, 700 shift workers, 5,600 drivers between ~700
+pairs of neighbouring places, and the corridors' drivers: about 130,000
+drives a week in all. Each trip's road route is stored once, in the
+demo_routes table, not on each of its drives.
 
 Demo drives are flagged `is_demo` and are the only drives touched here:
 drives posted by visitors are never modified or deleted. refresh() is
@@ -21,6 +24,7 @@ missing from the next DAYS_AHEAD days.
 Run it by hand with the backend on PYTHONPATH, e.g.:
     PYTHONPATH=backend uv run python backend/demo_drives.py
 """
+import itertools
 import random
 import time as clock
 from datetime import datetime, time, timedelta
@@ -484,10 +488,17 @@ _taken_names = {spec["driver_name"] for spec in DEMO_DRIVES}
 
 
 def _new_driver(rng, place):
-    """A name not used by any other demo driver, typical of `place`."""
+    """A name not used by any other demo driver, typical of `place`. Once
+    the simple names are mostly taken, a double surname, as many people in
+    Switzerland have."""
     language = _language(place)
-    while True:
-        name = f"{rng.choice(FIRST_NAMES[language])} {rng.choice(LAST_NAMES[language])}"
+    for attempt in itertools.count():
+        last = rng.choice(LAST_NAMES[language])
+        if attempt >= 20:
+            second = rng.choice(LAST_NAMES[language])
+            if second != last:
+                last = f"{last}-{second}"
+        name = f"{rng.choice(FIRST_NAMES[language])} {last}"
         if name not in _taken_names:
             _taken_names.add(name)
             return name
@@ -514,20 +525,51 @@ def _generated_commutes(home, work, count):
 
 
 def _generated_corridor(a, b, times, weekdays=DAILY):
-    """One driver each way at each of `times`."""
+    """One driver each way at about each of `times`: up to 10 minutes either
+    side, so departures aren't all on the hour."""
     drives = []
     for origin, destination in ((a, b), (b, a)):
         for at in times:
             rng = random.Random(f"corridor {origin} > {destination} @{at}")
             driver = _new_driver(rng, origin)
-            drives.append(_drive(driver, origin, destination, at, weekdays, rng.choice((1, 2, 3, 3, 4))))
+            hours, minutes = map(int, at.split(":"))
+            minutes = min(max(hours * 60 + minutes + 5 * rng.randint(-2, 2), 0), 24 * 60 - 5)
+            drives.append(_drive(driver, origin, destination, _clock(minutes), weekdays, rng.choice((1, 2, 3, 3, 4))))
     return drives
 
 
-# Commuters per unit of COMMUTES' sizes.
-COMMUTER_SCALE = 14
+# Shift workers' (out, back) windows: (first departure, number of 5-minute
+# steps after it), in minutes after midnight. Hospitals, care homes, airports,
+# bakeries, factories: the drives in the early morning and late at night.
+SHIFTS = [
+    ((4 * 60 + 30, 18), (13 * 60, 24)),       # early: out 04:30-05:55, back 13:00-14:55
+    ((12 * 60 + 30, 24), (21 * 60 + 30, 30)),  # late: out 12:30-14:25, back 21:30-23:55
+    ((20 * 60 + 30, 24), (5 * 60 + 30, 24)),   # night: out 20:30-22:25, back 05:30-07:25
+]
 
-# (home, work, size): COMMUTER_SCALE x size commuters on the trip.
+
+def _generated_shift_workers(home, work, count):
+    """`count` shift workers from home to work, on four or five days a week,
+    weekends included. A night shift's drive home is listed on its own
+    weekdays, like the other shifts' (the next morning, in real life)."""
+    drives = []
+    for n in range(count):
+        rng = random.Random(f"shift {home} > {work} #{n}")
+        driver = _new_driver(rng, home)
+        (out_first, out_steps), (back_first, back_steps) = rng.choice(SHIFTS)
+        out = _clock(out_first + 5 * rng.randrange(out_steps))
+        back = _clock(back_first + 5 * rng.randrange(back_steps))
+        weekdays = tuple(sorted(rng.sample(DAILY, rng.choice((4, 5)))))
+        drives += _commute(driver, home, work, out, back, weekdays, rng.choice((1, 2, 2, 3, 3)))
+    return drives
+
+
+# Commuters and shift workers per unit of COMMUTES' sizes.
+COMMUTER_SCALE = 14
+SHIFT_SCALE = 3
+
+# (home, work, size): COMMUTER_SCALE x size commuters on the trip, and
+# SHIFT_SCALE x size shift workers.
 COMMUTES = [
     # Romandie
     ("Morges", "Lausanne", 3), ("Rolle", "Lausanne", 1), ("Rolle", "Genève", 2),
@@ -595,16 +637,22 @@ COMMUTES = [
     ("Thusis", "Chur", 1), ("Ilanz", "Flims", 1),
 ]
 
-def _every(first, last, hours):
+def _every(first, last, hours, at_minute=0):
     """Departure times from `first` to `last` o'clock, every `hours` hours."""
-    return [f"{h:02d}:00" for h in range(first, last + 1, hours)]
+    return [f"{h:02d}:{at_minute:02d}" for h in range(first, last + 1, hours)]
 
 
-HOURLY = _every(8, 21, 1)
-EVERY_TWO_HOURS = _every(9, 21, 2)
+# Busy corridors: around the clock. Every hour from 05:00 to 23:00, a second
+# drive each half hour from 07:30 to 19:30, and a few in the night, so a
+# search at any time (2 am included) finds a drive within the default time
+# tolerance.
+NIGHT = ["00:30", "02:00", "03:30"]
+HOURLY = NIGHT + _every(5, 23, 1) + _every(7, 19, 1, at_minute=30)
+# The others: every hour from 06:00 to 22:00, and one late drive.
+EVERY_HOUR = _every(6, 22, 1) + ["23:30"]
 
 # (one end, other end, departure times each way): every day, on top of the
-# commuters.
+# commuters and shift workers.
 CORRIDORS = [
     # The busy ones.
     ("Lausanne", "Genève", HOURLY),
@@ -629,32 +677,76 @@ CORRIDORS = [
     ("Chur", "Zürich", HOURLY),
     ("St. Moritz", "Samedan", HOURLY),
     # The others.
-    ("Genève", "Nyon", EVERY_TWO_HOURS),
-    ("Lausanne", "Yverdon-les-Bains", EVERY_TWO_HOURS),
-    ("Lausanne", "Vevey", EVERY_TWO_HOURS),
-    ("Montreux", "Martigny", EVERY_TWO_HOURS),
-    ("Sion", "Sierre", EVERY_TWO_HOURS),
-    ("Neuchâtel", "La Chaux-de-Fonds", EVERY_TWO_HOURS),
-    ("Bern", "Biel/Bienne", EVERY_TWO_HOURS),
-    ("Thun", "Interlaken", EVERY_TWO_HOURS),
-    ("Basel", "Olten", EVERY_TWO_HOURS),
-    ("Aarau", "Olten", EVERY_TWO_HOURS),
-    ("Zürich", "Zug", EVERY_TWO_HOURS),
-    ("Luzern", "Zug", EVERY_TWO_HOURS),
-    ("Winterthur", "St. Gallen", EVERY_TWO_HOURS),
-    ("Bellinzona", "Locarno", EVERY_TWO_HOURS),
-    ("Lugano", "Mendrisio", EVERY_TWO_HOURS),
-    ("Chur", "Thusis", EVERY_TWO_HOURS),
-    ("Chur", "Flims", EVERY_TWO_HOURS),
-    ("Davos", "Klosters", EVERY_TWO_HOURS),
-    ("St. Moritz", "Pontresina", EVERY_TWO_HOURS),
-    ("Brig", "Visp", EVERY_TWO_HOURS),
+    ("Genève", "Nyon", EVERY_HOUR),
+    ("Lausanne", "Yverdon-les-Bains", EVERY_HOUR),
+    ("Lausanne", "Vevey", EVERY_HOUR),
+    ("Montreux", "Martigny", EVERY_HOUR),
+    ("Sion", "Sierre", EVERY_HOUR),
+    ("Neuchâtel", "La Chaux-de-Fonds", EVERY_HOUR),
+    ("Bern", "Biel/Bienne", EVERY_HOUR),
+    ("Thun", "Interlaken", EVERY_HOUR),
+    ("Basel", "Olten", EVERY_HOUR),
+    ("Aarau", "Olten", EVERY_HOUR),
+    ("Zürich", "Zug", EVERY_HOUR),
+    ("Luzern", "Zug", EVERY_HOUR),
+    ("Winterthur", "St. Gallen", EVERY_HOUR),
+    ("Bellinzona", "Locarno", EVERY_HOUR),
+    ("Lugano", "Mendrisio", EVERY_HOUR),
+    ("Chur", "Thusis", EVERY_HOUR),
+    ("Chur", "Flims", EVERY_HOUR),
+    ("Davos", "Klosters", EVERY_HOUR),
+    ("St. Moritz", "Pontresina", EVERY_HOUR),
+    ("Brig", "Visp", EVERY_HOUR),
 ]
 
 for _home, _work, _size in COMMUTES:
     DEMO_DRIVES += _generated_commutes(_home, _work, COMMUTER_SCALE * _size)
+for _home, _work, _size in COMMUTES:
+    DEMO_DRIVES += _generated_shift_workers(_home, _work, SHIFT_SCALE * _size)
 for _a, _b, _times in CORRIDORS:
     DEMO_DRIVES += _generated_corridor(_a, _b, _times)
+
+
+# Regional drives: between any two places REGIONAL_MIN_KM to REGIONAL_MAX_KM
+# apart (as the crow flies), all day, every day: shopping, visits, errands,
+# appointments. From each end, a driver leaves at about each of
+# REGIONAL_OUT_HOURS and comes back 2 to 4 hours later, so either way there's
+# a drive about every two hours from 06:00 to 22:00 (Rapperswil -> Zug at
+# 13:20, say), not only at commuting times.
+REGIONAL_MIN_KM = 8
+REGIONAL_MAX_KM = 30
+REGIONAL_OUT_HOURS = (6, 10, 14, 18)
+
+
+def _regional_pairs():
+    names = list(PLACES)
+    return [
+        (a, b)
+        for i, a in enumerate(names)
+        for b in names[i + 1:]
+        if REGIONAL_MIN_KM <= matching.haversine_km(*PLACES[a], *PLACES[b]) <= REGIONAL_MAX_KM
+    ]
+
+
+def _generated_regional(a, b):
+    """From each end, one driver per REGIONAL_OUT_HOURS: out within that
+    hour, back 2 to 4 hours later. Half the pairs start an hour later, so
+    the country's drives are spread over the day."""
+    drives = []
+    later = random.Random(f"regional {a} - {b}").random() < 0.5
+    for home, other in ((a, b), (b, a)):
+        for hour in REGIONAL_OUT_HOURS:
+            hour += later
+            rng = random.Random(f"regional {home} > {other} @{hour}")
+            driver = _new_driver(rng, home)
+            out = hour * 60 + 5 * rng.randrange(12)
+            back = out + 120 + 5 * rng.randrange(24)
+            drives += _commute(driver, home, other, _clock(out), _clock(back), DAILY, rng.choice((1, 2, 3, 3, 4)))
+    return drives
+
+
+for _a, _b in _regional_pairs():
+    DEMO_DRIVES += _generated_regional(_a, _b)
 
 
 def _departure_iso(dt: datetime) -> str:
@@ -704,18 +796,12 @@ def refresh(now: datetime | None = None) -> tuple[int, int]:
 
     # Upcoming demo drives from templates that changed or were removed.
     existing, outdated = set(), []
-    for d in db.list_drives(upcoming_only=False, with_geometry=False):
-        if not d["is_demo"]:
-            continue
-        spec = expected.get((d["driver_name"], d["departure_time"]))
-        if (
-            spec
-            and spec["origin"]["name"] == d["origin_name"]
-            and spec["destination"]["name"] == d["destination_name"]
-        ):
-            existing.add((d["driver_name"], d["departure_time"]))
+    for drive_id, driver_name, departure_time, origin_name, destination_name in db.demo_drive_keys():
+        spec = expected.get((driver_name, departure_time))
+        if spec and spec["origin"]["name"] == origin_name and spec["destination"]["name"] == destination_name:
+            existing.add((driver_name, departure_time))
         else:
-            outdated.append(d["id"])
+            outdated.append(drive_id)
     for i in range(0, len(outdated), BATCH_SIZE):
         deleted += db.delete_drives(outdated[i:i + BATCH_SIZE])
 

@@ -223,11 +223,13 @@ def match_drive(
     pickup_radius_km: float = DEFAULT_PICKUP_RADIUS_KM,
     dropoff_radius_km: float = DEFAULT_DROPOFF_RADIUS_KM,
     time_tolerance_min: float = DEFAULT_TIME_TOLERANCE_MIN,
+    route: list[tuple[float, float, float]] | None = None,
 ) -> dict | None:
     """
     How `drive` serves this passenger, or None if it doesn't: the drive with
     its pickup and drop-off points, the ride's length, the minutes between
-    the pickup and the requested time, and the ranking score.
+    the pickup and the requested time, and the ranking score. `route`: the
+    drive's route from prepare_route, when the caller already has it.
     """
     if drive.get("seats_available", 0) <= 0:
         return None
@@ -237,7 +239,8 @@ def match_drive(
     ):
         return None
 
-    route = prepare_route(drive.get("route_geometry"), drive)
+    if route is None:
+        route = prepare_route(drive.get("route_geometry"), drive)
     pickup = nearest_on_route(route, passenger_origin)
     if pickup is None or pickup["gap_km"] > pickup_radius_km:
         return None
@@ -302,11 +305,20 @@ def find_matches(
     Drives need their route_geometry; one without it is taken as a straight
     line.
     """
+    # Demo drives on the same trip share one route_geometry object (see
+    # database.route_geometries): prepared once, not once per drive.
+    prepared = {}
     matches = []
     for drive in drives:
+        geometry = drive.get("route_geometry")
+        route = None
+        if geometry:
+            if id(geometry) not in prepared:
+                prepared[id(geometry)] = prepare_route(geometry, drive)
+            route = prepared[id(geometry)]
         m = match_drive(
             drive, passenger_origin, passenger_destination, requested_time,
-            pickup_radius_km, dropoff_radius_km, time_tolerance_min,
+            pickup_radius_km, dropoff_radius_km, time_tolerance_min, route,
         )
         if m is not None:
             matches.append(m)

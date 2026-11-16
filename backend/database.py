@@ -384,6 +384,17 @@ def save_demo_route(origin_name: str, destination_name: str, route: dict) -> Non
         )
 
 
+def demo_drive_keys() -> list[tuple]:
+    """(id, driver_name, departure_time, origin_name, destination_name) of
+    every demo drive: what demo_drives.refresh() compares, without loading
+    whole rows for the hundred thousand or so of them."""
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT id, driver_name, departure_time, origin_name, destination_name"
+            " FROM drives WHERE is_demo = 1"
+        ).fetchall()
+
+
 def delete_demo_drives_before(departure_time: str) -> int:
     """Delete demo drives departing before `departure_time`; returns how many."""
     with get_conn() as conn:

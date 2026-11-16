@@ -204,6 +204,42 @@ def test_vevey_fribourg_covered_all_day():
         assert any(abs(dep - asked) <= window for dep in departures), hour
 
 
+def _departures(origin, destination):
+    """Departure times, in minutes after midnight, of the demo drives from
+    `origin` to `destination` every day."""
+    return [
+        s["time"].hour * 60 + s["time"].minute
+        for s in demo_drives.DEMO_DRIVES
+        if s["origin"]["name"] == origin and s["destination"]["name"] == destination
+        and s["weekdays"] == demo_drives.DAILY
+    ]
+
+
+def test_neighbouring_places_covered_from_6_to_22():
+    # Rapperswil -> Zug at 13:20, say: not a commute, not a corridor.
+    pairs = demo_drives._regional_pairs()
+    assert ("Rapperswil", "Zug") in pairs or ("Zug", "Rapperswil") in pairs
+    assert len(pairs) > 500
+    tolerance = matching.DEFAULT_TIME_TOLERANCE_MIN
+    for a, b in pairs:
+        for origin, destination in ((a, b), (b, a)):
+            departures = _departures(origin, destination)
+            for hour in range(6, 23):
+                assert any(abs(m - hour * 60) <= tolerance for m in departures), (origin, destination, hour)
+
+
+def test_busy_corridors_covered_day_and_night():
+    tolerance = matching.DEFAULT_TIME_TOLERANCE_MIN
+    for origin, destination in (("Lausanne", "Genève"), ("Bern", "Zürich"), ("Lugano", "Bellinzona")):
+        departures = _departures(origin, destination)
+        for hour in range(24):
+            # Around midnight, yesterday's late drives count too.
+            assert any(
+                min(abs(m - hour * 60), abs(m - hour * 60 - 24 * 60), abs(m - hour * 60 + 24 * 60)) <= tolerance
+                for m in departures
+            ), (origin, destination, hour)
+
+
 def test_ticino_and_graubunden_well_covered():
     ticino = {"Airolo", "Biasca", "Bellinzona", "Locarno", "Cevio", "Lugano", "Ponte Tresa",
               "Mendrisio", "Chiasso"}
