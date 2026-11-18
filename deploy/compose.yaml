@@ -3,7 +3,9 @@
 #   APP_IMAGE, PROXY_IMAGE  ECR images to run
 #   ROUTING_IMAGE           ECR routing image (routing/), the newest one
 #   SITE_ADDRESS            Caddy site address (":80" or domain names)
-#   AWS_REGION, LOG_GROUP   CloudWatch Logs destination
+#   AWS_REGION, LOG_GROUP   CloudWatch Logs destination (and the SES Region)
+#   EMAIL_FROM              sender of sign-in emails, e.g. no-reply@rideandrail.ch
+#   PUBLIC_BASE_URL         the site's address, for links in emails
 #
 # Memory limits (the server has 2 GiB, see infra/variables.tf; the OS and
 # Docker take ~350 MB): the app peaked at ~260 MB in the load test
@@ -62,6 +64,14 @@ services:
     environment:
       DB_PATH: /data/rideshare.db
       OSRM_URL: http://osrm:5000
+      # Sign-in emails (backend/mailer.py): Amazon SES, with the instance
+      # role's credentials (infra/email.tf). Without EMAIL_FROM, sign-in
+      # links can't be sent (the API answers 503) rather than being logged.
+      EMAIL_BACKEND: ses
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SES_REGION: ${AWS_REGION}
+      # For the links in emails, e.g. https://rideandrail.ch.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
     volumes:
       - type: bind
         source: /data/app

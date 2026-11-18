@@ -446,86 +446,233 @@ function fitToResults() {
 }
 
 // API errors carry a code (see main.py) that maps to "errors.<code>".
+// The session cookie goes with every request (same origin). A 401 means
+// the session ended (signed out elsewhere, expired, account closed): back
+// to the sign-in page.
 async function fetchJson(url, options) {
   const resp = await fetch(url, options);
-  const data = await resp.json();
+  let data = {};
+  try {
+    data = await resp.json();
+  } catch {
+    // e.g. the proxy's 429, which has no JSON body
+  }
   if (!resp.ok) {
-    const code = data.detail?.code;
+    if (resp.status === 401 && currentUser) {
+      setUser(null);
+      route();
+    }
+    const code = data.detail?.code || (resp.status === 429 ? "too_many_requests" : null);
     throw new Error(code ? t(`errors.${code}`) : t("errors.request_failed", { status: resp.status }));
   }
   return data;
 }
 
-// ---------------------------------------------------------------------
-// Current user -- just a first + last name, remembered in this browser.
-// (No real auth in this prototype; the backend auto-registers any name.)
-// ---------------------------------------------------------------------
-const USER_KEY = "rideshare.user";
-
-function loadUser() {
-  try {
-    const u = JSON.parse(localStorage.getItem(USER_KEY));
-    return u && u.first && u.last ? u : null;
-  } catch {
-    return null;
-  }
+function postJson(url, body, method = "POST") {
+  return fetchJson(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
-let currentUser = loadUser();
+// ---------------------------------------------------------------------
+// Signing in: an email with a one-time link (see backend/auth.py), or
+// "view as a demo driver" (read-only, no email). The session is an
+// HttpOnly cookie, so this page only knows who is signed in by asking
+// /api/auth/me.
+// ---------------------------------------------------------------------
+let currentUser = null; // see auth.public_user()
 
-function fullName(user) {
-  return `${user.first} ${user.last}`;
+// Before sign-in by email, the typed name was kept in local storage.
+try {
+  localStorage.removeItem("rideshare.user");
+} catch {
+  // storage unavailable (private window etc.)
 }
 
-function setUser(user) {
-  currentUser = user;
+async function loadCurrentUser() {
   try {
-    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
-    else localStorage.removeItem(USER_KEY);
+    currentUser = (await fetchJson("/api/auth/me")).user;
   } catch {
-    // storage unavailable (private window etc.) -- fine for this session
+    currentUser = null;
   }
   renderAccount();
 }
 
+function setUser(user) {
+  currentUser = user;
+  if (user) hideStatus("signin-notice");
+  renderAccount();
+}
+
+const signedIn = () => !!currentUser?.profile_complete;
+
 function renderAccount() {
   const el = document.getElementById("account");
+  const note = document.getElementById("demo-view-note");
+  note.hidden = !currentUser?.is_demo;
+  if (currentUser?.is_demo) note.textContent = t("demoView.note", { name: currentUser.name });
   if (!currentUser) {
     el.innerHTML = "";
     return;
   }
-  el.innerHTML = `<span>${esc(fullName(currentUser))}</span> <button type="button" id="signout">${esc(t("account.signOut"))}</button>`;
-  document.getElementById("signout").addEventListener("click", () => {
-    setUser(null);
-    route();
-  });
+  const name = currentUser.name
+    ? `<a href="#/account">${esc(currentUser.name)}</a>${currentUser.is_demo ? ` <span class="badge demo">${esc(t("account.demoBadge"))}</span>` : ""}`
+    : "";
+  el.innerHTML = `${name} <button type="button" data-action="sign-out">${esc(t("account.signOut"))}</button>`;
 }
 
-document.getElementById("signin-submit").addEventListener("click", () => {
-  const first = document.getElementById("signin-first-name").value.trim();
-  const last = document.getElementById("signin-last-name").value.trim();
-  if (!first) return showStatus("signin-status", t("signin.needFirstName"), false);
-  if (!last) return showStatus("signin-status", t("signin.needLastName"), false);
-  setUser({ first, last });
-  route();
+async function signOut() {
+  try {
+    await fetchJson("/api/auth/sign_out", { method: "POST" });
+  } catch {
+    // signed out locally anyway
+  }
+  setUser(null);
+  goTo("ride");
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-action='sign-out']")) signOut();
+});
+
+document.getElementById("signin-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("signin-email").value.trim();
+  if (!email) return showStatus("signin-status", t("signin.needEmail"), false);
+  const btn = document.getElementById("signin-submit");
+  btn.disabled = true;
+  btn.textContent = t("signin.sending");
+  try {
+    await postJson("/api/auth/link", { email, language: I18N.lang() });
+    showStatus("signin-status", t("signin.sent", { email }), true);
+  } catch (err) {
+    showStatus("signin-status", err.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = t("signin.submit");
+  }
+});
+
+async function loadDemoDrivers() {
+  const select = document.getElementById("signin-demo-driver");
+  if (select.options.length) return;
+  try {
+    const names = await fetchJson("/api/auth/demo_drivers");
+    select.innerHTML = names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  } catch {
+    // the button then reports the error
+  }
+}
+
+document.getElementById("signin-demo").addEventListener("click", async () => {
+  try {
+    const data = await postJson("/api/auth/demo", { driver_name: document.getElementById("signin-demo-driver").value });
+    setUser(data.user);
+    goTo("drive");
+  } catch (err) {
+    showStatus("signin-demo-status", err.message, false);
+  }
+});
+
+// The emailed link opens #/signin/<token>: the token goes to the server in
+// a POST (never in a URL it logs), and leaves the address bar and history
+// at once. Mail scanners that open links don't run this, so they can't use
+// up the token.
+async function verifySignInLink(token) {
+  history.replaceState(null, "", `${location.pathname}${location.search}#/ride`);
+  document.querySelectorAll(".page").forEach((s) => s.classList.toggle("active", s.id === "page-verify"));
+  document.getElementById("verify-retry").hidden = true;
+  hideStatus("verify-status");
+  try {
+    const data = await postJson("/api/auth/verify", { token });
+    setUser(data.user);
+    route();
+  } catch (err) {
+    showStatus("verify-status", t("signin.verifyFailed", { error: err.message }), false);
+    document.getElementById("verify-retry").hidden = false;
+  }
+}
+
+// The address bar already shows #/ride: route() shows the sign-in page.
+document.getElementById("verify-retry").addEventListener("click", () => route());
+
+// First sign-in (or a new code of conduct): name, 18+, code of conduct.
+function showProfile() {
+  const firstTime = !currentUser.name;
+  document.getElementById("profile-names").hidden = !firstTime;
+  document.getElementById("profile-conduct-changed").hidden = !currentUser.needs_conduct;
+}
+
+document.getElementById("profile-submit").addEventListener("click", async () => {
+  const firstTime = !currentUser.name;
+  const first = document.getElementById("profile-first-name").value.trim();
+  const last = document.getElementById("profile-last-name").value.trim();
+  const adult = document.getElementById("profile-adult").checked;
+  const conduct = document.getElementById("profile-conduct").checked;
+  if (firstTime && !first) return showStatus("profile-status", t("profile.needFirstName"), false);
+  if (firstTime && !last) return showStatus("profile-status", t("profile.needLastName"), false);
+  if (!adult || !conduct) return showStatus("profile-status", t("profile.needConsent"), false);
+  try {
+    const data = await postJson("/api/auth/profile", {
+      first_name: first, last_name: last, adult, accept_conduct: conduct,
+    });
+    hideStatus("profile-status");
+    setUser(data.user);
+    route();
+  } catch (err) {
+    showStatus("profile-status", err.message, false);
+  }
+});
+
+function showAccount() {
+  const details = document.getElementById("account-details");
+  details.innerHTML = [
+    currentUser.name ? `<p>${esc(t("account.name", { name: currentUser.name }))}</p>` : "",
+    currentUser.email ? `<p>${esc(t("account.email", { email: currentUser.email }))}</p>` : "",
+  ].join("");
+  document.getElementById("account-delete-box").hidden = currentUser.is_demo;
+  hideStatus("account-status");
+}
+
+document.getElementById("account-delete").addEventListener("click", async () => {
+  if (!confirm(t("account.deleteConfirm"))) return;
+  try {
+    await fetchJson("/api/account", { method: "DELETE" });
+    setUser(null);
+    goTo("ride");
+    showStatus("signin-notice", t("signin.deleted"), true);
+  } catch (err) {
+    showStatus("account-status", err.message, false);
+  }
 });
 
 // ---------------------------------------------------------------------
 // Pages: #/ride (passenger, the default), #/browse (public), #/drive
-// (driver), #/inbox
+// (driver), #/inbox, #/account. Until signed in, the sign-in page shows
+// instead of those that need a user; until the profile is complete, the
+// profile page does (but the account page stays reachable, to delete it).
 // ---------------------------------------------------------------------
 const PAGES = {
   ride: { needsUser: true, onShow: () => { loadMyRequests(); loadRecentSearches(); } },
   browse: { needsUser: false, onShow: loadBrowse },
   drive: { needsUser: true, onShow: loadMyDrives },
   inbox: { needsUser: true, onShow: loadInbox },
+  account: { needsUser: true, beforeProfile: true, onShow: showAccount },
+  signin: { onShow: loadDemoDrivers },
+  profile: { onShow: showProfile },
 };
+const LINKED_PAGES = ["ride", "browse", "drive", "inbox", "account"];
 const DEFAULT_PAGE = "ride";
 
 function route() {
   const requested = location.hash.replace(/^#\/?/, "");
-  const page = PAGES[requested] ? requested : DEFAULT_PAGE;
-  const shown = PAGES[page].needsUser && !currentUser ? "signin" : page;
+  if (requested.startsWith("signin/")) return verifySignInLink(requested.slice("signin/".length));
+  const page = LINKED_PAGES.includes(requested) ? requested : DEFAULT_PAGE;
+  let shown = page;
+  if (PAGES[page].needsUser && !currentUser) shown = "signin";
+  else if (PAGES[page].needsUser && !currentUser.profile_complete && !PAGES[page].beforeProfile) shown = "profile";
 
   document.querySelectorAll(".tab-link").forEach((a) => a.classList.toggle("active", a.dataset.page === page));
   document.querySelectorAll(".page").forEach((s) => s.classList.toggle("active", s.id === `page-${shown}`));
@@ -596,7 +743,7 @@ async function loadMyDrives() {
   const list = document.getElementById("drive-mine");
   list.innerHTML = `<div class="empty-state">${esc(t("common.loading"))}</div>`;
   try {
-    const drives = await fetchJson(`/api/drives?driver_name=${encodeURIComponent(fullName(currentUser))}`);
+    const drives = await fetchJson("/api/drives?mine=true");
     if (!drives.length) {
       list.innerHTML = `<div class="empty-state">${esc(t("drive.empty"))}</div>`;
       return;
@@ -621,9 +768,7 @@ async function loadMyDrives() {
 async function cancelDrive(d) {
   if (!confirm(t("drive.cancelConfirm", { from: d.origin_name, to: d.destination_name }))) return;
   try {
-    await fetchJson(`/api/drives/${d.id}?driver_name=${encodeURIComponent(fullName(currentUser))}`, {
-      method: "DELETE",
-    });
+    await fetchJson(`/api/drives/${d.id}`, { method: "DELETE" });
     resultsLayer.clearLayers();
     loadMyDrives();
   } catch (err) {
@@ -645,16 +790,11 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
   btn.disabled = true;
   btn.textContent = t("drive.posting");
   try {
-    const data = await fetchJson("/api/drives", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        driver_name: fullName(currentUser),
-        origin,
-        destination,
-        departure_time: departure,
-        seats_available: seats,
-      }),
+    const data = await postJson("/api/drives", {
+      origin,
+      destination,
+      departure_time: departure,
+      seats_available: seats,
     });
     showStatus("drive-status", t("drive.offered", { from: origin.name, to: destination.name }), true);
     ["drive-origin", "drive-destination"].forEach((role) => {
@@ -677,7 +817,7 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
 async function loadRecentSearches() {
   const list = document.getElementById("ride-recent");
   try {
-    const searches = await fetchJson(`/api/ride_requests?passenger_name=${encodeURIComponent(fullName(currentUser))}`);
+    const searches = await fetchJson("/api/ride_requests");
     if (!searches.length) {
       list.innerHTML = `<div class="empty-state">${esc(t("ride.recentEmpty"))}</div>`;
       return;
@@ -721,7 +861,6 @@ function rideFormPayload(statusId) {
     return null;
   }
   return {
-    passenger_name: fullName(currentUser),
     origin,
     destination,
     requested_time: requestedTime,
@@ -750,11 +889,7 @@ async function findRide() {
   lastResults = null;
 
   try {
-    const data = await fetchJson("/api/match", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const data = await postJson("/api/match", payload);
     lastResults = { data, origin, destination, selection: payload };
     renderResults();
     loadRecentSearches();
@@ -1027,11 +1162,7 @@ document.getElementById("ride-ask").addEventListener("click", async () => {
   const btn = document.getElementById("ride-ask");
   btn.disabled = true;
   try {
-    const data = await fetchJson("/api/requests", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const data = await postJson("/api/requests", payload);
     const message = data.drivers_told
       ? t("ride.askSent", { count: data.drivers_told })
       : t("ride.askSentNone");
@@ -1047,7 +1178,7 @@ document.getElementById("ride-ask").addEventListener("click", async () => {
 async function loadMyRequests() {
   const list = document.getElementById("ride-requests");
   try {
-    const requests = await fetchJson(`/api/requests?passenger_name=${encodeURIComponent(fullName(currentUser))}`);
+    const requests = await fetchJson("/api/requests");
     if (!requests.length) {
       list.innerHTML = `<div class="empty-state">${esc(t("ride.requestsEmpty"))}</div>`;
       return;
@@ -1065,9 +1196,7 @@ async function loadMyRequests() {
       card.querySelector(".link-btn").addEventListener("click", async (e) => {
         e.stopPropagation();
         try {
-          await fetchJson(`/api/requests/${r.id}?passenger_name=${encodeURIComponent(fullName(currentUser))}`, {
-            method: "DELETE",
-          });
+          await fetchJson(`/api/requests/${r.id}`, { method: "DELETE" });
           loadMyRequests();
         } catch (err) {
           showStatus("ride-ask-status", err.message, false);
@@ -1105,9 +1234,9 @@ function showUnread(count) {
 }
 
 async function refreshUnread() {
-  if (!currentUser) return showUnread(0);
+  if (!signedIn()) return showUnread(0);
   try {
-    const data = await fetchJson(`/api/notifications?name=${encodeURIComponent(fullName(currentUser))}`);
+    const data = await fetchJson("/api/notifications");
     showUnread(data.unread);
   } catch {
     // keep the last count
@@ -1116,17 +1245,13 @@ async function refreshUnread() {
 
 setInterval(refreshUnread, UNREAD_REFRESH_MS);
 
-function userQuery() {
-  return `name=${encodeURIComponent(fullName(currentUser))}`;
-}
-
 async function loadInbox() {
   const list = document.getElementById("inbox-list");
   try {
-    const data = await fetchJson(`/api/notifications?${userQuery()}`);
+    const data = await fetchJson("/api/notifications");
     renderInbox(data);
     if (data.unread) {
-      await fetchJson(`/api/notifications/read?${userQuery()}`, { method: "POST" });
+      await fetchJson("/api/notifications/read", { method: "POST" });
       showUnread(0);
     }
   } catch (err) {
@@ -1179,6 +1304,20 @@ function notificationCard(n) {
         actionButton("inbox.mute", "link-btn", () => actOn(n, "mute")),
       );
     }
+  } else if (n.kind === "drive_cancelled") {
+    // The drive is deleted; the notification keeps what it was.
+    const d = n.details?.drive || {};
+    card.innerHTML = `
+      <div class="route">${esc(t("inbox.cancelledTitle"))}</div>
+      ${trip}
+      <div class="meta">${esc(d.driver_name)} · ${esc(d.origin_name)} → ${esc(d.destination_name)}, ${fmtTime(d.departure_time)}${demoBadge(d)}</div>
+      <div class="notification-actions"></div>
+    `;
+    if (open) {
+      card.querySelector(".notification-actions").append(
+        actionButton("inbox.seeMatches", "submit-btn", () => searchForRequest(r)),
+      );
+    }
   } else {
     const drives = (n.drives || [])
       .map((d) => `<div class="meta">${esc(d.driver_name)} · ${esc(d.origin_name)} → ${esc(d.destination_name)}, ${fmtTime(d.departure_time)}${demoBadge(d)}</div>`)
@@ -1212,11 +1351,7 @@ function actionButton(key, className, onClick) {
 
 async function actOn(n, action, reload = true) {
   try {
-    await fetchJson(`/api/notifications/${n.id}/action`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: fullName(currentUser), action }),
-    });
+    await postJson(`/api/notifications/${n.id}/action`, { action });
     if (reload) loadInbox();
   } catch (err) {
     alert(err.message);
@@ -1249,11 +1384,7 @@ document.getElementById("inbox-resume").addEventListener("click", () => updateNo
 
 async function updateNotificationSettings(changes) {
   try {
-    const data = await fetchJson("/api/notification_settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: fullName(currentUser), ...changes }),
-    });
+    const data = await postJson("/api/notification_settings", changes, "PUT");
     renderInbox(data);
   } catch (err) {
     alert(err.message);
@@ -1370,14 +1501,14 @@ function translateUnsetReadouts() {
 // Another language picked: redo everything built in JavaScript.
 window.addEventListener("i18n:change", () => {
   renderAccount();
-  ["signin-status", "drive-status", "ride-status"].forEach(hideStatus);
+  ["signin-status", "drive-status", "ride-status", "profile-status", "account-status"].forEach(hideStatus);
   translateUnsetReadouts();
   route();
   if (lastResults && location.hash === "#/ride") renderResults();
 });
 
-I18N.ready.then(() => {
+I18N.ready.then(async () => {
   translateUnsetReadouts();
-  renderAccount();
+  await loadCurrentUser();
   route();
 });

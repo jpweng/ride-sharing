@@ -11,5 +11,13 @@
 # a confirmation link to it first, which must be clicked.
 # alert_email = "you@example.ch"
 
+# Sign-in emails go out through Amazon SES from <this>@<domain_name> (email.tf).
+# email_from_local_part = "no-reply"
+
+# While SES is in sandbox mode (until production access is granted in the SES
+# console), it only delivers to verified addresses: list testers' addresses
+# here; AWS emails each a confirmation link.
+# ses_sandbox_test_recipients = ["tester@example.ch"]
+
 # aws_region    = "eu-north-1"
 # instance_type = "t4g.small"
