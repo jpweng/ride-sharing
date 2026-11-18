@@ -1,133 +1,149 @@
 # Plan: demo drives only on demo.rideandrail.ch
 
-Status: **plan only, nothing implemented yet.**
+Status: **plan only, nothing implemented yet.** Written against `origin/main` as of 2026-11-18,
+after the pull request that separated demo drivers (#2), email sign-in (#6) and the restructure
+(#11).
 
 ## Goal
 
-- **demo.rideandrail.ch**: today's site, as it is now. Fictional drives, the "Demo" banner and badges,
-  and a reminder to use a made-up name. This is the link for investors and pitch decks.
-- **rideandrail.ch** (and www): "the real thing". No fictional drives. A passenger only sees drives
-  that real people posted, and only real drivers are told about ride requests.
+- **rideandrail.ch** (and www) is the real service: real accounts and real drives only. It has
+  no fictional drives, no "view as a demo driver", and no demo banner.
+- **demo.rideandrail.ch** shows the product with the fictional network: today's site, with its
+  demo drives, "Demo" badges and read-only "view as a demo driver".
 
-## Approach: same server and image, two app containers
+## What already exists
 
-Run the image we already build as two containers on the same EC2 server. They differ only in
-one environment variable and one database file:
+- **`DEMO_DRIVES=off`** (`backend/demo_drives.py`, `enabled()`) hides demo drives everywhere
+  at once. The next maintenance run deletes them and their stored routes, and creates no new
+  ones (`backend/maintenance.py`). In production this is the optional GitHub variable
+  `DEMO_DRIVES`.
+- **Real ride requests never reach demo drivers**, and demo drives are never bookable.
+- **Accounts:** sign-in by an emailed link. Demo drivers are flagged in `users.is_demo`, and
+  their sessions are read-only.
+
+So switching off the real site's demo drives is a single variable. What's missing is somewhere
+for the demo to keep running.
+
+## Approach: a second app container on the same server
+
+Run the same image twice, side by side, with separate databases. Both apps use the same OSRM
+container.
 
 | | rideandrail.ch | demo.rideandrail.ch |
 |---|---|---|
 | Container | `app` | `app-demo` (new) |
-| `DEMO_MODE` | `0` | `1` |
+| `DEMO_DRIVES` | `off` | `on` |
 | Database | `/data/app/rideshare.db` | `/data/app-demo/rideshare.db` (new) |
+| Email sign-in | yes (SES) | no: only "view as a demo driver" (see open question 1) |
 
-Caddy sends each hostname to its own container.
+**Why not one app that switches on the hostname?** It would mean one database for both
+sites. Real accounts, searches and notifications would sit next to fictional ones, and every
+query would need a filter by site. With two databases, the two sites can't leak into each
+other, and the demo can be wiped at any time without touching real data.
 
-**Why not one app that checks the hostname?** The two sites would share one database. Real
-users' names, searches and notifications would sit next to fictional ones. `notify.py` would need
-to filter by site wherever it touches drivers, and one missing filter would show real users'
-data on the demo or fictional drivers on the real site. With two databases, mixing them up is
-not possible. The cost is one more container on the server, plus a little extra wiring.
+**Memory:** the server has 2 GiB. Current limits are OSRM 768 MB (mostly page cache, which
+shrinks under pressure), app 512 MB and proxy 128 MB, and the OS takes about 350 MB. A second
+app with a 384–512 MB limit fits if OSRM's cache gives way. Measure with `docker stats` under
+the load test (`loadtest/`) before deciding on a bigger instance.
+
+**Demo database:** it starts empty. The first maintenance run creates the week of drives and
+fetches about 1,500 routes from our own OSRM in about a minute. Nothing needs to be copied
+from production.
 
 ## Changes
 
-### Backend (small)
+### 1. Infrastructure: its own pull request, merged and applied first
 
-1. **`DEMO_MODE` flag**, read once from the environment, for example in a new `config.py` or in
-   `database.py`. It defaults to on, so local development, tests and the first deploy behave
-   exactly as they do today.
-2. **`maintenance.run()`**: when demo mode is off, skip `demo_drives.refresh()` and instead
-   delete every `is_demo = 1` drive and empty `demo_routes`. This runs on every start and is
-   idempotent, so on the first start without demo mode the real site cleans itself up. No
-   manual SQL is needed.
-3. **`notify.py`**: when demo mode is off, don't build candidates from
-   `demo_drives.DEMO_DRIVES`. Today, fictional drivers' templates take part in choosing who
-   hears about a ride request, even though they have no drives in the database.
-4. **`GET /api/config`** returns `{"demo": true|false}`, so the frontend knows which site it is on.
-   It could also be a field added to `/api/health`.
-
-### Frontend (small)
-
-The frontend calls `/api/config` at startup:
-
-- **Demo site:** no change. Add one line to the banner pointing to the real site.
-- **Real site:** hide the "Demo" banner and the made-up-name hint (`signin.demoHint`). Show a
-  short "early access" note with a link to the demo instead. The "Demo" badge disappears on its
-  own, because no drive is `is_demo`.
-- New banner texts need translations in de/fr/it/en, in the formal tone that
-  `test_formal_tone` checks.
-- `noindex` is static HTML in `index.html` and `privacy.html`. Keep it on both sites for now
-  (see the open questions).
-
-### Proxy: `deploy/caddy/Caddyfile`
-
-- Move the rate-limit block into a snippet (`(common) { ... }`) and `import` it in two site blocks:
-  - `{$SITE_ADDRESS}` sends traffic to `app:8000`, as it does today.
-  - `{$DEMO_SITE_ADDRESS}` sends traffic to `app-demo:8000`.
-- Caddy gets the Let's Encrypt certificate for the subdomain automatically.
-
-### Compose and deploy: `deploy/compose.yaml`, `deploy/deploy.sh`, `.github/workflows/deploy.yml`
-
-- Add an `app-demo` service, with the same image and healthcheck as `app`, plus
-  `DEMO_MODE=1`, a bind mount of `/data/app-demo`, and its own `awslogs-stream: app-demo`.
-- Set `DEMO_MODE=0` on `app`. This is the switch: it is flipped last (see Rollout).
-- `proxy` depends on both apps being healthy, and gets `DEMO_SITE_ADDRESS`.
-- `deploy.sh` creates `/data/app-demo` with owner 1000:1000 if it is missing. `user_data` only
-  runs on a server's first boot, so the current server needs this step.
-- The workflow writes `DEMO_SITE_ADDRESS` into `.env`, using a new GitHub repository variable.
-
-### Infrastructure: `infra/`
-
-- `dns.tf`: add an A record for `demo.${var.domain_name}` pointing to the same Elastic IP.
-- `outputs.tf`: add `DEMO_SITE_ADDRESS = "demo.${var.domain_name}"` to
+- `infra/dns.tf`: an A record for `demo.${var.domain_name}`, pointing at the existing Elastic IP.
+- `infra/outputs.tf`: add `DEMO_SITE_ADDRESS = "demo.${var.domain_name}"` to
   `github_actions_variables`.
-- `user_data.sh.tftpl`: create `/data/app-demo`, for future servers.
-- `monitoring.tf`: optionally, a second health check on `https://demo.rideandrail.ch/api/health`.
-  The demo site is what investors open, so it is worth an alert too.
-- **Memory:** the server is a `t4g.micro` with 1 GiB of RAM. Check `docker stats` after adding the
-  second app. Switch to `t4g.small` (2 GiB, a few CHF more per month) only if the server is short
-  of memory. The demo database is about 10 MB, so disk space (4 GB) is not a concern.
+- `infra/user_data.sh.tftpl`: create `/data/app-demo`, owned by 1000:1000, for future servers.
+- `infra/monitoring.tf`: a second health check on `https://demo.<domain>/api/health`, created
+  only when demo hosting is enabled.
+- **Before merging:** the owner runs `terraform apply`. Nothing changes on the live site.
 
-### Tests
+### 2. Demo container and proxy: switched off until `DEMO_SITE_ADDRESS` is set
 
-- With demo mode off: maintenance creates no demo drives and deletes leftover ones.
-- With demo mode off: `notify` offers no demo drivers.
-- `/api/config` reflects the flag.
-- Existing tests run with demo mode on, so they don't change.
+- `deploy/compose.yaml`: a new `app-demo` service.
+  - It uses the same image, healthcheck and OSRM as `app`, plus `DEMO_DRIVES: "on"`, a bind
+    mount of `/data/app-demo` and `awslogs-stream: app-demo`.
+  - It has no `EMAIL_FROM`, so it never sends email.
+  - It goes in a Compose profile (`profiles: [demo]`) and only runs when `.env` has
+    `COMPOSE_PROFILES=demo`.
+- `.github/workflows/deploy.yml`: pass `DEMO_SITE_ADDRESS`, and set `COMPOSE_PROFILES=demo`
+  only when that variable is set.
+- `deploy/deploy.sh`: create `/data/app-demo` (owner 1000:1000) if it is missing.
+  `user_data` only runs at a server's first boot.
+- `deploy/caddy/Caddyfile`:
+  - Move the rate-limit zones into a snippet, and import it in two site blocks:
+    `{$SITE_ADDRESS}` → `app:8000`, and `{$DEMO_SITE_ADDRESS}` → `app-demo:8000`.
+  - While the variable is empty, the demo block falls back to an address nothing reaches
+    (e.g. `:8081`, not published), so the Caddyfile stays valid.
+  - The `proxy` service must not wait for `app-demo` when the demo isn't running.
+- **Safe on merge:** with the variable unset, production runs exactly as today.
 
-### Docs
+### 3. The page knows which site it is
 
-- README: describe the two sites and the `DEMO_MODE` flag, and update the domain and HTTPS
-  section.
-- `Suggestions.md`: move "Demo drives: decide whether to switch them off" to Done.
+- A new `backend/routes/site.py`: `GET /api/site` returns `{"demo": <DEMO_DRIVES enabled>,
+  "sign_in": <false when SITE_ROLE=demo>, "other_site_url": ...}`. The link target comes from a new optional `OTHER_SITE_URL` variable;
+  when it is missing, no link is shown.
+- `frontend/app.js` and `frontend/index.html`, on the real site (`demo: false`):
+  - Hide the demo banner and the "Just looking? View as a demo driver" box.
+  - Show a short note linking to the demo.
+- On the demo site (`demo: true`):
+  - Keep everything that's there today.
+  - Hide email sign-in.
+  - Add a link to the real site in the banner.
+- `privacy.html` has the same banner. Show it there only on the demo.
+- New texts go in new prefix files `frontend/i18n/<lang>/site.json`, in all four languages
+  with formal address.
+- The backend refuses what the page hides: on the demo, `POST /api/auth/link` answers 403.
+  This needs a flag of its own, `SITE_ROLE=demo`, set only on `app-demo`, because local
+  development runs with demo drives on and still needs sign-in. The real site needs no extra
+  check: with demo drives off, `/api/auth/demo_drivers` offers nobody to view as.
+- Tests: `/api/site` in both modes, and `/api/auth/link` refused when `SITE_ROLE=demo`.
 
-## Rollout (each step can be undone on its own)
+### 4. Switch the real site over: no code, done by the owner
 
-1. **Ship the code with `DEMO_MODE` defaulting to on.** The live site doesn't change.
-2. **Run `terraform apply`** to add the DNS record, then set the `DEMO_SITE_ADDRESS` GitHub
-   variable.
-3. **Seed the demo database:** on the server, copy `/data/app/rideshare.db` to
-   `/data/app-demo/`. The copy already contains `demo_routes`, so the demo doesn't have to fetch
-   thousands of routes from OSRM at one request per second.
-4. **Deploy with `app-demo` running and `app` still in demo mode.** Check that
-   demo.rideandrail.ch works.
-5. **Flip `app` to `DEMO_MODE=0` and deploy.** On startup, the real site deletes its fictional
-   drives. Undo: set it back to `1`, and the next hourly refresh refills them.
-6. **Update every link given to investors** (the MBA pitch deck, emails) to demo.rideandrail.ch.
+1. Set the GitHub variables `DEMO_SITE_ADDRESS=demo.rideandrail.ch` and `OTHER_SITE_URL`, then
+   redeploy. Check that demo.rideandrail.ch works, and that browsing and "view as a demo driver"
+   are there.
+2. Set `DEMO_DRIVES=off` for the real site, then redeploy. Its next maintenance run deletes the
+   fictional drives and routes. To undo, set it back to `on`.
+3. Point every shared link meant for showing the product to demo.rideandrail.ch.
 
-## Open questions (decide before step 5)
+### 5. Docs
 
-1. **Testers' existing drives and names:** they stay on the real site (recommended). The copy
-   from step 3 also carries them to the demo, where they age out after 30 days. Should they be
-   deleted from the demo copy right away instead?
-2. **What the real site says before accounts exist:** it still signs people in by a typed name
-   (see "Before real drivers" in `Suggestions.md`). Is an "early access" banner on the real site
-   enough until accounts arrive, or should the real site stay invite-only or hidden until then?
-3. **Search engines:** keep `noindex` on the real site until launch? Keep it on the demo for
-   good?
-4. **Prices:** the real site would still show the demo price estimate (`pricing.py`). Is that
-   acceptable, or should it be labelled differently there?
+- `docs/demo-drives-and-data-retention.md`: the two sites, and which one runs demo drives.
+- `docs/deploying-to-aws.md`: the new variables and the `terraform apply` step.
+- `Suggestions.md`: move "Demo drives" to Done.
+
+## Pull requests, in merge order
+
+1. **Infra** (DNS, outputs, user data, monitoring). Before merging: `terraform apply` by the
+   owner.
+2. **Demo container and proxy.** Shared files: `deploy/compose.yaml` and `deploy.yml`. Safe while
+   `DEMO_SITE_ADDRESS` is unset.
+3. **Site awareness in the page** (`/api/site`, banner, sign-in on the demo). Shared files:
+   `frontend/index.html` and `app.js`.
+4. **Owner steps** in section 4. They need no pull request, but they go in PR 3's
+   "After merging" section.
+
+PRs 2 and 3 touch different shared files and could be opened together. Merge them in this
+order anyway.
+
+## Open questions
+
+1. **Sign-in on the demo:** only "view as a demo driver" (recommended), or real email sign-in
+   too? Real sign-in would create accounts that exist only on the demo, with its own data.
+2. **Search engines:** both pages have `noindex` today. Remove it from rideandrail.ch when it
+   launches, and keep it on the demo for good?
+3. **"Demo" in the real site's wording:** the privacy notice and the code of conduct mention the
+   demo. Review them once the real site has no demo content.
+4. **Server size:** keep the current instance if `docker stats` shows the second app fits.
+   Otherwise, size up.
 
 ## Effort
 
-About a day of work, mostly wiring (Caddy, Compose, the workflow, Terraform). The backend and
-frontend changes are a few dozen lines plus tests.
+About a day: mostly wiring (Caddy, Compose, the workflow, Terraform) plus a small route and the
+banner changes, each with tests.
