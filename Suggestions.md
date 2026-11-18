@@ -36,8 +36,9 @@ Not needed for the demo, but these shape decisions made now:
 - **Legal:** terms of use and a full privacy policy. In Switzerland, carpooling is fine as long as
   drivers only share costs; earning money from rides needs a professional licence, so pricing rules
   matter.
-- **Demo drives:** they're labelled "Demo" already; decide whether to switch them off once real
-  drives exist.
+- **Demo drives:** they're labelled "Demo" already. Decided: they move to demo.rideandrail.ch, and
+  rideandrail.ch becomes the real site. Plan in `docs/demo-subdomain-plan.md` (not implemented
+  yet).
 
 ## Open questions
 
