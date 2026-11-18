@@ -49,7 +49,7 @@
 			window 10m
 		}
 		# All clients together: about what the server can serve (one
-		# uvicorn worker, one CPU). The load test (loadtest/, see docs/load-test.md)
+		# uvicorn worker, one CPU). The load test (loadtest/, see README)
 		# saturated a laptop core at ~140 searches/min plus browsing; a t4g
 		# core does roughly half. Beyond this, searches would only queue and
 		# every page would wait behind them: a quick 429 is better.

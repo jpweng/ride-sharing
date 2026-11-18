@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # The OSRM release the data is built with and served by: both must match.
-# Pinned by digest; bump both together (see docs/routing.md).
+# Pinned by digest; bump both together (see README, "Routing").
 OSRM_IMAGE="ghcr.io/project-osrm/osrm-backend:v26.11.0-debian@sha256:e1929ae2818226284d7ef007329098a30851c11528ab3712bc9c8d68da78278b"
 
 IMAGE_NAME=${1:?usage: routing/build.sh <image name>}
