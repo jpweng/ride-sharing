@@ -1,0 +1,18 @@
+{
+  "signin.backToSignIn": "Chiedere un nuovo link",
+  "signin.deleted": "Il suo account e i suoi dati sono stati cancellati.",
+  "signin.demoDriver": "Conducente demo",
+  "signin.demoHint": "Guardi la demo nei panni di uno dei suoi conducenti fittizi, senza indirizzo e-mail. Può guardare tutto, ma non modificare nulla.",
+  "signin.demoSubmit": "Guardare come conducente demo",
+  "signin.demoTitle": "Vuole solo dare un'occhiata?",
+  "signin.email": "Indirizzo e-mail",
+  "signin.emailPlaceholder": "nome@esempio.ch",
+  "signin.hint": "Inserisca il suo indirizzo e-mail: le inviamo un link per accedere, senza password.",
+  "signin.needEmail": "Inserisca il suo indirizzo e-mail.",
+  "signin.sending": "Invio…",
+  "signin.sent": "Un link di accesso è in arrivo a {email}. Lo apra entro 15 minuti, in questo o in un altro browser; funziona una volta sola. Se non arriva, controlli la cartella dello spam.",
+  "signin.submit": "Ricevere un link di accesso",
+  "signin.title": "Accedere",
+  "signin.verifyFailed": "L'accesso non è riuscito: {error}",
+  "signin.verifying": "Accesso in corso…"
+}

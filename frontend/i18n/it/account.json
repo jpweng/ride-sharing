@@ -1,0 +1,11 @@
+{
+  "account.delete": "Cancellare il mio account",
+  "account.deleteConfirm": "Cancellare il suo account e tutti i suoi dati? Non si può tornare indietro.",
+  "account.deleteHint": "Cancella subito il suo account e tutti i suoi dati: viaggi, ricerche, richieste di passaggio e messaggi. I passeggeri informati dei suoi prossimi viaggi vengono avvisati che sono annullati. Non si può tornare indietro.",
+  "account.deleteTitle": "Cancellare l'account",
+  "account.demoBadge": "demo",
+  "account.email": "Indirizzo e-mail: {email}",
+  "account.name": "Gli altri la vedono come {name}.",
+  "account.signOut": "Disconnettersi",
+  "account.title": "Il suo account"
+}

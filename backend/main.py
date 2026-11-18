@@ -26,6 +26,8 @@ Two core use cases:
   GET/DELETE /api/requests -- a passenger's open ride requests; cancel one.
   GET /api/notifications   -- a user's inbox; .../read, .../{id}/action and
                                /api/notification_settings act on it.
+  GET /i18n/{lang}.json    -- a language's translations, merged from
+                               frontend/i18n/<lang>/*.json (translations.py).
   GET /sw.js               -- the service worker, versioned by the
                                frontend's content (installable app).
   GET /.well-known/assetlinks.json -- Digital Asset Links for the Android
@@ -50,6 +52,7 @@ drives and hides them everywhere (see demo_drives.py).
 """
 import asyncio
 import hashlib
+import json
 import logging
 import mimetypes
 import os
@@ -76,6 +79,7 @@ import notify
 import pricing
 import search
 import transit
+import translations
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -723,6 +727,25 @@ def asset_links():
             },
         }
     ])
+
+
+# ---------------------------------------------------------------------
+# Translations: one dictionary per language, merged from its files
+# ---------------------------------------------------------------------
+@app.api_route("/i18n/{language}.json", methods=["GET", "HEAD"], include_in_schema=False)
+def i18n_dictionary(language: str, request: Request):
+    if language not in translations.LANGUAGES:
+        raise HTTPException(404, "Not Found")
+    # Read per request (a few small files), so it follows edits during
+    # development. no-cache: browsers check for a new version every time,
+    # and the ETag spares them the download when nothing changed.
+    body = (json.dumps(translations.dictionary(language), ensure_ascii=False, indent=2) + "\n").encode()
+    etag = '"' + hashlib.sha256(body).hexdigest()[:32] + '"'
+    headers = {"Cache-Control": "no-cache", "ETag": etag}
+    sent = [tag.strip().removeprefix("W/") for tag in request.headers.get("if-none-match", "").split(",")]
+    if etag in sent:
+        return Response(status_code=304, headers=headers)
+    return Response(body, media_type="application/json", headers=headers)
 
 
 # Serve the static frontend last, so it doesn't shadow the /api/* routes above.

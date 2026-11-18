@@ -1,0 +1,6 @@
+{
+  "common.driver": "Au volant : {name}",
+  "common.loading": "Chargement…",
+  "common.seats.one": "{count} place",
+  "common.seats.other": "{count} places"
+}

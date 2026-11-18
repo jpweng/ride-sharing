@@ -1,7 +1,8 @@
 """
-Checks on the frontend translations (frontend/i18n/*.json): every language
-has the same keys and placeholders, and every key the HTML, the scripts and
-the API's error codes use exists. A missing translation then fails CI instead of
+Checks on the frontend translations (frontend/i18n/<lang>/<prefix>.json):
+every language has the same keys and placeholders, every key the HTML, the
+scripts and the API's error codes use exists, and each file holds only its
+own prefix's keys, sorted. A missing translation then fails CI instead of
 showing a raw key on the site.
 """
 import json
@@ -10,11 +11,16 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
+
+import main
+import translations
 
 ROOT = Path(__file__).resolve().parents[2]
 FRONTEND = ROOT / "frontend"
 LANGS = ["en", "de", "fr", "it"]
-DICTS = {lang: json.loads((FRONTEND / "i18n" / f"{lang}.json").read_text()) for lang in LANGS}
+# Each language's keys, merged from its files as the browser gets them.
+DICTS = {lang: translations.dictionary(lang) for lang in LANGS}
 EN = DICTS["en"]
 PAGES = ["index.html", "privacy.html", "conduct.html", "offline.html"]
 # Pages translated as whole texts, one <article lang="xx" data-i18n-block> per language.
@@ -111,7 +117,7 @@ def test_html_keys_exist(page):
 @pytest.mark.parametrize("page", PAGES)
 def test_html_english_matches_dictionary(page):
     # The English built into the HTML shows if JavaScript fails; keep it in
-    # sync with en.json.
+    # sync with the English dictionary.
     for key, text in _parse(page).texts:
         assert " ".join(text.split()) == EN[key], key
 
@@ -141,3 +147,48 @@ def test_email_keys_exist():
     keys = set(re.findall(r'\bt\("(\w+)"', source))
     assert keys
     assert {f"email.signIn.{key}" for key in keys} - set(EN) == set()
+
+
+def _key_files():
+    return [(lang, path) for lang in LANGS for path in translations.files(lang)]
+
+
+def test_every_language_has_files():
+    assert set(translations.LANGUAGES) == set(LANGS)
+    for lang in LANGS:
+        assert translations.files(lang), lang
+    # No dictionaries left at the old place: i18n/<lang>.json is served
+    # by the backend, merged from i18n/<lang>/.
+    assert not list((FRONTEND / "i18n").glob("*.json"))
+
+
+@pytest.mark.parametrize("lang, path", _key_files(), ids=lambda v: getattr(v, "name", v))
+def test_file_holds_its_prefix_sorted(lang, path):
+    # signin.json holds the "signin.*" keys, in alphabetical order, so a
+    # new key has one obvious place and parallel branches rarely conflict.
+    keys = list(json.loads(path.read_text(encoding="utf-8")))
+    assert keys
+    assert keys == sorted(keys), path
+    assert {key.split(".", 1)[0] for key in keys} == {path.stem}, path
+
+
+def test_same_files_in_every_language():
+    names = {lang: [path.name for path in translations.files(lang)] for lang in LANGS}
+    for lang in LANGS[1:]:
+        assert names[lang] == names["en"], lang
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_served_dictionary_is_the_merge(lang):
+    client = TestClient(main.app)
+    resp = client.get(f"/i18n/{lang}.json")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/json"
+    assert resp.headers["cache-control"] == "no-cache"
+    assert resp.json() == DICTS[lang]
+    again = client.get(f"/i18n/{lang}.json", headers={"If-None-Match": resp.headers["etag"]})
+    assert again.status_code == 304
+
+
+def test_unknown_language_not_found():
+    assert TestClient(main.app).get("/i18n/xx.json").status_code == 404

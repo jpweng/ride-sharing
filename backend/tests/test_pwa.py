@@ -120,7 +120,8 @@ def test_shell_files_exist(client):
         # Only our own files: a third-party file in the shell would make
         # every update depend on that site being reachable.
         assert not path.startswith(("https://", "http://", "//")), path
-        assert (FRONTEND / path).is_file(), path
+        # i18n/<lang>.json is merged by the backend from i18n/<lang>/.
+        assert (FRONTEND / path).is_file() or re.fullmatch(r"i18n/\w+\.json", path), path
         assert client.get(f"/{path}").status_code == 200, path
 
 

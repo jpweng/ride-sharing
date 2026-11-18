@@ -1,0 +1,7 @@
+{
+  "transit.fare": "Billett 2. Klasse: CHF {full} (Halbtax CHF {half})",
+  "transit.fareApprox": "Billett 2. Klasse: etwa CHF {full} (Halbtax etwa CHF {half})",
+  "transit.tickets": "Billette<br>bei der SBB",
+  "transit.transfers.one": "{count} Umstieg",
+  "transit.transfers.other": "{count} Umstiege"
+}

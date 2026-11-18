@@ -1,0 +1,22 @@
+{
+  "drive.cancel": "Annuler le trajet",
+  "drive.cancelConfirm": "Annuler votre trajet {from} → {to}?",
+  "drive.departure": "Départ",
+  "drive.empty": "Vous n'avez aucun trajet à venir. Proposez-en un ci-dessous.",
+  "drive.loadFailed": "Impossible de charger vos trajets : {error}",
+  "drive.needDeparture": "Choisissez une heure de départ.",
+  "drive.offerTitle": "Proposer un trajet",
+  "drive.offered": "Trajet proposé : {from} → {to}.",
+  "drive.posting": "Publication…",
+  "drive.price": "Prix par passager (CHF)",
+  "drive.priceBand": "De CHF {min} à CHF {max} pour {km} km. Train, 2e classe : CHF {full} (demi-tarif CHF {half}).",
+  "drive.priceExplain": "Les conducteurs partagent leurs frais, ils ne gagnent pas d'argent avec le trajet : le prix reste sous le coût de la voiture partagé avec vos passagers, et sous le prix du train.",
+  "drive.priceLoading": "Calcul de la fourchette de prix…",
+  "drive.priceNeedPoints": "Choisissez le départ et la destination pour voir la fourchette de prix.",
+  "drive.priceOutOfBand": "Choisissez un prix entre CHF {min} et CHF {max}.",
+  "drive.priceShared": "Plus il y a de passagers, moins chacun paie : {list}.",
+  "drive.priceWarn": "Au-dessus du billet de train demi-tarif (CHF {half}). Les passagers avec l'abonnement demi-tarif préféreront peut-être le train.",
+  "drive.seats": "Places",
+  "drive.submit": "Proposer le trajet",
+  "drive.title": "Vos trajets"
+}

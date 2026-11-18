@@ -1,0 +1,18 @@
+{
+  "signin.backToSignIn": "Demander un nouveau lien",
+  "signin.deleted": "Votre compte et vos données ont été supprimés.",
+  "signin.demoDriver": "Conducteur de démo",
+  "signin.demoHint": "Découvrez la démo dans la peau d'un de ses conducteurs fictifs, sans adresse e-mail. Vous pouvez tout regarder, mais rien modifier.",
+  "signin.demoSubmit": "Voir en tant que conducteur de démo",
+  "signin.demoTitle": "Juste pour voir ?",
+  "signin.email": "Adresse e-mail",
+  "signin.emailPlaceholder": "nom@exemple.ch",
+  "signin.hint": "Saisissez votre adresse e-mail : nous vous envoyons un lien pour vous connecter, sans mot de passe.",
+  "signin.needEmail": "Saisissez votre adresse e-mail.",
+  "signin.sending": "Envoi…",
+  "signin.sent": "Un lien de connexion est en route vers {email}. Ouvrez-le dans les 15 minutes, dans ce navigateur ou un autre ; il ne fonctionne qu'une fois. S'il n'arrive pas, regardez dans vos courriers indésirables.",
+  "signin.submit": "Recevoir un lien de connexion",
+  "signin.title": "Se connecter",
+  "signin.verifyFailed": "La connexion n'a pas fonctionné : {error}",
+  "signin.verifying": "Connexion en cours…"
+}

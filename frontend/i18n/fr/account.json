@@ -1,0 +1,11 @@
+{
+  "account.delete": "Supprimer mon compte",
+  "account.deleteConfirm": "Supprimer votre compte et toutes vos données ? C'est irréversible.",
+  "account.deleteHint": "Cela supprime d'un coup votre compte et toutes vos données : trajets, recherches, demandes de trajet et messages. Les passagers informés de vos prochains trajets apprennent qu'ils sont annulés. C'est irréversible.",
+  "account.deleteTitle": "Supprimer votre compte",
+  "account.demoBadge": "démo",
+  "account.email": "Adresse e-mail : {email}",
+  "account.name": "Les autres vous voient comme {name}.",
+  "account.signOut": "Se déconnecter",
+  "account.title": "Votre compte"
+}

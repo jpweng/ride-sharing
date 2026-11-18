@@ -1,0 +1,22 @@
+{
+  "drive.cancel": "Cancel drive",
+  "drive.cancelConfirm": "Cancel your drive {from} → {to}?",
+  "drive.departure": "Departure",
+  "drive.empty": "You have no upcoming drives. Offer one below.",
+  "drive.loadFailed": "Failed to load your drives: {error}",
+  "drive.needDeparture": "Choose a departure time.",
+  "drive.offerTitle": "Offer a drive",
+  "drive.offered": "Drive offered: {from} → {to}.",
+  "drive.posting": "Posting…",
+  "drive.price": "Price per passenger (CHF)",
+  "drive.priceBand": "From CHF {min} to CHF {max} for {km} km. Train, 2nd class: CHF {full} (half fare CHF {half}).",
+  "drive.priceExplain": "Drivers share their costs, they don't earn from the drive: the price stays below the car's cost shared with your passengers, and below the train fare.",
+  "drive.priceLoading": "Calculating the price range…",
+  "drive.priceNeedPoints": "Choose where you're leaving from and where you're going to see the price range.",
+  "drive.priceOutOfBand": "Choose a price between CHF {min} and CHF {max}.",
+  "drive.priceShared": "When more passengers join, each pays less: {list}.",
+  "drive.priceWarn": "Above the half-fare train ticket (CHF {half}). Passengers with a half-fare travelcard may prefer the train.",
+  "drive.seats": "Seats",
+  "drive.submit": "Offer drive",
+  "drive.title": "Your drives"
+}
