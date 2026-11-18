@@ -47,8 +47,9 @@ summary() {
     {v[++n] = $2; s += $2}
     END {
       if (n == 0) {printf "all %d failed", failed; exit}
-      printf "%d ok, %d failed; mean %d ms, p50 %d ms, p95 %d ms, max %d ms",
-        n, failed, s / n, v[int(n * 0.5) + 1], v[int(n * 0.95) + 1 > n ? n : int(n * 0.95) + 1], v[n]
+      i50 = int(n * 0.5) + 1; i95 = int(n * 0.95) + 1
+      if (i95 > n) i95 = n
+      printf "%d ok, %d failed; mean %d ms, p50 %d ms, p95 %d ms, max %d ms", n, failed, s / n, v[i50], v[i95], v[n]
     }'
 }
 
@@ -58,11 +59,19 @@ run() {
   local start ready
   start=$(date +%s%N)
   docker run -d --name "$NAME" -p "$PORT:5000" "$@" > /dev/null
-  for _ in $(seq 1 600); do
-    if curl -fs -o /dev/null "http://localhost:$PORT/route/v1/driving/7.4474,46.9480;7.4500,46.9500"; then break; fi
+  local up=""
+  for _ in $(seq 1 900); do
+    if curl -fs -o /dev/null "http://localhost:$PORT/route/v1/driving/7.4474,46.9480;7.4500,46.9500"; then up=1; break; fi
+    [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = true ] || break
     sleep 0.2
   done
   ready=$(( ($(date +%s%N) - start) / 1000000 ))
+  if [ -z "$up" ]; then
+    echo "| $label | never ready: $(docker inspect -f 'exit {{.State.ExitCode}}, OOM-killed {{.State.OOMKilled}}' "$NAME") | | | |" >> "$REPORT"
+    docker logs "$NAME" 2>&1 | tail -20 >&2
+    docker rm -f "$NAME" > /dev/null
+    return
+  fi
   local cold warm
   cold=$(queries | summary)
   warm=$(queries | summary)
