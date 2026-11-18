@@ -1,0 +1,340 @@
+"use strict";
+
+// ---------------------------------------------------------------------
+// Bookings (backend/bookings.py, see docs/booking.md): asking for a seat
+// from a search result or the list of drives, the passenger's bookings on
+// the Passenger page, the driver's passengers and requests on each of
+// their drives, and the inbox's booking notifications. Loaded after
+// app.js, whose map, pages and helpers it uses; it adds to the cards
+// through app.js's CARD_EXTRAS and NOTIFICATION_CARDS.
+// ---------------------------------------------------------------------
+
+// GET /api/bookings: the user's bookings as a passenger and as a driver.
+// Reloaded each time a page that shows them opens, and after each action.
+const NO_BOOKINGS = { as_passenger: [], as_driver: [] };
+let bookingsData = NO_BOOKINGS;
+let bookingsError = "";
+let bookingsLoaded = Promise.resolve();
+
+function loadBookings() {
+  bookingsLoaded = (signedIn() ? fetchJson("/api/bookings") : Promise.resolve(NO_BOOKINGS))
+    .then((data) => {
+      bookingsData = data;
+      bookingsError = "";
+    })
+    .catch((err) => {
+      bookingsData = NO_BOOKINGS;
+      bookingsError = err.message;
+    });
+  return bookingsLoaded;
+}
+
+function bookingStatusText(status) {
+  if (status === "requested") return t("booking.statusRequested");
+  if (status === "accepted") return t("booking.statusAccepted");
+  if (status === "declined") return t("booking.statusDeclined");
+  return t("booking.statusCancelledByDriver");
+}
+
+function bookingStatusBadge(status) {
+  return `<span class="badge booking-status ${esc(status)}">${esc(bookingStatusText(status))}</span>`;
+}
+
+// What the passenger reads about their own booking.
+function myBookingText(status) {
+  if (status === "requested") return t("booking.mineRequested");
+  if (status === "accepted") return t("booking.mineAccepted");
+  if (status === "declined") return t("booking.mineDeclined");
+  return t("booking.mineCancelledByDriver");
+}
+
+function showBoxError(box, message) {
+  const status = box.querySelector(".status-msg");
+  status.textContent = message;
+  status.className = "status-msg show err";
+}
+
+// The drive's route with where the passenger gets in and out.
+async function showBookingOnMap(b) {
+  await showDriveOnMap({ ...b.drive });
+  const points = [
+    [b.pickup, t("map.pickupPoint", { time: fmtClock(b.pickup.time) }), "ride-origin"],
+    [b.dropoff, t("map.dropoffPoint", { time: fmtClock(b.dropoff.time) }), "ride-destination"],
+  ];
+  points.forEach(([point, label, role]) => {
+    L.circleMarker([point.lat, point.lon], {
+      radius: 7, color: PICK_COLORS[role], fillColor: "#fff", fillOpacity: 1, weight: 3,
+    })
+      .addTo(resultsLayer)
+      .bindTooltip(esc(label), { permanent: true, direction: "top" });
+  });
+}
+
+// ---------------------------------------------------------------------
+// On the cards of drives
+// ---------------------------------------------------------------------
+CARD_EXTRAS.push((kind, item, card) => {
+  const box = document.createElement("div");
+  box.className = "booking-box";
+  // Clicks in the box aren't clicks on the card (which shows it on the map).
+  box.addEventListener("click", (e) => e.stopPropagation());
+  card.appendChild(box);
+  bookingsLoaded.then(() => {
+    if (kind === "mine") fillPassengers(box, item);
+    else fillAsk(box, kind, item);
+  });
+});
+
+// A search result or a listed drive: "Request a seat", or what became of
+// the passenger's request. Nothing on one's own drives, on demo drives
+// (fictional), or before signing in.
+function fillAsk(box, kind, item, sent = false) {
+  box.innerHTML = "";
+  if (!item.bookable || !signedIn() || currentUser.is_demo || item.driver_name === currentUser.name) return;
+  const mine = bookingsData.as_passenger.find((b) => b.drive_id === item.id);
+  if (mine) {
+    const text = sent ? t("booking.askSent") : myBookingText(mine.status);
+    box.innerHTML = `<div class="hint">${bookingStatusBadge(mine.status)} ${esc(text)}</div>`;
+    return;
+  }
+  if (!(item.seats_available > 0)) return;
+  box.appendChild(actionButton("booking.ask", "submit-btn secondary", () => showAskForm(box, kind, item)));
+}
+
+function showAskForm(box, kind, item) {
+  const seats = [...Array(Math.min(item.seats_available, 8)).keys()].map((i) => `<option>${i + 1}</option>`).join("");
+  box.innerHTML = `
+    <div class="booking-form-row"${item.seats_available > 1 ? "" : " hidden"}>
+      <label>${esc(t("booking.askSeats"))}</label>
+      <select aria-label="${esc(t("booking.askSeats"))}">${seats}</select>
+    </div>
+    <input type="text" maxlength="300" placeholder="${esc(t("booking.askNote"))}" aria-label="${esc(t("booking.askNote"))}" />
+    <div class="booking-form-row booking-buttons"></div>
+    <div class="status-msg"></div>
+  `;
+  const send = actionButton("booking.askSend", "submit-btn", async () => {
+    const body = {
+      seats: Number(box.querySelector("select").value),
+      note: box.querySelector("input").value.trim() || null,
+    };
+    // From a search: the passenger's own start and destination, so the
+    // driver knows where to meet them. From the list: the whole drive.
+    if (kind === "match" && lastResults) Object.assign(body, { origin: lastResults.origin, destination: lastResults.destination });
+    send.disabled = true;
+    try {
+      await postJson(`/api/drives/${item.id}/bookings`, body);
+      await loadBookings();
+      fillAsk(box, kind, item, true);
+      renderMyBookings();
+    } catch (err) {
+      send.disabled = false;
+      showBoxError(box, err.message);
+    }
+  });
+  box.querySelector(".booking-buttons").append(
+    send,
+    actionButton("booking.notNow", "link-btn", () => fillAsk(box, kind, item)),
+  );
+}
+
+// One of the driver's own drives: its passengers and the requests to join.
+function fillPassengers(box, drive) {
+  box.innerHTML = "";
+  const rows = bookingsData.as_driver.filter((b) => b.drive_id === drive.id);
+  if (!rows.length) return;
+  box.innerHTML = `<div class="booking-list-title">${esc(t("booking.passengers"))}</div>`;
+  rows.forEach((b) => box.appendChild(passengerRow(b)));
+}
+
+function passengerRow(b) {
+  const row = document.createElement("div");
+  row.className = "booking-row";
+  const trip = t("booking.trip", { from: b.origin_name, to: b.destination_name, time: fmtClock(b.pickup.time) });
+  row.innerHTML = `
+    <div class="booking-who">${esc(b.passenger_name)} · ${esc(t("common.seats", { count: b.seats }))} ${bookingStatusBadge(b.status)}</div>
+    <div class="meta">${esc(trip)}</div>
+    ${priceBadges({ price_chf: b.price_chf })}
+    ${b.passenger_note ? `<div class="booking-note">${esc(t("booking.passengerNote", { name: b.passenger_name, note: b.passenger_note }))}</div>` : ""}
+    ${b.status === "requested" ? `<input type="text" maxlength="300" placeholder="${esc(t("booking.acceptNote"))}" aria-label="${esc(t("booking.acceptNote"))}" />` : ""}
+    <div class="booking-form-row booking-buttons"></div>
+    <div class="status-msg"></div>
+  `;
+  row.addEventListener("click", (e) => {
+    if (!e.target.closest("input, button")) showBookingOnMap(b);
+  });
+
+  // After the driver's answer the drive's seats have changed: reload both.
+  const act = async (action, body) => {
+    try {
+      await postJson(`/api/bookings/${b.id}/${action}`, body || {});
+      await loadBookings();
+      loadMyDrives();
+    } catch (err) {
+      showBoxError(row, err.message);
+    }
+  };
+  const buttons = row.querySelector(".booking-buttons");
+  if (b.status === "requested") {
+    buttons.append(
+      actionButton("booking.accept", "submit-btn", () => act("accept", { note: row.querySelector("input").value.trim() || null })),
+      actionButton("booking.decline", "submit-btn secondary", () => act("decline")),
+    );
+  } else {
+    buttons.append(
+      actionButton("booking.cancelPassenger", "link-btn", () => {
+        if (confirm(t("booking.cancelPassengerConfirm", { name: b.passenger_name }))) act("cancel");
+      }),
+    );
+  }
+  return row;
+}
+
+// ---------------------------------------------------------------------
+// The passenger's bookings, on the Passenger page above their ride requests
+// ---------------------------------------------------------------------
+function myBookingsList() {
+  let list = document.getElementById("ride-bookings");
+  if (!list) {
+    const requestsTitle = document.getElementById("ride-requests").previousElementSibling;
+    requestsTitle.insertAdjacentHTML(
+      "beforebegin",
+      '<div class="section-title" id="ride-bookings-title"></div><div id="ride-bookings"></div>'
+    );
+    list = document.getElementById("ride-bookings");
+  }
+  document.getElementById("ride-bookings-title").textContent = t("booking.title");
+  return list;
+}
+
+async function renderMyBookings() {
+  const list = myBookingsList();
+  await bookingsLoaded;
+  if (bookingsError) {
+    list.innerHTML = `<div class="empty-state">${esc(t("booking.loadFailed", { error: bookingsError }))}</div>`;
+    return;
+  }
+  if (!bookingsData.as_passenger.length) {
+    list.innerHTML = `<div class="empty-state">${esc(t("booking.empty"))}</div>`;
+    return;
+  }
+  list.innerHTML = "";
+  bookingsData.as_passenger.forEach((b) => list.appendChild(myBookingCard(b)));
+}
+
+function myBookingCard(b) {
+  const d = b.drive;
+  const active = b.status === "requested" || b.status === "accepted";
+  const waitingForASeat = b.status === "requested" && d.seats_available < b.seats;
+  const card = document.createElement("div");
+  card.className = "drive-card clickable booking-card";
+  card.innerHTML = `
+    <div class="route">${esc(d.origin_name)} → ${esc(d.destination_name)} ${bookingStatusBadge(b.status)}</div>
+    <div class="meta">${esc(t("common.driver", { name: d.driver_name }))} · ${fmtTime(d.departure_time)} · ${esc(t("common.seats", { count: b.seats }))}</div>
+    <div class="meta">${esc(t("match.pickup", { time: fmtClock(b.pickup.time), km: fmtNumber(b.pickup.gap_km) }))}</div>
+    <div class="meta">${esc(t("match.dropoff", { time: fmtClock(b.dropoff.time), km: fmtNumber(b.dropoff.gap_km) }))}</div>
+    ${priceBadges({ price_chf: b.price_chf })}
+    ${b.seats > 1 && typeof b.total_chf === "number" ? `<div class="meta">${esc(t("booking.total", { seats: b.seats, total: fmtChf(b.total_chf) }))}</div>` : ""}
+    <div class="meta">${esc(myBookingText(b.status))}${waitingForASeat ? ` ${esc(t("booking.fullForNow"))}` : ""}</div>
+    ${b.driver_note ? `<div class="booking-note">${esc(t("booking.driverNote", { note: b.driver_note }))}</div>` : ""}
+    ${active ? `<div class="hint">${esc(t("booking.priceNote"))}</div>` : ""}
+    ${active ? `<button type="button" class="link-btn">${esc(b.status === "requested" ? t("booking.withdraw") : t("booking.cancel"))}</button>` : ""}
+    <div class="status-msg"></div>
+  `;
+  card.addEventListener("click", (e) => {
+    if (!e.target.closest("button")) showBookingOnMap(b);
+  });
+  card.querySelector("button")?.addEventListener("click", async () => {
+    const trip = { from: d.origin_name, to: d.destination_name };
+    const question = b.status === "requested" ? t("booking.withdrawConfirm", trip) : t("booking.cancelConfirm", trip);
+    if (!confirm(question)) return;
+    try {
+      await postJson(`/api/bookings/${b.id}/cancel`, {});
+      await loadBookings();
+      renderMyBookings();
+      // The search results still say "requested" on that drive.
+      if (lastResults) renderResults();
+    } catch (err) {
+      showBoxError(card, err.message);
+    }
+  });
+  return card;
+}
+
+// ---------------------------------------------------------------------
+// The inbox's booking notifications. Their details keep the drive and the
+// passenger's name, as the booking itself may be gone.
+// ---------------------------------------------------------------------
+function bookingNotification(title, buttonKey, page) {
+  return (n, card) => {
+    const details = n.details || {};
+    const drive = details.drive || {};
+    card.innerHTML = `
+      <div class="route">${esc(title(details, drive))}</div>
+      <div class="meta">${esc(drive.origin_name)} → ${esc(drive.destination_name)} · ${fmtTime(drive.departure_time)}</div>
+      <div class="notification-actions"></div>
+    `;
+    const button = typeof buttonKey === "function" ? buttonKey(details) : buttonKey;
+    if (!button) return;
+    card.querySelector(".notification-actions").append(
+      actionButton(button, "submit-btn secondary", () => {
+        goTo(typeof page === "function" ? page(details) : page);
+        if (button === "booking.inboxSeeBookings") {
+          document.getElementById("ride-bookings-title")?.scrollIntoView({ block: "start", behavior: "smooth" });
+        }
+      }),
+    );
+  };
+}
+
+NOTIFICATION_CARDS.booking_requested = bookingNotification(
+  (details) => t("booking.inboxRequested", { name: details.passenger_name, count: details.seats }),
+  "booking.inboxAnswer", "drive",
+);
+NOTIFICATION_CARDS.booking_accepted = bookingNotification(
+  (details, drive) => t("booking.inboxAccepted", { name: drive.driver_name }),
+  "booking.inboxSeeBookings", "ride",
+);
+NOTIFICATION_CARDS.booking_declined = bookingNotification(
+  (details, drive) => t("booking.inboxDeclined", { name: drive.driver_name }),
+  "booking.inboxSeeBookings", "ride",
+);
+NOTIFICATION_CARDS.booking_cancelled = bookingNotification(
+  (details, drive) => {
+    if (details.by === "driver") return t("booking.inboxCancelledByDriver", { name: drive.driver_name });
+    return details.was === "accepted"
+      ? t("booking.inboxCancelledByPassenger", { name: details.passenger_name })
+      : t("booking.inboxWithdrawn", { name: details.passenger_name });
+  },
+  (details) => (details.by === "driver" ? "booking.inboxSeeBookings" : "booking.inboxSeeDrives"),
+  (details) => (details.by === "driver" ? "ride" : "drive"),
+);
+// The drive is gone, and the booking with it: nothing to go and see.
+NOTIFICATION_CARDS.booking_drive_cancelled = bookingNotification(
+  (details, drive) =>
+    details.was === "accepted"
+      ? t("booking.inboxDriveCancelled", { name: drive.driver_name })
+      : t("booking.inboxDriveCancelledRequested", { name: drive.driver_name }),
+  null,
+);
+
+// ---------------------------------------------------------------------
+// Hooking into app.js's pages: the bookings are loaded before the page's
+// own lists, whose cards wait for them (CARD_EXTRAS above).
+// ---------------------------------------------------------------------
+const BOOKING_PAGES = ["ride", "drive", "browse"];
+
+BOOKING_PAGES.forEach((page) => {
+  const show = PAGES[page].onShow;
+  PAGES[page].onShow = (...args) => {
+    loadBookings();
+    show(...args);
+    if (page === "ride") renderMyBookings();
+  };
+});
+
+// app.js may have shown a page before this script ran (it routes as soon
+// as it knows who is signed in): show it again, with the bookings.
+{
+  const shown = BOOKING_PAGES.find((page) => document.getElementById(`page-${page}`).classList.contains("active"));
+  if (shown) PAGES[shown].onShow();
+}

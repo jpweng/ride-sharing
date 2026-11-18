@@ -6,9 +6,11 @@ Drives:
   GET /api/drives          -- browse all upcoming posted drives
                               (?mine=true: the signed-in driver's own).
                               Drives say whether they're "bookable": demo
-                              drives aren't.
+                              drives aren't. seats_available is the free
+                              seats, seats_booked those taken (bookings.py).
   GET /api/drives/{id}     -- a single drive with full route geometry.
-  DELETE /api/drives/{id}  -- a driver cancels one of their drives.
+  DELETE /api/drives/{id}  -- a driver cancels one of their drives; its
+                              passengers are told.
 """
 from datetime import datetime
 from typing import Annotated
@@ -16,6 +18,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
+import bookings
 import database as db
 import demo_drives
 import matching
@@ -100,7 +103,7 @@ def get_drives(
         upcoming_only=upcoming_only, driver_name=driver_name, with_geometry=False, limit=limit,
         include_demo=demo_drives.enabled(),
     )
-    return [search.with_bookable(pricing.with_prices(d)) for d in drives]
+    return [search.with_bookable(pricing.with_prices(d)) for d in bookings.with_seats_booked(drives)]
 
 
 @router.get("/api/drives/{drive_id}")
@@ -108,7 +111,7 @@ def get_drive(drive_id: int):
     drive = db.get_drive(drive_id)
     if not drive or (drive["is_demo"] and not demo_drives.enabled()):
         raise api_error(404, "drive_not_found", "Drive not found")
-    return search.with_bookable(pricing.with_prices(drive))
+    return search.with_bookable(pricing.with_prices(bookings.with_seats_booked([drive])[0]))
 
 
 @router.delete("/api/drives/{drive_id}")
@@ -118,6 +121,9 @@ def cancel_drive(drive_id: int, user: Writer):
         raise api_error(404, "drive_not_found", "Drive not found")
     if drive["driver_id"] != user["id"]:
         raise api_error(403, "not_your_drive", "Only the driver who posted this drive can cancel it")
-    notify.tell_drive_cancelled(drive)
+    # Passengers with a request or a seat on it, then those who were only
+    # told about it. The drive's bookings are deleted with it.
+    booked = bookings.tell_drive_cancelled(drive)
+    notify.tell_drive_cancelled(drive, exclude=booked)
     db.delete_drive(drive_id)
     return {"deleted": drive_id}

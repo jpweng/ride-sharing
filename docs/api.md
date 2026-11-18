@@ -48,7 +48,7 @@ Rides:
   `PUT /api/notification_settings` — may change
 
 Every drive and match carries `is_demo` and `bookable` (`false` for demo drives, which are
-fictional). Among matches that fit equally well, real drives come first.
+fictional), and `seats_available` (its free seats) and `seats_booked` (see [Booking](booking.md)). Among matches that fit equally well, real drives come first.
 
 Drives (`/api/drives`) and matches (`/api/match`) carry their prices: `price_chf` is what the next
 passenger pays (for a match, for the part they ride), `price_by_passengers` what each pays with 1, 2,

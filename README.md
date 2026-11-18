@@ -22,6 +22,11 @@ fare next to each ride and on the public-transport option. Nothing is charged in
 the train fares: the official national distance tariff (T601), or the real fare from
 opentransportdata.swiss when `OJP_API_KEY` is set (see [Train fares](docs/train-fares.md)).
 
+**Booking:** a passenger asks for seats on a drive, from a search result or the list of drives,
+with a short message; the driver accepts or declines, and either can cancel afterwards. Accepting
+takes the seats from the drive, and each step lands in the other one's inbox. See
+[Booking](docs/booking.md).
+
 **Planned next: ride predictions.** The app spots people's recurring trips and offers to publish
 their next drives, or request their next rides, after they confirm. Designed, not built yet.
 
@@ -80,6 +85,7 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [Deploying to AWS](docs/deploying-to-aws.md): the server, Terraform, CI deploys, domain, emails,
   operations
 - [Routing](docs/routing.md): our own OSRM server and its monthly data
+- [Booking](docs/booking.md): asking for a seat, the driver's answer, cancelling, seats and prices
 - [Load test](docs/load-test.md): the event-evening simulation and its results
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
   listed by FastAPI at `/docs` on a running app
@@ -102,6 +108,7 @@ backend/
   search.py       upcoming drives that fit a trip (used by searches and ride requests)
   notify.py       ride requests: which drivers are told, limits, the inbox
   pricing.py      ride prices: the driver's price band, what each passenger pays
+  bookings.py     bookings: asking for seats on a drive, the driver's answer, cancelling
   fares.py        train fares: T601 distance tariff, optional OJP fare lookup
   transit.py      transport.opendata.ch integration
   operators.py    Swiss public transport operators and their logos, for each transit leg
@@ -115,6 +122,7 @@ frontend/
   offline.html    shown by the service worker for an uncached page while offline
   app.js          Leaflet map, point picking, address autocomplete, API calls
   i18n.js         language choice and translation of the page (see docs/translations.md)
+  bookings.js     bookings: asking for a seat, one's bookings, a drive's passengers (docs/booking.md)
   i18n/           en/de/fr/it dictionaries, one file per key prefix
   style.css       teal/white theme, logo and text wordmark: base, layout, shared components
   styles/         one stylesheet per feature, linked right after style.css by the pages using it

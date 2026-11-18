@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 
 import auth
+import bookings
 import database as db
 import mailer
 import notify
@@ -116,9 +117,13 @@ def delete_account(response: Response, found: Annotated[dict, Depends(signed_in)
     user = found["user"]
     if user["is_demo"] or found["session"]["is_demo"]:
         raise api_error(403, "demo_read_only", "Viewing as a demo driver: nothing can be changed")
-    # Passengers who were told about the user's upcoming drives hear they're cancelled.
+    # Passengers with a seat on the user's upcoming drives, or who were told
+    # about them, hear they're cancelled; drivers the user had asked for a
+    # seat hear it's free again.
     for drive in db.list_drives(upcoming_only=True, driver_name=user["name"], with_geometry=False):
-        notify.tell_drive_cancelled(drive)
+        booked = bookings.tell_drive_cancelled(drive)
+        notify.tell_drive_cancelled(drive, exclude=booked)
+    bookings.tell_account_deleted(user)
     deleted = db.delete_account(user["id"])
     logger.info("Account deleted: %s", {k: v for k, v in deleted.items() if v})
     _clear_session_cookie(response)

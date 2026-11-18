@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 import auth
+import bookings
 import database as db
 import matching
 import pricing
@@ -76,8 +77,9 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
         time_tolerance_min=payload.time_tolerance_min,
     )
 
-    # What the passenger pays for their part of the drive, and the train
-    # fare for it (see pricing.py).
+    # What the passenger pays for their part of the drive, given the seats
+    # already booked, and the train fare for it (see pricing.py).
+    bookings.with_seats_booked(driver_matches + outside_matches)
     driver_matches = [pricing.with_ride_prices(m) for m in driver_matches]
     outside_matches = [pricing.with_ride_prices(m) for m in outside_matches]
 
