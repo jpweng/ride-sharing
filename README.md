@@ -116,10 +116,10 @@ frontend/
   app.js          Leaflet map, point picking, address autocomplete, API calls
   i18n.js         language choice and translation of the page (see docs/translations.md)
   i18n/           en/de/fr/it dictionaries, one file per key prefix
-  style.css       teal/white theme, text wordmark (no logo yet): base, layout, shared components
+  style.css       teal/white theme, logo and text wordmark: base, layout, shared components
   styles/         one stylesheet per feature, linked right after style.css by the pages using it
   manifest.webmanifest, sw.js, pwa.js   installable app (see docs/pwa.md)
-  icons/          placeholder app icons + make_icons.py that generates them
+  icons/          the logo and the app icons + make_icons.py that generates them
 mobile/android/   Android app (Trusted Web Activity): Bubblewrap config + publishing guide
 infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user,
                   DNS, SES for sign-in emails)

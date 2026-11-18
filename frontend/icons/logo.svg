@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Ride and Rail">
+  <rect width="180" height="180" rx="40" fill="#1e2235"/>
+  <path d="M129.5 61H105a15 15 0 0 0-15 15v14" fill="none" stroke="#ffffff" stroke-width="14"/>
+  <path d="M90 90v14a15 15 0 0 1-15 15H50.5" fill="none" stroke="#f06b45" stroke-width="14"/>
+  <circle cx="129.5" cy="61" r="12.5" fill="#ffffff"/>
+  <circle cx="50.5" cy="119" r="12.5" fill="#f06b45"/>
+</svg>
