@@ -21,10 +21,17 @@ idempotent; maintenance.py runs it at startup and then hourly. It drops demo
 drives that have departed or no longer match DEMO_DRIVES, and adds the ones
 missing from the next DAYS_AHEAD days.
 
+The DEMO_DRIVES environment variable switches them (enabled()): "on" (the
+default) or "off". Off, refresh() deletes every demo drive and creates
+none, maintenance.py deletes their routes, and searches, the drive list
+and ride requests leave them out. Demo drives are never bookable, and
+requests from real passengers never reach demo drivers (see notify.py).
+
 Run it by hand with the backend on PYTHONPATH, e.g.:
     PYTHONPATH=backend uv run python backend/demo_drives.py
 """
 import itertools
+import os
 import random
 import time as clock
 from datetime import datetime, time, timedelta
@@ -32,6 +39,7 @@ from zoneinfo import ZoneInfo
 
 import database as db
 import matching
+import pricing
 
 DAYS_AHEAD = 7
 
@@ -39,8 +47,23 @@ DAYS_AHEAD = 7
 # datetime-local input sends.
 LOCAL_TZ = ZoneInfo("Europe/Zurich")
 
-# The public OSRM server asks for at most one request per second.
-ROUTING_PAUSE_S = 1.0
+# DEMO_DRIVES=off (or false, 0, no) turns demo drives off; unset or empty
+# means on.
+SWITCH_ENV = "DEMO_DRIVES"
+_OFF_VALUES = {"off", "false", "0", "no"}
+
+
+def enabled() -> bool:
+    """Whether demo drives are on (the DEMO_DRIVES environment variable)."""
+    return os.environ.get(SWITCH_ENV, "on").strip().lower() not in _OFF_VALUES
+
+
+# Pause after each route fetched: the public OSRM server asks for at most one
+# request per second, our own server (see routing/) needs no pause.
+# OSRM_PAUSE_S overrides it.
+ROUTING_PAUSE_S = float(os.environ.get(
+    "OSRM_PAUSE_S", "1.0" if matching.PUBLIC_OSRM_HOST in matching.OSRM_URL else "0"
+))
 
 MON_FRI = (0, 1, 2, 3, 4)
 DAILY = (0, 1, 2, 3, 4, 5, 6)
@@ -749,6 +772,24 @@ for _a, _b in _regional_pairs():
     DEMO_DRIVES += _generated_regional(_a, _b)
 
 
+_driver_names: tuple[list | None, int, frozenset[str]] = (None, 0, frozenset())
+
+
+def is_demo_user(name: str | None) -> bool:
+    """
+    Whether `name` is one of the demo drivers, which anyone can sign in as
+    to see the demo (identity is a typed name). Their ride requests are demo
+    requests: they only reach demo drivers (see notify.py). Never true while
+    demo drives are off.
+    """
+    global _driver_names
+    if not name or not enabled():
+        return False
+    if _driver_names[0] is not DEMO_DRIVES or _driver_names[1] != len(DEMO_DRIVES):  # tests swap the list
+        _driver_names = (DEMO_DRIVES, len(DEMO_DRIVES), frozenset(spec["driver_name"] for spec in DEMO_DRIVES))
+    return name.strip() in _driver_names[2]
+
+
 def _departure_iso(dt: datetime) -> str:
     return dt.isoformat(timespec="minutes")
 
@@ -778,8 +819,15 @@ def _route(spec, cache: dict) -> dict:
         ])
         if cache[key]["source"] == "osrm":
             db.save_demo_route(*key, cache[key])
-            clock.sleep(ROUTING_PAUSE_S)
+            if ROUTING_PAUSE_S:
+                clock.sleep(ROUTING_PAUSE_S)
     return cache[key]
+
+
+def _demo_price(route: dict) -> float | None:
+    """A demo driver's price: the default suggestion for the trip (pricing.py)."""
+    price_band = pricing.band(route["distance_m"] / 1000.0)
+    return price_band["default_chf"] if price_band else None
 
 
 # Drives are written in batches: one transaction each, short enough not to
@@ -788,17 +836,26 @@ BATCH_SIZE = 1000
 
 
 def refresh(now: datetime | None = None) -> tuple[int, int]:
-    """Bring demo drives up to date; returns (deleted, created)."""
+    """Bring demo drives up to date; returns (deleted, created). With demo
+    drives off, deletes them all and creates none."""
     db.init_db()
+    if not enabled():
+        return db.delete_all_demo_drives(), 0
     now = now or datetime.now(LOCAL_TZ).replace(tzinfo=None)
     deleted = db.delete_demo_drives_before(_departure_iso(now))
     expected = _expected(now)
 
-    # Upcoming demo drives from templates that changed or were removed.
+    # Upcoming demo drives from templates that changed or were removed, and
+    # straight-line ones (routing was down when they were made) whose road
+    # route can be had now.
+    routes = {}
     existing, outdated = set(), []
-    for drive_id, driver_name, departure_time, origin_name, destination_name in db.demo_drive_keys():
+    for drive_id, driver_name, departure_time, origin_name, destination_name, route_source in db.demo_drive_keys():
         spec = expected.get((driver_name, departure_time))
-        if spec and spec["origin"]["name"] == origin_name and spec["destination"]["name"] == destination_name:
+        if (
+            spec and spec["origin"]["name"] == origin_name and spec["destination"]["name"] == destination_name
+            and (route_source == "osrm" or _route(spec, routes)["source"] != "osrm")
+        ):
             existing.add((driver_name, departure_time))
         else:
             outdated.append(drive_id)
@@ -806,7 +863,7 @@ def refresh(now: datetime | None = None) -> tuple[int, int]:
         deleted += db.delete_drives(outdated[i:i + BATCH_SIZE])
 
     created = 0
-    routes, batch = {}, []
+    batch = []
     for (driver_name, departure_time), spec in expected.items():
         if (driver_name, departure_time) in existing:
             continue
@@ -828,6 +885,8 @@ def refresh(now: datetime | None = None) -> tuple[int, int]:
             "route_duration_s": route["duration_s"],
             "route_source": route["source"],
             "is_demo": True,
+            # Priced by the same rules as visitors' drives: the default suggestion.
+            "driver_price_chf": _demo_price(route),
         })
         if len(batch) == BATCH_SIZE:
             created += db.create_drives(batch)

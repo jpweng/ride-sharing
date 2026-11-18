@@ -1,0 +1,15 @@
+{
+  "profile.adult": "I am 18 or older.",
+  "profile.conduct": "I have read and accept the <a href=\"conduct.html\" target=\"_blank\">code of conduct</a>.",
+  "profile.conductChanged": "The code of conduct has changed. Please read it and accept it to continue.",
+  "profile.firstName": "First name",
+  "profile.firstNamePlaceholder": "e.g. Marie",
+  "profile.hint": "One more step. Other users see your first name and the initial of your last name, for example \"Marie M.\". Your name can't be changed later.",
+  "profile.lastName": "Last name",
+  "profile.lastNamePlaceholder": "e.g. Muster",
+  "profile.needConsent": "To use Ride and Rail, confirm that you are 18 or older and accept the code of conduct.",
+  "profile.needFirstName": "Enter your first name.",
+  "profile.needLastName": "Enter your last name.",
+  "profile.submit": "Continue",
+  "profile.title": "Welcome to Ride and Rail"
+}

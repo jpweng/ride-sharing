@@ -30,8 +30,8 @@
 
 Not needed for the demo, but these shape decisions made now:
 
-- **Accounts:** a real sign-in (e.g. a link sent by email) instead of a typed name, so nobody can
-  post or read as someone else.
+- **Accounts:** sign-in by an emailed link replaces the typed name (built, see docs/sign-in.md). Still to do
+  by a human: SES production access, a lawyer's review of the code of conduct.
 - **Contact and booking:** how a passenger reaches a driver and reserves a seat.
 - **Legal:** terms of use and a full privacy policy. In Switzerland, carpooling is fine as long as
   drivers only share costs; earning money from rides needs a professional licence, so pricing rules

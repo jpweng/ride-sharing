@@ -1,0 +1,12 @@
+{
+  "form.from": "From",
+  "form.hour": "Hour",
+  "form.minute": "Minutes",
+  "form.needDestination": "Choose where you're going.",
+  "form.needOrigin": "Choose where you're leaving from.",
+  "form.notSet": "not set",
+  "form.pickOnMap": "Pick on map",
+  "form.pickerHint": "Type an address to search, or click \"Pick on map\" then click a point on the map.",
+  "form.placePlaceholder": "type an address or place…",
+  "form.to": "To"
+}

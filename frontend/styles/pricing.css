@@ -1,0 +1,28 @@
+/* Ride prices and train fares (see pricing.py and fares.py). Linked after
+   style.css. */
+
+/* What a passenger pays (see pricing.py), and the train fare next to it. */
+.badge.price {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 6px 6px 0 0;
+}
+.badge.train-fare {
+  font-size: 11px;
+  margin: 6px 6px 0 0;
+}
+
+/* The driver's price: the band, a warning when it's high. */
+input.price-input { width: 120px; }
+.hint.price-warn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #fff4e5;
+  color: #995c00;
+}
+.pt-fare {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}

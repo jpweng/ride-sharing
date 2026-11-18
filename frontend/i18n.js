@@ -1,8 +1,10 @@
 "use strict";
 
 // ---------------------------------------------------------------------
-// Translations: one dictionary per language in i18n/<lang>.json, English
-// being the reference and the fallback for missing keys.
+// Translations: one dictionary per language at i18n/<lang>.json, English
+// being the reference and the fallback for missing keys. The server merges
+// it from the files in i18n/<lang>/, one per key prefix
+// (backend/translations.py).
 //
 // The language is, in order: ?lang=xx in the URL (also saved), the
 // visitor's saved choice, the browser's languages, then English.

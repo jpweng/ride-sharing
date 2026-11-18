@@ -24,9 +24,29 @@ import database as db  # noqa: E402
 # tables in (let alone write to) the real rideshare.db in the repo root.
 db.DB_PATH = os.path.join(tempfile.mkdtemp(prefix="rideshare-tests-"), "_unused.db")
 
+import fares  # noqa: E402
 import matching  # noqa: E402
 import pytest  # noqa: E402
 import transit  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def no_ojp(monkeypatch):
+    """Never call opentransportdata.swiss from tests, even with an API key
+    in the developer's environment; tests that need OJP fake it."""
+    monkeypatch.delenv("OJP_API_KEY", raising=False)
+    monkeypatch.delenv("OJP_FARE_API_KEY", raising=False)
+    fares.clear_cache()
+    yield
+    fares.clear_cache()
+
+
+@pytest.fixture(autouse=True)
+def empty_transit_cache():
+    """Each test starts without transit answers cached by an earlier one."""
+    transit._cache.clear()
+    yield
+    transit._cache.clear()
 
 
 @pytest.fixture
@@ -114,3 +134,24 @@ def isolated_db(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", db_path)
     db.init_db()
     return db
+
+
+@pytest.fixture(autouse=True)
+def demo_drives_on_by_default(monkeypatch):
+    """Tests run with demo drives on (the default), whatever DEMO_DRIVES is
+    set to in the shell; switch tests set it themselves."""
+    monkeypatch.delenv("DEMO_DRIVES", raising=False)
+
+
+@pytest.fixture
+def user_named(isolated_db):
+    """name -> a user row, for calling the API's route functions directly
+    as that (signed-in) user. test_auth.py tests the sign-in itself."""
+    import auth
+
+    def make(name: str) -> dict:
+        first, _, last = name.partition(" ")
+        user_id = db.get_or_create_user(name)
+        # Name, 18+ and code of conduct done, as after the first sign-in.
+        return db.set_profile(user_id, auth.CONDUCT_VERSION, name, first, last or "X")
+    return make

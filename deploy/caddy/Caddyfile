@@ -12,38 +12,74 @@
 	@www header_regexp www Host ^www\.(.+)$
 	redir @www https://{re.www.1}{uri} permanent
 
-	# Per-client-IP limits; over-limit requests get 429 + Retry-After.
-	# Every zone a request matches counts it, so POST /api/match uses the
-	# match, writes and api budgets at once.
+	# Rate limits; over-limit requests get 429 + Retry-After. Every zone a
+	# request matches counts it, so POST /api/match uses the search,
+	# search_all, writes and api budgets at once.
+	#
+	# Phones on mobile networks reach us over IPv4 through carrier-grade
+	# NAT (the server has no IPv6): at an event, dozens of people can share
+	# one public IP. So the per-IP limits are set for a crowd behind one
+	# address, and the server-wide search_all zone is what protects the
+	# server (and transport.opendata.ch) from overload.
 	rate_limit {
-		# Each match fans out to the free OSRM and transport.opendata.ch
-		# APIs; abuse here would get the server blocked by them.
-		zone match {
+		# Searches and ride requests: route matching on the server, ~0.2 s
+		# of CPU each on a laptop core and an estimated ~0.5 s on the
+		# server's, plus transport.opendata.ch lookups (cached). Per IP:
+		# one every 2 s, enough for a crowd behind one address, while a
+		# single client can take at most half of search_all.
+		zone search {
 			match {
 				method POST
-				path /api/match
-			}
-			key {remote_host}
-			events 10
-			window 1m
-		}
-		zone writes {
-			match {
-				method POST DELETE
-				path /api/*
+				path /api/match /api/requests
 			}
 			key {remote_host}
 			events 30
 			window 1m
 		}
-		# Generous: the UI polls a few endpoints, and people behind one
-		# office/mobile NAT share an IP.
+		# Each sign-in link is an email (Amazon SES): keep anyone from
+		# mail-bombing addresses or burning the sending quota. The app has
+		# its own limits per IP and per email address (backend/auth.py).
+		zone sign_in {
+			match {
+				method POST
+				path /api/auth/link
+			}
+			key {remote_host}
+			events 10
+			window 10m
+		}
+		# All clients together: about what the server can serve (one
+		# uvicorn worker, one CPU). The load test (loadtest/, see README)
+		# saturated a laptop core at ~140 searches/min plus browsing; a t4g
+		# core does roughly half. Beyond this, searches would only queue and
+		# every page would wait behind them: a quick 429 is better.
+		zone search_all {
+			match {
+				method POST
+				path /api/match /api/requests
+			}
+			key all
+			events 60
+			window 1m
+		}
+		zone writes {
+			match {
+				method POST PUT DELETE
+				path /api/*
+			}
+			key {remote_host}
+			events 120
+			window 1m
+		}
+		# An open page polls the inbox once a minute, and a visit makes a
+		# few calls per action: ~10/min per active person, so 1200/min is
+		# ~100 people behind one address.
 		zone api {
 			match {
 				path /api/*
 			}
 			key {remote_host}
-			events 300
+			events 1200
 			window 1m
 		}
 	}

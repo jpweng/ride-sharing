@@ -23,9 +23,12 @@ variable "alert_email" {
 }
 
 variable "instance_type" {
-  description = "EC2 instance type. Must be arm64 (Graviton): CI builds arm64 images."
+  description = "EC2 instance type. Must be arm64 (Graviton): CI builds arm64 images. Changing it stops and starts the server (a minute or two offline); it isn't replaced."
   type        = string
-  default     = "t4g.micro" # 2 vCPU (burstable), 1 GiB RAM
+  # 2 vCPU (burstable), 2 GiB RAM: the app, Caddy and OSRM (its ~1 GB of
+  # Swiss routing data memory-mapped, see routing/). A t4g.micro's 1 GiB
+  # would leave the routing data almost no page cache.
+  default = "t4g.small"
 }
 
 variable "data_volume_size_gb" {
@@ -38,4 +41,16 @@ variable "log_retention_days" {
   description = "CloudWatch log retention for container logs."
   type        = number
   default     = 14
+}
+
+variable "email_from_local_part" {
+  description = "Sign-in emails are sent from <this>@<domain_name> through Amazon SES (email.tf)."
+  type        = string
+  default     = "no-reply"
+}
+
+variable "ses_sandbox_test_recipients" {
+  description = "While SES is in sandbox mode, it only delivers to verified addresses: these are verified (each gets a confirmation link from AWS) so sign-in can be tested. Not needed once production access is granted."
+  type        = list(string)
+  default     = []
 }

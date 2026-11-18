@@ -1,0 +1,7 @@
+{
+  "price.perSeat": "CHF {price} par place",
+  "price.train": "train CHF {price}",
+  "price.trainApprox": "train ≈ CHF {price}",
+  "price.trainHint": "Billet de train 2e classe, plein tarif, pour la même distance",
+  "price.withPassengers": "{n} passagers : CHF {price} chacun"
+}

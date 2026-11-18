@@ -11,3 +11,22 @@ rideshare.db
 *.tfstate.*
 infra/terraform.tfvars
 infra/.build/
+
+# Android app (mobile/android/): signing keys must never be committed,
+# nor build outputs.
+*.keystore
+*.jks
+*.p12
+*.pem
+keystore.properties
+*.apk
+*.aab
+*.idsig
+mobile/android/**/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+signing-key-info.txt
+
+# Routing data build (routing/build.sh)
+routing/.work/
+loadtest/.work/

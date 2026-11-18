@@ -1,6 +1,6 @@
 """
 Integration tests through the actual /api/match request handler
-(main.match_ride), the same code path the frontend hits -- not just the
+(match_routes.match_ride), the same code path the frontend hits -- not just the
 underlying matching.py functions in isolation. This is the
 layer where the real reported bugs actually surfaced (a drive posted, a
 request posted, no match shown), so it's worth covering end-to-end even
@@ -12,8 +12,10 @@ real rideshare.db, never the live network.
 """
 from datetime import date, timedelta
 
-import main
+import database
 import pricing
+from routes import drives as drive_routes
+from routes import match as match_routes
 
 # match_ride only considers upcoming drives (departure_time >= now), so all
 # dates are relative to today rather than hardcoded -- a fixed date would
@@ -55,14 +57,14 @@ LOCARNO_CHUR_ROUTE_GEOMETRY = [
 
 
 def _post_drive(driver_name, origin, destination, departure_time, seats_available=3):
-    payload = main.DriveCreate(
-        driver_name=driver_name,
+    driver = database.get_user(database.get_or_create_user(driver_name))
+    payload = drive_routes.DriveCreate(
         origin={"name": origin[0], "lat": origin[1], "lon": origin[2]},
         destination={"name": destination[0], "lat": destination[1], "lon": destination[2]},
         departure_time=departure_time,
         seats_available=seats_available,
     )
-    return main.post_drive(payload)
+    return drive_routes.post_drive(payload, driver)
 
 
 def _set_route(drive, geometry):
@@ -85,19 +87,19 @@ def test_bernard_marie_bern_match(isolated_db, force_haversine, fake_transit):
     )
     _set_route(drive, AIGLE_BERN_ROUTE_GEOMETRY)
 
-    payload = main.MatchRequest(
-        passenger_name="Marie",
+    payload = match_routes.MatchRequest(
         origin={"name": "Villeneuve VD", "lat": 46.3940315246582, "lon": 6.923530101776123},
         destination={"name": "Bern (BE)", "lat": 46.954559326171875, "lon": 7.420684814453125},
         requested_time=f"{DAY_1}T18:00",
     )
-    result = main.match_ride(payload)
+    result = match_routes.match_ride(payload)
 
     assert [m["driver_name"] for m in result["driver_matches"]] == ["Bernard"]
     match = result["driver_matches"][0]
     assert match["pickup"]["gap_km"] < 1.0
     assert match["dropoff"]["gap_km"] < 5.0
-    assert match["price_chf"] == pricing.demo_price_chf(match["ride_km"])
+    assert 0 < match["price_chf"] <= match["train_fare"]["full_chf"]
+    assert match["price_chf"] <= pricing.ceiling_chf(match["ride_km"], 1)
 
 
 def test_matteo_marie_versam_match_with_last_mile(isolated_db, force_haversine, fake_transit):
@@ -114,8 +116,7 @@ def test_matteo_marie_versam_match_with_last_mile(isolated_db, force_haversine, 
     _set_route(drive, LOCARNO_CHUR_ROUTE_GEOMETRY)
 
     def search(dropoff_radius_km):
-        return main.match_ride(main.MatchRequest(
-            passenger_name="Marie",
+        return match_routes.match_ride(match_routes.MatchRequest(
             origin={"name": "Riazzino", "lat": 46.18094253540039, "lon": 8.88644790649414},
             destination={"name": "Versam", "lat": 46.80705642700195, "lon": 9.311906814575195},
             requested_time=f"{DAY_2}T15:15",
@@ -142,13 +143,12 @@ def test_date_typo_request_yields_no_match(isolated_db, force_haversine, fake_tr
         departure_time=f"{DAY_2}T15:00",
     )
 
-    payload = main.MatchRequest(
-        passenger_name="Marie",
+    payload = match_routes.MatchRequest(
         origin={"name": "Riazzino", "lat": 46.18094253540039, "lon": 8.88644790649414},
         destination={"name": "Versam", "lat": 46.80705642700195, "lon": 9.311906814575195},
         requested_time=f"{DAY_3}T15:15",
     )
-    result = main.match_ride(payload)
+    result = match_routes.match_ride(payload)
 
     assert result["driver_matches"] == []
 
@@ -165,8 +165,7 @@ def test_town_endpoints_use_their_train_stations(isolated_db, force_haversine, f
     fake_transit.set_connections("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean", CONNECTION)
 
     def search(kind):
-        return main.match_ride(main.MatchRequest(
-            passenger_name="Antoine",
+        return match_routes.match_ride(match_routes.MatchRequest(
             origin={"name": "Villeneuve (VD)", "lat": 46.40636, "lon": 6.95311, "kind": kind},
             destination={"name": "Fribourg (FR)", "lat": 46.80337, "lon": 7.16178, "kind": kind},
             requested_time=f"{DAY_1}T18:53",
@@ -190,13 +189,12 @@ def test_drives_at_the_edge_of_the_time_tolerance_still_match(isolated_db, force
     _post_drive("Too late", aigle, bern, f"{DAY_1}T20:05")
     _post_drive("Too early", aigle, bern, f"{DAY_1}T15:55")
 
-    payload = main.MatchRequest(
-        passenger_name="Marie",
+    payload = match_routes.MatchRequest(
         origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
         destination={"name": "Bern", "lat": 46.9546, "lon": 7.4207},
         requested_time=f"{DAY_1}T18:00",
     )
-    result = main.match_ride(payload)
+    result = match_routes.match_ride(payload)
 
     assert sorted(m["driver_name"] for m in result["driver_matches"]) == ["Early", "Late"]
 
@@ -207,8 +205,7 @@ def test_a_drive_that_left_earlier_matches_by_its_pickup_time(isolated_db, force
     _post_drive("Bernard", ("Aigle", 46.3180, 6.9700), ("Bern", 46.9480, 7.4474), f"{DAY_1}T16:30")
 
     def search(tolerance):
-        return main.match_ride(main.MatchRequest(
-            passenger_name="Marie",
+        return match_routes.match_ride(match_routes.MatchRequest(
             origin={"name": "Near Fribourg", "lat": 46.75, "lon": 7.30},
             destination={"name": "Bern", "lat": 46.9480, "lon": 7.4474},
             requested_time=f"{DAY_1}T17:45",
@@ -228,8 +225,7 @@ def test_rides_just_outside_the_selection_are_proposed_and_marked(isolated_db, f
     _post_drive("Too far", ("Sion", 46.2331, 7.3606), bern, f"{DAY_1}T18:00")
     _post_drive("Too late", aigle, bern, f"{DAY_1}T23:00")
 
-    result = main.match_ride(main.MatchRequest(
-        passenger_name="Marie",
+    result = match_routes.match_ride(match_routes.MatchRequest(
         origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
         destination={"name": "Bern", "lat": 46.9546, "lon": 7.4207},
         requested_time=f"{DAY_1}T18:00",

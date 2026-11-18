@@ -1,0 +1,27 @@
+name: Tests
+
+# Runs the test suite on every pull request. "Tests" is a required check on
+# main (branch protection), so a pull request can only be merged once it
+# passes on a branch that is up to date with main. Pushes to main are tested
+# again by deploy.yml before deploying.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A new push to the same pull request cancels the run it replaces.
+concurrency:
+  group: tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0 # publishes no floating major tag
+      - run: uv sync --frozen
+      - run: uv run pytest

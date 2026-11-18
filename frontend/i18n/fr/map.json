@@ -1,0 +1,8 @@
+{
+  "map.destinationPopup": "Destination : {name}",
+  "map.destinationTitle": "Votre destination",
+  "map.dropoffPoint": "Dépose ~{time}",
+  "map.pickupPoint": "Prise en charge ~{time}",
+  "map.pickupPopup": "Prise en charge : {name}",
+  "map.pickupTitle": "Votre départ"
+}

@@ -1,0 +1,42 @@
+{
+  "packageId": "ch.rideandrail.app",
+  "host": "rideandrail.ch",
+  "name": "Ride and Rail",
+  "launcherName": "Ride & Rail",
+  "display": "standalone",
+  "orientation": "default",
+  "themeColor": "#0F6E5F",
+  "themeColorDark": "#0F6E5F",
+  "navigationColor": "#F4F5F7",
+  "navigationColorDark": "#F4F5F7",
+  "navigationDividerColor": "#DFE2E6",
+  "navigationDividerColorDark": "#DFE2E6",
+  "backgroundColor": "#F4F5F7",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://rideandrail.ch/icons/icon-512.png",
+  "maskableIconUrl": "https://rideandrail.ch/icons/maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://rideandrail.ch/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://rideandrail.ch/",
+  "minSdkVersion": 21,
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": []
+}

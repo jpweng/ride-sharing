@@ -1,0 +1,12 @@
+{
+  "form.from": "De",
+  "form.hour": "Heure",
+  "form.minute": "Minutes",
+  "form.needDestination": "Choisissez votre destination.",
+  "form.needOrigin": "Choisissez votre point de départ.",
+  "form.notSet": "non choisi",
+  "form.pickOnMap": "Choisir sur la carte",
+  "form.pickerHint": "Saisissez une adresse, ou cliquez sur «Choisir sur la carte» puis sur un point de la carte.",
+  "form.placePlaceholder": "saisissez une adresse ou un lieu…",
+  "form.to": "À"
+}

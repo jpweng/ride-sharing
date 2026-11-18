@@ -1,0 +1,7 @@
+{
+  "transit.fare": "Billet 2e classe : CHF {full} (demi-tarif CHF {half})",
+  "transit.fareApprox": "Billet 2e classe : environ CHF {full} (demi-tarif environ CHF {half})",
+  "transit.tickets": "Billets<br>CFF",
+  "transit.transfers.one": "{count} correspondance",
+  "transit.transfers.other": "{count} correspondances"
+}

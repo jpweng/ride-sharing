@@ -31,11 +31,15 @@ resource "aws_instance" "app" {
     cpu_credits = "standard"
   }
 
-  # IMDSv2 only; hop limit 1 keeps containers from reaching the instance role.
+  # IMDSv2 only. Hop limit 2 lets the app container reach the instance role,
+  # to send sign-in emails through SES (email.tf); with 1, containers can't.
+  # This also gives the proxy container the role's permissions (ECR pull,
+  # logs, SSM agent, sending from the one sign-in address). Changing it
+  # updates the instance in place.
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
-    http_put_response_hop_limit = 1
+    http_put_response_hop_limit = 2
   }
 
   root_block_device {
@@ -138,7 +142,7 @@ data "aws_iam_policy_document" "app" {
       "ecr:BatchGetImage",
       "ecr:GetDownloadUrlForLayer",
     ]
-    resources = [aws_ecr_repository.app.arn, aws_ecr_repository.proxy.arn]
+    resources = [aws_ecr_repository.app.arn, aws_ecr_repository.proxy.arn, aws_ecr_repository.routing.arn]
   }
 
   statement {

@@ -1,0 +1,6 @@
+{
+  "common.driver": "Driver: {name}",
+  "common.loading": "Loading…",
+  "common.seats.one": "{count} seat",
+  "common.seats.other": "{count} seats"
+}

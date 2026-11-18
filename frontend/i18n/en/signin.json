@@ -1,0 +1,18 @@
+{
+  "signin.backToSignIn": "Ask for a new link",
+  "signin.deleted": "Your account and your data have been deleted.",
+  "signin.demoDriver": "Demo driver",
+  "signin.demoHint": "View the demo as one of its fictional drivers, without an email address. You can look around but not change anything.",
+  "signin.demoSubmit": "View as a demo driver",
+  "signin.demoTitle": "Just looking?",
+  "signin.email": "Email address",
+  "signin.emailPlaceholder": "name@example.ch",
+  "signin.hint": "Enter your email address and we'll send you a link to sign in. No password needed.",
+  "signin.needEmail": "Enter your email address.",
+  "signin.sending": "Sending…",
+  "signin.sent": "A sign-in link is on its way to {email}. Open it within 15 minutes, in this browser or another; it works once. If it doesn't arrive, check your spam folder.",
+  "signin.submit": "Send me a sign-in link",
+  "signin.title": "Sign in",
+  "signin.verifyFailed": "Signing in didn't work: {error}",
+  "signin.verifying": "Signing you in…"
+}

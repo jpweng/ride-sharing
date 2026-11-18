@@ -33,7 +33,7 @@ not a production system — no need to plan for scale, migrations, etc.).
 | Location input | Interactive map (Leaflet + OpenStreetMap tiles) | Users click points on a map rather than typing addresses |
 | Matching algorithm | **Route corridor matching** with passenger-chosen pickup/drop-off radii (see below) | User asked for corridor/trajectory-based matching, not simple point proximity |
 | Public transport | Real integration with **transport.opendata.ch** | Free, no API key, covers all Swiss operators including SBB (the official SBB API requires a business partnership and is overkill for a demo) |
-| Auth | None — a name field auto-registers a user row | Prototype; no login flow needed |
+| Auth | None — a name field auto-registers a user row. **Replaced in 2026-11** by sign-in with an emailed one-time link and server-side sessions (see docs/sign-in.md); the API no longer takes names | Prototype; no login flow needed |
 
 ## What's already built (in the zip)
 
@@ -75,7 +75,9 @@ drives           id, driver_id, driver_name,
                  route_geometry (JSON [[lon,lat], ...] or NULL),
                  route_distance_m, route_duration_s,
                  route_source ('osrm' | 'haversine'),
-                 created_at
+                 created_at, is_demo,
+                 driver_price_chf (the driver's price per passenger, one passenger,
+                                   whole drive; NULL: the default suggestion)
 
 ride_requests    id, passenger_id, passenger_name,
                  origin_name, origin_lat, origin_lon,
@@ -96,10 +98,30 @@ stored.
     "origin": {"name": "Lausanne", "lat": 46.5197, "lon": 6.6323},
     "destination": {"name": "Genève", "lat": 46.2044, "lon": 6.1432},
     "departure_time": "2026-09-22T08:30:00",
-    "seats_available": 3
+    "seats_available": 3,
+    "price_chf": 12.50
   }
   ```
-  Server calls OSRM for the route, stores distance/duration/geometry, returns the created drive.
+  Server calls OSRM for the route, stores distance/duration/geometry and the driver's price, returns
+  the created drive. `price_chf` is optional (default: the band's `default_chf`); outside the band,
+  400 with code `price_too_high` or `price_too_low`. Drives are returned with their prices (see
+  "Pricing" below):
+  ```json
+  {
+    "...drive fields...": "...",
+    "driver_price_chf": 12.5,
+    "price_chf": 12.5,
+    "price_by_passengers": [12.5, 12.5, 12.0],
+    "train_fare": {"full_chf": 25.0, "half_chf": 12.5, "approximate": true, "source": "t601", "tariff_km": 64.0}
+  }
+  ```
+- `GET /api/price_band?origin_lat=46.5197&origin_lon=6.6323&destination_lat=46.2044&destination_lon=6.1432`
+  — the band for the driver's price before posting (same road route as `POST /api/drives`):
+  ```json
+  {"km": 64.0, "min_chf": 9.7, "max_chf": 24.0, "default_chf": 12.5, "warn_above_chf": 12.5,
+   "ceiling_chf": 24.0, "fuel_chf": 9.6, "train_fare": {"...": "..."},
+   "ceilings_chf": [24.0, 16.0, 12.0, 9.6, 8.0, 6.85, 6.0, 5.3]}
+  ```
 - `GET /api/drives?upcoming_only=true` — list drives (for the "browse" use case).
 - `GET /api/drives/{id}` — one drive with full route geometry (for drawing it on the map).
 - `POST /api/match` — passenger asks for a ride.
@@ -126,16 +148,23 @@ stored.
         "ride_km": 31.6,
         "time_diff_min": 5,
         "score": 8.6,
+        "driver_price_chf": 12.5,
+        "price_chf": 6.1,
+        "price_by_passengers": [6.1, 6.1, 5.9],
+        "train_fare": {"full_chf": 13.6, "half_chf": 6.8, "approximate": true, "source": "t601", "tariff_km": 31.6},
         "last_mile_transit": null
       }
     ],
+    "outside_matches": [],
     "transit_option": {
       "from_station": "Morges",
       "to_station": "Nyon",
-      "connections": [{"departure": "...", "arrival": "...", "duration": "...", "transfers": 0, "products": ["S"]}]
+      "connections": [{"departure": "...", "arrival": "...", "duration": "...", "transfers": 0, "products": ["S"]}],
+      "fare": {"full_chf": 12.6, "half_chf": 6.3, "approximate": true, "source": "t601", "tariff_km": 30.0}
     }
   }
   ```
+  A match's prices are for the part of the drive the passenger rides (`ride_km`).
 
 ## Matching algorithm — how "trajectory-based" is implemented
 
@@ -160,6 +189,39 @@ detour-cost matching, which made the driver detour to the passenger's exact star
   the circles and time flexibility (and at least 5 km / 1 h more), each with `outside` listing what
   it's outside of (`pickup`, `dropoff`, `time`). The page lists them after the others, with a note.
   It's one search with the wider limits, split in two (`search.with_outside`).
+
+## Pricing
+
+Swiss carpooling is legal as long as drivers only share costs; regularly earning more than the trip
+costs is commercial passenger transport, which needs a professional licence. `pricing.py`:
+
+- **Capped at the train:** a passenger never pays more than the 2nd class full fare for the same
+  distance (`fares.py`).
+- **Cost shared, legal ceiling:** the car costs `CAR_COST_CHF_PER_KM` (0.75, TCS-based), shared by
+  everyone in the car, driver included: with n passengers, each pays at most `0.75 × km / (n + 1)`,
+  so the driver never collects more than the cost minus their own share.
+- **The driver sets the price** (one passenger, whole drive) inside the band
+  `[fuel minimum, min(ceiling for 1, train full fare)]`; the API rejects prices outside it, and the
+  form warns above `WARN_ABOVE_SHARE_OF_FULL_FARE` (0.5: the half-fare ticket; to be confirmed).
+- **Each passenger pays** `min(driver's price, ceiling for the current number of passengers, train
+  full fare)`, so the price per passenger falls as more join. With no bookings yet, `price_chf` is
+  for the next passenger and `price_by_passengers` lists 1, 2, … passengers.
+- **Minimum:** `FUEL_CHF_PER_KM` (0.15) × km, never above the maximum (short trips).
+- **Default:** the half-fare price, clamped to the band; also for drives with no price (posted
+  before prices existed) and for demo drives.
+- **Part of a drive:** the driver's price in proportion to the distance ridden, with that part's
+  own ceiling and train fare.
+- **Rounding:** down, so no cap is exceeded: ceilings to 5 centimes, prices and band limits to 10
+  centimes; the minimum up to 10 centimes.
+
+Worked example, 30 km: train CHF 12.60 full / 6.30 half (T601 table), ceiling 11.25 (7.50 / 5.60 /
+4.50 with 2 / 3 / 4 passengers), fuel 4.50: band CHF 4.50–11.20, default 6.30.
+
+Train fares (`fares.py`): the T601 national distance tariff (2nd class, edition 2026-06-01), its
+price table reproduced exactly, on the drive's road distance as tariff distance (or the straight
+line × 1.25 between two stations): `approximate: true`. With `OJP_API_KEY`, the public-transport
+option gets the real fare between its stations from opentransportdata.swiss (OJP 2.0 trip +
+OJPFare), cached per station pair, falling back to the tariff on any error.
 
 ## Public transport integration — transport.opendata.ch
 

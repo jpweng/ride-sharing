@@ -11,7 +11,7 @@ further along, within the drop-off radius of their destination:
     dropoff = the point of the route after the pickup closest to their destination
 
 The driver stays on their own route; the passenger gets to the pickup and
-from the drop-off on foot, by bike or by public transport (main.py looks up
+from the drop-off on foot, by bike or by public transport (routes/match.py looks up
 a last-mile connection from the drop-off). Departure times are compared at
 the pickup, not at the driver's start: a Lausanne -> Zurich drive leaving at
 7:00 reaches Bern around 8:00, which is what a passenger in Bern cares about.
@@ -23,20 +23,49 @@ the drop-off at walking pace (MINUTES_PER_GAP_KM).
 
 This is all plain geometry on the drives' stored routes: no routing call per
 candidate, so a search can consider every drive in the time window and
-return many matches. Routes come from the public OSRM demo routing server
-(router.project-osrm.org, no API key required) when a drive is posted. If
-OSRM is unreachable, route_with_fallback() falls back to a straight line
-(haversine distance) so the app keeps working in a degraded mode.
+return many matches. Road routes come from an OSRM server when a drive is
+posted (and once per demo trip): on the server, our own OSRM container with
+the Switzerland extract (routing/, OSRM_URL). If OSRM is unreachable,
+route_with_fallback() falls back to a straight line (haversine distance) so
+the app keeps working in a degraded mode.
 """
+import logging
 import math
+import os
+import threading
+import time
 from datetime import datetime, timedelta
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-OSRM_BASE_URL = "https://router.project-osrm.org"
-OSRM_TIMEOUT_S = 6
+logger = logging.getLogger("uvicorn.error")
 
-# Search defaults; a passenger can change each one (see main.MatchRequest).
+# The OSRM server routes are asked from: by default the self-hosted "osrm"
+# service of deploy/compose.yaml. For local development without it, set
+# OSRM_URL=https://router.project-osrm.org (the public demo server: fine for
+# a few requests by hand, not allowed for production use).
+OSRM_URL = os.environ.get("OSRM_URL", "http://osrm:5000").rstrip("/")
+PUBLIC_OSRM_HOST = "router.project-osrm.org"
+
+# Our own server answers a Swiss route in milliseconds; reading its data
+# from disk after a restart can take longer. Connecting should be instant.
+OSRM_CONNECT_TIMEOUT_S = float(os.environ.get("OSRM_CONNECT_TIMEOUT_S", "2"))
+OSRM_READ_TIMEOUT_S = float(os.environ.get("OSRM_READ_TIMEOUT_S", "8"))
+
+# Connection errors and 429/502/503/504 (e.g. OSRM restarting with new
+# data) are retried twice, after 0.25 s and 0.5 s.
+OSRM_RETRIES = int(os.environ.get("OSRM_RETRIES", "2"))
+
+# After this many failed routing calls in a row, routes are straight lines
+# for OSRM_COOLDOWN_S without asking OSRM: while it's down, a drive is
+# posted without waiting for timeouts, and a demo refresh doesn't spend
+# minutes on them.
+OSRM_MAX_FAILURES = 3
+OSRM_COOLDOWN_S = 60.0
+
+# Search defaults; a passenger can change each one (see routes/match.py, MatchRequest).
 DEFAULT_PICKUP_RADIUS_KM = 5.0
 DEFAULT_DROPOFF_RADIUS_KM = 5.0
 DEFAULT_TIME_TOLERANCE_MIN = 120
@@ -75,24 +104,79 @@ def haversine_km(lat1, lon1, lat2, lon2) -> float:
     return 2 * R * math.asin(min(1.0, math.sqrt(a)))
 
 
+def _osrm_session() -> requests.Session:
+    """One pooled session (keep-alive to OSRM), with retries."""
+    retry = Retry(
+        total=OSRM_RETRIES,
+        backoff_factor=0.25,
+        status_forcelist=(429, 502, 503, 504),
+        allowed_methods=("GET",),
+        respect_retry_after_header=False,  # never sleep for long in a request
+        raise_on_status=False,
+    )
+    session = requests.Session()
+    for prefix in ("http://", "https://"):
+        session.mount(prefix, HTTPAdapter(max_retries=retry, pool_maxsize=8))
+    return session
+
+
+_session = _osrm_session()
+
+
+class _CircuitBreaker:
+    """Stop asking a server that keeps failing, for a while."""
+
+    def __init__(self, max_failures: int, cooldown_s: float):
+        self.max_failures = max_failures
+        self.cooldown_s = cooldown_s
+        self.failures = 0
+        self.open_until = 0.0
+        self.lock = threading.Lock()
+
+    def allow(self) -> bool:
+        with self.lock:
+            return time.monotonic() >= self.open_until
+
+    def record(self, ok: bool) -> None:
+        with self.lock:
+            if ok:
+                self.failures = 0
+                return
+            self.failures += 1
+            if self.failures >= self.max_failures:
+                self.failures = 0
+                self.open_until = time.monotonic() + self.cooldown_s
+                logger.warning("OSRM at %s keeps failing: straight-line routes for %.0f s", OSRM_URL, self.cooldown_s)
+
+
+_breaker = _CircuitBreaker(OSRM_MAX_FAILURES, OSRM_COOLDOWN_S)
+
+
 def osrm_route(points: list[tuple[float, float]]) -> dict | None:
     """
     points: list of (lat, lon) tuples, in travel order, length >= 2.
     Returns {"distance_m": float, "duration_s": float, "geometry": [[lon,lat], ...]}
-    or None if the request fails for any reason (network, timeout, bad response).
+    or None if the request fails for any reason (network, timeout, bad
+    response), or failed repeatedly just before (see _CircuitBreaker).
+    OSRM's "no route between these points" is an answer, not a failure.
     """
-    if len(points) < 2:
+    if len(points) < 2 or not _breaker.allow():
         return None
     coord_str = ";".join(f"{lon:.6f},{lat:.6f}" for lat, lon in points)
-    url = f"{OSRM_BASE_URL}/route/v1/driving/{coord_str}"
+    url = f"{OSRM_URL}/route/v1/driving/{coord_str}"
     try:
-        resp = requests.get(
+        resp = _session.get(
             url,
             params={"overview": "full", "geometries": "geojson"},
-            timeout=OSRM_TIMEOUT_S,
+            timeout=(OSRM_CONNECT_TIMEOUT_S, OSRM_READ_TIMEOUT_S),
         )
-        resp.raise_for_status()
+        # Still 429/5xx after the retries; OSRM answers 400 for "no route"
+        # or "no road near this point".
+        if resp.status_code == 429 or resp.status_code >= 500:
+            _breaker.record(False)
+            return None
         data = resp.json()
+        _breaker.record(True)
         if data.get("code") != "Ok" or not data.get("routes"):
             return None
         route = data["routes"][0]
@@ -102,6 +186,7 @@ def osrm_route(points: list[tuple[float, float]]) -> dict | None:
             "geometry": route["geometry"]["coordinates"],  # [lon, lat] pairs
         }
     except (requests.RequestException, ValueError, KeyError):
+        _breaker.record(False)
         return None
 
 
@@ -322,5 +407,6 @@ def find_matches(
         )
         if m is not None:
             matches.append(m)
-    matches.sort(key=lambda m: (m["score"], m["pickup"]["time"]))
+    # Equally good: a real drive before a demo one, then the earliest pickup.
+    matches.sort(key=lambda m: (m["score"], bool(m.get("is_demo")), m["pickup"]["time"]))
     return matches[:max_results]
