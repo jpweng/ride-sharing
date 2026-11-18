@@ -1,6 +1,7 @@
 {
   "meta.title": "Ride and Rail — mitfahren bis zum Zug",
   "privacy.title": "Datenschutz — Ride and Rail",
+  "offline.title": "Offline — Ride and Rail",
   "header.subtitle": "Mitfahren bis zum Zug",
   "banner.app": "<strong>Demo</strong> — ein Prototyp zum Testen. Fahrten mit <span class=\"badge demo\">Demo</span> sind erfunden. Bitte verwenden Sie einen erfundenen Namen: Namen sind für alle sichtbar. <a href=\"privacy.html\">Datenschutz</a>",
   "banner.privacy": "<strong>Demo</strong> — ein Prototyp zum Testen. Bitte verwenden Sie einen erfundenen Namen. <a href=\"./\">Zurück zur App</a>",
@@ -132,5 +133,9 @@
   "errors.request_not_found": "Diese Fahrtanfrage gibt es nicht mehr.",
   "errors.not_your_request": "Nur die Person, die diese Anfrage gestellt hat, kann sie zurückziehen.",
   "errors.notification_not_found": "Diese Benachrichtigung gibt es nicht mehr.",
-  "errors.request_failed": "Anfrage fehlgeschlagen ({status})."
+  "errors.offline": "Sie sind offline. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+  "errors.request_failed": "Anfrage fehlgeschlagen ({status}).",
+  "pwa.offline": "Sie sind offline. Um Fahrten zu finden oder anzubieten, braucht es eine Internetverbindung.",
+  "pwa.updated": "Eine neue Version von Ride and Rail ist verfügbar.",
+  "pwa.reload": "Neu laden"
 }

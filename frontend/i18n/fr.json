@@ -1,6 +1,7 @@
 {
   "meta.title": "Ride and Rail — en voiture jusqu'au train",
   "privacy.title": "Confidentialité — Ride and Rail",
+  "offline.title": "Hors ligne — Ride and Rail",
   "header.subtitle": "En voiture jusqu'au train",
   "banner.app": "<strong>Démo</strong> — un prototype pour tester. Les trajets marqués <span class=\"badge demo\">Démo</span> sont fictifs. Utilisez un nom inventé, s'il vous plaît : les noms sont visibles par tous. <a href=\"privacy.html\">Confidentialité</a>",
   "banner.privacy": "<strong>Démo</strong> — un prototype pour tester. Utilisez un nom inventé, s'il vous plaît. <a href=\"./\">Retour à l'application</a>",
@@ -132,5 +133,9 @@
   "errors.request_not_found": "Cette demande de trajet n'existe plus.",
   "errors.not_your_request": "Seul le passager qui a fait cette demande peut l'annuler.",
   "errors.notification_not_found": "Ce message n'existe plus.",
-  "errors.request_failed": "La requête a échoué ({status})."
+  "errors.offline": "Vous êtes hors ligne. Vérifiez votre connexion et réessayez.",
+  "errors.request_failed": "La requête a échoué ({status}).",
+  "pwa.offline": "Vous êtes hors ligne. Pour trouver ou proposer un trajet, une connexion Internet est nécessaire.",
+  "pwa.updated": "Une nouvelle version de Ride and Rail est disponible.",
+  "pwa.reload": "Recharger"
 }

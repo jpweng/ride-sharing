@@ -9,3 +9,4 @@ infra
 backend/tests
 *.md
 .env
+mobile

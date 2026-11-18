@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" class="i18n-pending" data-i18n-title="offline.title">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#0f6e5f" />
+<title>Offline — Ride and Rail</title>
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<!-- Shown by the service worker (sw.js) for a page it has no copy of while
+     the device is offline. Everything it uses is in the service worker's
+     cache: style.css, i18n.js and the dictionaries, the icon. -->
+<body class="doc-page">
+<header>
+  <h1><a class="wordmark" href="./"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
+  <div class="lang-picker" role="group" aria-label="Language">
+    <button type="button" data-lang="de">DE</button><button type="button" data-lang="fr">FR</button><button type="button" data-lang="it">IT</button><button type="button" data-lang="en">EN</button>
+  </div>
+</header>
+
+<!-- One complete text per language, like privacy.html; i18n.js shows the visitor's. -->
+<article class="doc" lang="en" data-i18n-block>
+  <h2>You're offline</h2>
+  <p>
+    Ride and Rail needs an internet connection to find rides, offer drives and show public
+    transport connections. Please check your mobile data or Wi-Fi, then try again.
+  </p>
+  <a class="submit-btn offline-retry" href="">Try again</a>
+</article>
+
+<article class="doc" lang="de" data-i18n-block hidden>
+  <h2>Sie sind offline</h2>
+  <p>
+    Ride and Rail braucht eine Internetverbindung, um Fahrten zu finden, Fahrten anzubieten und
+    Verbindungen des öffentlichen Verkehrs anzuzeigen. Bitte prüfen Sie Ihre mobilen Daten oder
+    Ihr WLAN und versuchen Sie es dann erneut.
+  </p>
+  <a class="submit-btn offline-retry" href="">Erneut versuchen</a>
+</article>
+
+<article class="doc" lang="fr" data-i18n-block hidden>
+  <h2>Vous êtes hors ligne</h2>
+  <p>
+    Ride and Rail a besoin d'une connexion Internet pour trouver des trajets, en proposer et
+    afficher les correspondances des transports publics. Vérifiez vos données mobiles ou votre
+    Wi-Fi, puis réessayez.
+  </p>
+  <a class="submit-btn offline-retry" href="">Réessayer</a>
+</article>
+
+<article class="doc" lang="it" data-i18n-block hidden>
+  <h2>Lei è offline</h2>
+  <p>
+    Ride and Rail ha bisogno di una connessione a Internet per trovare passaggi, offrire viaggi e
+    mostrare i collegamenti dei trasporti pubblici. Controlli i dati mobili o il Wi-Fi, poi
+    riprovi.
+  </p>
+  <a class="submit-btn offline-retry" href="">Riprovare</a>
+</article>
+
+<script src="i18n.js"></script>
+</body>
+</html>

@@ -72,8 +72,11 @@ jobs:
             --query 'Reservations[].Instances[].InstanceId' --output text)
           if [ -z "$INSTANCE_ID" ]; then echo "::error::No running server tagged Name=${{ vars.SERVER_NAME }}"; exit 1; fi
 
-          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\n' \
-            "$APP_IMAGE" "$PROXY_IMAGE" "${{ vars.SITE_ADDRESS }}" "${{ vars.AWS_REGION }}" "${{ vars.LOG_GROUP }}")
+          # ANDROID_CERT_SHA256 (optional) feeds /.well-known/assetlinks.json;
+          # see mobile/android/README.md.
+          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\nANDROID_CERT_SHA256=%s\n' \
+            "$APP_IMAGE" "$PROXY_IMAGE" "${{ vars.SITE_ADDRESS }}" "${{ vars.AWS_REGION }}" "${{ vars.LOG_GROUP }}" \
+            "${{ vars.ANDROID_CERT_SHA256 }}")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \
