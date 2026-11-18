@@ -1,0 +1,17 @@
+/* Sign-in, profile and the account page. Linked after style.css. */
+
+/* Sign-in and account pages */
+.demo-box {
+  margin-top: 24px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.demo-box .section-title { margin-top: 0; }
+.submit-btn.danger { background: #b3261e; }
+.submit-btn.danger:hover { background: #8c1d18; }
+.account-actions { display: flex; gap: 16px; margin-top: 16px; }
+.account-actions .link-btn { color: var(--muted); margin: 0; }
+#account-details p { margin: 4px 0; font-size: 14px; }
+nav.tabs .account a { color: var(--text); font-weight: 600; text-decoration: none; }
+nav.tabs .account a:hover { text-decoration: underline; }

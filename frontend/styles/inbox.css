@@ -1,0 +1,45 @@
+/* Ride requests and the inbox (see notify.py). Linked after style.css. */
+
+/* Unread notifications, next to "Inbox" in the tabs. */
+.unread-count {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #d8232a;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.unread-count[hidden] { display: none; }
+
+.ask-box {
+  margin: 4px 0 8px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.ask-box .submit-btn { margin-top: 8px; }
+
+.notification.unread { border-left: 4px solid var(--accent); }
+.notification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.notification-actions .submit-btn { width: auto; margin: 0; padding: 7px 12px; }
+.notification-actions .link-btn { margin: 0; color: var(--muted); }
+
+.paused-box {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--demo-bg);
+  color: var(--demo-text);
+  font-size: 13px;
+}
+.paused-box .submit-btn { margin-top: 8px; }

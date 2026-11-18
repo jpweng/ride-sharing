@@ -425,27 +425,6 @@ label output { color: var(--text); text-transform: none; }
   color: #995c00;
 }
 
-.last-mile, .transit-box {
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: white;
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  font-size: 12px;
-}
-
-.transit-box.alt {
-  border-style: solid;
-  border-color: var(--border);
-}
-
-.transit-box .conn {
-  padding: 4px 0;
-  border-top: 1px solid var(--border);
-}
-
-.transit-box .conn:first-of-type { border-top: none; }
-
 .empty-state {
   color: var(--muted);
   font-size: 13px;
@@ -471,102 +450,11 @@ label output { color: var(--text); text-transform: none; }
   margin-left: 6px;
 }
 
-/* What a passenger pays (see pricing.py), and the train fare next to it. */
-.badge.price {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  margin: 6px 6px 0 0;
-}
-.badge.train-fare {
-  font-size: 11px;
-  margin: 6px 6px 0 0;
-}
-
-/* The driver's price: the band, a warning when it's high. */
-input.price-input { width: 120px; }
-.hint.price-warn {
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: #fff4e5;
-  color: #995c00;
-}
-.pt-fare {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
 .badge.demo {
   background: var(--demo-bg);
   color: var(--demo-text);
   font-weight: 600;
 }
-
-/* Public transport connections, flight-search style (see renderConnections) */
-.pt-conn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-top: 1px solid var(--border);
-}
-.pt-conn:first-of-type { border-top: none; }
-
-.pt-logos {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 0 0 28px;
-  align-items: center;
-}
-.pt-logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: white;
-  text-decoration: none;
-}
-.pt-logo img { width: 20px; height: 20px; }
-.pt-code {
-  font-size: 8px;
-  font-weight: 700;
-  color: var(--text);
-  overflow: hidden;
-}
-
-.pt-body { flex: 1; min-width: 0; }
-.pt-times { font-size: 14px; font-weight: 600; }
-.pt-meta { color: var(--muted); }
-.pt-legs { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 3px; }
-.pt-leg {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: #eef0f3;
-  color: var(--text);
-}
-.pt-ops { margin-top: 3px; color: var(--muted); }
-.pt-ops a { color: var(--muted); }
-
-.pt-book {
-  flex: 0 0 auto;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: var(--accent);
-  color: white;
-  font-weight: 600;
-  font-size: 11px;
-  line-height: 1.25;
-  text-align: center;
-  text-decoration: none;
-}
-.pt-book:hover { background: var(--accent-dark); }
 
 /* "This is a demo" notices (index.html, privacy.html) */
 .demo-banner {
@@ -588,22 +476,6 @@ input.price-input { width: 120px; }
 }
 .demo-view-note { margin: 0 0 12px; }
 .demo-view-note[hidden] { display: none; }
-
-/* Sign-in and account pages */
-.demo-box {
-  margin-top: 24px;
-  padding: 10px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-}
-.demo-box .section-title { margin-top: 0; }
-.submit-btn.danger { background: #b3261e; }
-.submit-btn.danger:hover { background: #8c1d18; }
-.account-actions { display: flex; gap: 16px; margin-top: 16px; }
-.account-actions .link-btn { color: var(--muted); margin: 0; }
-#account-details p { margin: 4px 0; font-size: 14px; }
-nav.tabs .account a { color: var(--text); font-weight: 600; text-decoration: none; }
-nav.tabs .account a:hover { text-decoration: underline; }
 
 /* Text pages such as privacy.html: normal scrolling instead of the app layout */
 body.doc-page {
@@ -631,81 +503,7 @@ header a { text-decoration: none; }
   text-decoration: none;
 }
 
-/* Notices from pwa.js: offline, or a new version to reload. Above the map
-   (Leaflet's panes and controls go up to z-index 1000). */
-.pwa-banner {
-  position: fixed;
-  left: 50%;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: calc(100% - 32px);
-  z-index: 2000;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: var(--text);
-  color: white;
-  font-size: 13px;
-  line-height: 1.4;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-.pwa-banner button {
-  margin-left: 8px;
-  padding: 4px 10px;
-  border: none;
-  border-radius: 6px;
-  background: var(--accent);
-  color: white;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .browse-limited { margin: 4px 0 10px; }
-
-/* Unread notifications, next to "Inbox" in the tabs. */
-.unread-count {
-  display: inline-block;
-  min-width: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: #d8232a;
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 18px;
-  text-align: center;
-}
-.unread-count[hidden] { display: none; }
-
-.ask-box {
-  margin: 4px 0 8px;
-  padding: 10px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-}
-.ask-box .submit-btn { margin-top: 8px; }
-
-.notification.unread { border-left: 4px solid var(--accent); }
-.notification-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-.notification-actions .submit-btn { width: auto; margin: 0; padding: 7px 12px; }
-.notification-actions .link-btn { margin: 0; color: var(--muted); }
-
-.paused-box {
-  margin: 8px 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--demo-bg);
-  color: var(--demo-text);
-  font-size: 13px;
-}
-.paused-box .submit-btn { margin-top: 8px; }
 
 .checkbox-row {
   display: flex;

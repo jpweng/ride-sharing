@@ -447,7 +447,8 @@ frontend/
   app.js          Leaflet map, point picking, address autocomplete, API calls
   i18n.js         language choice and translation of the page (see Translations)
   i18n/           en/de/fr/it dictionaries, one file per key prefix
-  style.css       teal/white theme, text wordmark (no logo yet)
+  style.css       teal/white theme, text wordmark (no logo yet): base, layout, shared components
+  styles/         one stylesheet per feature, linked right after style.css by the pages using it
   manifest.webmanifest, sw.js, pwa.js   installable app (see Installable app)
   icons/          placeholder app icons + make_icons.py that generates them
 mobile/android/   Android app (Trusted Web Activity): Bubblewrap config + publishing guide
