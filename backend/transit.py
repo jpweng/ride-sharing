@@ -21,6 +21,7 @@ rest of the app can treat "no transit data available" as a normal case --
 useful both for genuine outages and for this build sandbox, which does not
 have outbound access to this host.
 """
+import os
 import re
 
 import requests
@@ -30,7 +31,9 @@ from urllib.parse import urlencode
 import matching
 import operators
 
-TRANSPORT_API_BASE = "https://transport.opendata.ch/v1"
+# TRANSPORT_API_URL points it elsewhere, e.g. at the load test's stand-in
+# (loadtest/stub_upstreams.py), which must never load the real API.
+TRANSPORT_API_BASE = os.environ.get("TRANSPORT_API_URL", "https://transport.opendata.ch/v1").rstrip("/")
 REQUEST_TIMEOUT_S = 6
 
 # How far a town's train station may be from the point geo.admin gives for

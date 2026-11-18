@@ -1,0 +1,80 @@
+name: Routing data
+
+# Builds the routing image (OSRM + Switzerland car routes, see routing/) on a
+# native arm64 runner, measures it, and on main pushes it to ECR and
+# redeploys, so the server picks it up. Monthly, for fresh OpenStreetMap
+# data, and when routing/ changes. Pull requests build and measure both
+# algorithms (MLD and CH) without pushing anything.
+
+on:
+  schedule:
+    - cron: "17 3 2 * *" # 03:17 UTC on the 2nd of each month
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [routing/**, .github/workflows/routing-data.yml]
+  pull_request:
+    paths: [routing/**, .github/workflows/routing-data.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: routing-data-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm # 4 CPUs, 16 GB RAM: preprocessing needs a few GB
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        algorithm: ${{ github.event_name == 'pull_request' && fromJSON('["mld", "ch"]') || fromJSON('["mld"]') }}
+    env:
+      IMAGE_NAME: ${{ vars.ECR_ROUTING_REPOSITORY_URL || 'ride-sharing-routing' }}
+      ALGORITHM: ${{ matrix.algorithm }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the routing image
+        id: build
+        run: |
+          IMAGE=$(routing/build.sh "$IMAGE_NAME")
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Measure it
+        run: |
+          routing/measure.sh "${{ steps.build.outputs.image }}"
+          cat routing/.work/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Image size, compressed as pushed
+        run: |
+          echo "Compressed: $(docker save "${{ steps.build.outputs.image }}" | gzip -1 | wc -c | awk '{printf "%d MB", $1 / 1048576}')" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        if: github.event_name != 'pull_request'
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        if: github.event_name != 'pull_request'
+
+      - name: Push to ECR
+        if: github.event_name != 'pull_request'
+        run: docker push "${{ steps.build.outputs.image }}"
+
+  # The deploy workflow runs the newest routing image in ECR.
+  redeploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: gh workflow run deploy.yml --repo "${{ github.repository }}" --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}

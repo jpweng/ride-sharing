@@ -11,3 +11,6 @@ rideshare.db
 *.tfstate.*
 infra/terraform.tfvars
 infra/.build/
+
+# Routing data build (routing/build.sh)
+routing/.work/
