@@ -39,3 +39,15 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "email_from_local_part" {
+  description = "Sign-in emails are sent from <this>@<domain_name> through Amazon SES (email.tf)."
+  type        = string
+  default     = "no-reply"
+}
+
+variable "ses_sandbox_test_recipients" {
+  description = "While SES is in sandbox mode, it only delivers to verified addresses: these are verified (each gets a confirmation link from AWS) so sign-in can be tested. Not needed once production access is granted."
+  type        = list(string)
+  default     = []
+}

@@ -27,6 +27,18 @@
 			events 10
 			window 1m
 		}
+		# Each sign-in link is an email (Amazon SES): keep anyone from
+		# mail-bombing addresses or burning the sending quota. The app has
+		# its own limits per IP and per email address (backend/auth.py).
+		zone sign_in {
+			match {
+				method POST
+				path /api/auth/link
+			}
+			key {remote_host}
+			events 10
+			window 10m
+		}
 		zone writes {
 			match {
 				method POST DELETE

@@ -172,7 +172,7 @@ label {
   letter-spacing: 0.03em;
 }
 
-input[type=text], input[type=number], input[type=date], select {
+input[type=text], input[type=email], input[type=number], input[type=date], select {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -561,13 +561,31 @@ label output { color: var(--text); text-transform: none; }
 .demo-banner .badge.demo { margin-left: 0; }
 .demo-banner a { color: var(--demo-text); font-weight: 600; margin-left: 6px; }
 
-.demo-hint {
+.demo-hint, .demo-view-note {
   background: var(--demo-bg);
   border: 1px solid var(--demo-border);
   color: var(--demo-text);
   border-radius: 6px;
   padding: 8px 10px;
 }
+.demo-view-note { margin: 0 0 12px; }
+.demo-view-note[hidden] { display: none; }
+
+/* Sign-in and account pages */
+.demo-box {
+  margin-top: 24px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+.demo-box .section-title { margin-top: 0; }
+.submit-btn.danger { background: #b3261e; }
+.submit-btn.danger:hover { background: #8c1d18; }
+.account-actions { display: flex; gap: 16px; margin-top: 16px; }
+.account-actions .link-btn { color: var(--muted); margin: 0; }
+#account-details p { margin: 4px 0; font-size: 14px; }
+nav.tabs .account a { color: var(--text); font-weight: 600; text-decoration: none; }
+nav.tabs .account a:hover { text-decoration: underline; }
 
 /* Text pages such as privacy.html: normal scrolling instead of the app layout */
 body.doc-page {
@@ -818,7 +836,7 @@ header a { text-decoration: none; }
     background: var(--bg);
   }
   nav.tabs .account:empty { display: none; }
-  nav.tabs .account span {
+  nav.tabs .account a {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
