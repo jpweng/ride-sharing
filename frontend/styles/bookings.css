@@ -6,6 +6,7 @@
 .booking-box .submit-btn { width: auto; margin: 0; padding: 7px 12px; }
 .booking-box .link-btn { margin: 0; color: var(--muted); }
 .booking-box input[type=text] { margin-top: 6px; font-size: 13px; }
+.booking-box .booking-mine { margin: 0 0 6px; }
 
 .booking-form-row {
   display: flex;

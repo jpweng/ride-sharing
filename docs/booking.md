@@ -15,8 +15,9 @@ can cancel afterwards. [backend/bookings.py](../backend/bookings.py) has the rul
   requests still waiting on it stay, and can be accepted if a seat becomes free.
 - **Cancelling:** the passenger can withdraw a request or cancel an accepted booking; the driver
   can cancel a booking they accepted. An accepted booking's seats are free again.
-- **One booking per passenger and drive.** After cancelling it themselves a passenger can ask
-  again; after the driver declined or cancelled it, they can't.
+- **One booking per passenger and drive.** While it's requested or accepted, the passenger can't
+  ask again. Once it's declined or cancelled, by either of them, they can: the new request
+  replaces the old booking, and the driver is told again.
 - **Where they meet:** the pickup point and time are shown to both, on the map too. The two
   messages are how they agree on the exact spot. No phone number or email address is exchanged.
 - **Price:** nothing is charged; they settle between themselves. Each booking shows what the
@@ -57,7 +58,7 @@ Access levels and error codes as in [API](api.md).
   `seats` (1 by default) on the drive. `origin` and `destination` (`{name, lat, lon}`) are the
   passenger's own, both or neither (the whole drive); `note` is at most 300 characters. Returns the
   booking. 404 `drive_not_found`; 400 `not_bookable` (a demo drive), `own_drive`, `drive_departed`,
-  `no_seats_left`, `already_requested`, `not_on_route` (the drive doesn't pass within 60 km of both
+  `no_seats_left`, `already_requested` (a request waiting, or an accepted booking), `not_on_route` (the drive doesn't pass within 60 km of both
   ends, in that order)
 - `GET  /api/bookings` — signed in; `{as_passenger, as_driver}`: one's own bookings, and the
   requests and accepted bookings on one's drives, the soonest drive first. Each has its `status`,

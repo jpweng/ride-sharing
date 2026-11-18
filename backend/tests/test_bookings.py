@@ -160,18 +160,43 @@ def test_demo_drives_cant_be_booked(users):
 def test_one_booking_per_passenger_and_drive(users):
     jean, marie = users["jean"], users["marie"]
     drive = _drive(jean)
+    # Not again while a request is waiting, or once it's accepted.
     first = _ask(marie, drive)
     assert _refused(_ask, marie, drive) == (400, "already_requested")
-    # After withdrawing it, they can ask again...
-    booking_routes.cancel_booking(first["id"], marie)
-    second = _ask(marie, drive)
-    # ...but not after the driver declined,
-    booking_routes.decline_booking(second["id"], jean)
+    _accept(first, jean)
     assert _refused(_ask, marie, drive) == (400, "already_requested")
-    # nor after the driver cancelled a booking they had accepted.
-    paul = users["paul"]
-    booking_routes.cancel_booking(_accept(_ask(paul, drive), jean)["id"], jean)
-    assert _refused(_ask, paul, drive) == (400, "already_requested")
+
+
+def test_asking_again_after_a_decline_or_a_cancellation(users):
+    jean, marie = users["jean"], users["marie"]
+    drive = _drive(jean, seats=2)
+
+    def mine():
+        return [(b["id"], b["status"]) for b in booking_routes.get_bookings(marie)["as_passenger"]]
+
+    # After the driver declined: the passenger still sees it, and can ask again.
+    declined = _ask(marie, drive)
+    booking_routes.decline_booking(declined["id"], jean)
+    assert mine() == [(declined["id"], "declined")]
+    again = _ask(marie, drive, seats=2, note="Two of us this time")
+    # The new request replaces the old booking, and the driver is told again.
+    assert mine() == [(again["id"], "requested")]
+    assert _kinds(jean)[-1] == "booking_requested"
+    assert [b["id"] for b in booking_routes.get_bookings(jean)["as_driver"]] == [again["id"]]
+
+    # After the driver cancelled a booking they had accepted.
+    booking_routes.cancel_booking(_accept(again, jean)["id"], jean)
+    assert mine() == [(again["id"], "cancelled_by_driver")]
+    assert _seats(drive) == (2, 0)
+    third = _ask(marie, drive)
+    assert mine() == [(third["id"], "requested")]
+
+    # After withdrawing it themselves.
+    booking_routes.cancel_booking(third["id"], marie)
+    assert mine() == []
+    fourth = _accept(_ask(marie, drive), jean)
+    assert mine() == [(fourth["id"], "accepted")]
+    assert _seats(drive) == (1, 1)
 
 
 # --- The driver's answer -------------------------------------------------------

@@ -85,17 +85,19 @@ CARD_EXTRAS.push((kind, item, card) => {
   });
 });
 
-// A search result or a listed drive: "Request a seat", or what became of
-// the passenger's request. Nothing on one's own drives, on demo drives
-// (fictional), or before signing in.
+// A search result or a listed drive: what became of the passenger's
+// request, if they made one, and "Request a seat" unless it's waiting or
+// accepted (after a decline or a cancellation, they can ask again).
+// Nothing on one's own drives, on demo drives (fictional), or before
+// signing in.
 function fillAsk(box, kind, item, sent = false) {
   box.innerHTML = "";
   if (!item.bookable || !signedIn() || currentUser.is_demo || item.driver_name === currentUser.name) return;
   const mine = bookingsData.as_passenger.find((b) => b.drive_id === item.id);
   if (mine) {
     const text = sent ? t("booking.askSent") : myBookingText(mine.status);
-    box.innerHTML = `<div class="hint">${bookingStatusBadge(mine.status)} ${esc(text)}</div>`;
-    return;
+    box.innerHTML = `<div class="hint booking-mine">${bookingStatusBadge(mine.status)} ${esc(text)}</div>`;
+    if (mine.status === "requested" || mine.status === "accepted") return;
   }
   if (!(item.seats_available > 0)) return;
   box.appendChild(actionButton("booking.ask", "submit-btn secondary", () => showAskForm(box, kind, item)));

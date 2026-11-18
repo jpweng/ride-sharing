@@ -24,8 +24,9 @@ Price: nothing is charged; the app shows what each passenger pays per seat
 by pricing.py's rules, which falls when more passengers are accepted.
 
 Demo drives can't be booked: they're fictional. A passenger has one booking
-per drive; after the driver declined or cancelled it they can't ask again,
-after cancelling it themselves they can.
+per drive: while it's requested or accepted they can't ask again; once it's
+declined or cancelled, by either of them, they can, and the new request
+replaces the old booking.
 
 Both sides hear about each step in their inbox (notify.send): the kinds
 booking_requested (to the driver), booking_accepted and booking_declined
@@ -277,13 +278,13 @@ def request(drive: dict, passenger: dict, origin: dict | None = None, destinatio
         if free["seats_available"] < seats:
             raise api_error(400, "no_seats_left", "This drive doesn't have that many free seats")
         if conn.execute(
-            """
-            SELECT 1 FROM bookings
-            WHERE drive_id = ? AND passenger_id = ? AND status != 'cancelled_by_passenger'
-            """,
-            (drive["id"], passenger["id"]),
+            f"SELECT 1 FROM bookings WHERE drive_id = ? AND passenger_id = ? AND status IN ({_in(ACTIVE)})",
+            (drive["id"], passenger["id"], *ACTIVE),
         ).fetchone():
             raise api_error(400, "already_requested", "You have already asked for a seat on this drive")
+        # Asking again after a decline or a cancellation: the new request
+        # replaces the old booking, so there is one per passenger and drive.
+        conn.execute("DELETE FROM bookings WHERE drive_id = ? AND passenger_id = ?", (drive["id"], passenger["id"]))
         booking_id = conn.execute(
             """
             INSERT INTO bookings (
