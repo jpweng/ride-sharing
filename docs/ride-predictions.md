@@ -1,7 +1,7 @@
 # Ride predictions and ride requests — design
 
-**Status: ride requests and notifications are built (2026-11-01, `backend/notify.py`); ride
-predictions are designed, not built yet.** Keep this document in step with the code: if a threshold or
+**Status: ride requests and notifications are built (2026-11-01, `backend/notify.py`), with demo
+and real requests kept apart since 2026-11-18; ride predictions are designed, not built yet.** Keep this document in step with the code: if a threshold or
 limit changes, update it in the same commit.
 
 ## What it does
@@ -26,6 +26,7 @@ match leaves with nothing. This feature uses each person's own history to fill b
 | Channel | An in-app inbox for now, behind a channel interface | There are no email addresses yet (identity is a typed name). Email sign-in is on the "Before real drivers" list; email notifications plug in then, with no change to the throttling. |
 | History used | The last 13 weeks, within the existing 30-day retention for visitors | A weekly habit shows up after 3 weeks, so 30 days is enough to start. Keeping more history for real users is a separate privacy decision. |
 | Demo | 3 months of fictional history | So investors and testers can see suggestions and notifications without building up weeks of their own history. |
+| Demo and real requests | **Never mixed:** a real passenger's request only reaches real drivers; a request made under a demo driver's name only reaches demo drivers | Nobody waits for a driver who doesn't exist, and no real driver acts on a fictional need. The demo still shows requests arriving (see [Demo data](#demo-data)). |
 
 Vocabulary: a **search** is today's `ride_requests` row (every "Find a ride" click). A **ride
 request** is the new, explicit ask (`open_requests`).
@@ -66,23 +67,30 @@ Rules (in `backend/notify.py`):
    - leaves within **±60 min** of the requested time of day;
    - has a route passing within the passenger's pickup and drop-off radii, in that order
      (`matching.match_drive`, the same rule as a search).
-2. **Excluded:**
+2. **Real or demo, never both** (`notify.is_demo_request`):
+   - a real passenger's request only considers visitors' drives, and not those posted under a demo
+     driver's name. Demo drivers are never told, and the "N drivers were told" the passenger sees
+     counts real drivers only. If none fits, the passenger is told that no driver using the app has
+     made the trip recently (`ride.askSentNone`);
+   - a request made under a demo driver's name (someone viewing the demo as, e.g., Jean Dupont) is
+     a **demo request**: it only considers the demo drivers' history. See [Demo data](#demo-data).
+   - With `DEMO_DRIVES=off` there are no demo drivers and no demo requests.
+3. **Excluded:**
    - the passenger themself;
    - drivers who already posted a matching drive, because the passenger sees that drive already;
    - drivers who muted this route (a request whose start and end are each within `MUTE_RADIUS_KM`,
      5 km, of the muted request's) or turned request notifications off.
-3. **Ranking:** drivers who made the drive most often come first, then a bonus for the same weekday
+4. **Ranking:** drivers who made the drive most often come first, then a bonus for the same weekday
    (`SAME_WEEKDAY_BONUS`, worth 4 occurrences) and a closer time, minus the distance to the pickup
    and from the drop-off (the match's score, in minutes, over `RANK_MINUTES_PER_POINT` = 10). A
-   habitual driver is the most likely to say yes. **Visitors' drivers come before demo drivers**:
-   the demo network's thousands of fictional drivers, with weeks of history each, would otherwise
-   always take the places, and real testers would never be told.
+   habitual driver is the most likely to say yes.
 
 ### How often
 
 | Limit | Value | Why |
 |---|---|---|
 | Drivers per request | **3** (`DRIVERS_PER_REQUEST`) | Enough for a good chance of an offer, without pinging everyone on a busy corridor. |
+| Demo drivers per real request | **0**, in the first round and the extra round | A real passenger must never wait for a driver who doesn't exist. Demo requests reach up to the same 3 (then 2) demo drivers, with the same limits. |
 | Per driver | **1 per day, 3 per rolling 7 days** | Nobody hears from us every day. If a driver is over budget, the next candidate is tried; nothing waits in a queue. |
 | Merging | An unread notification for the same route and date becomes "2 passengers…" and doesn't count against the budget | Several passengers on one trip is better news, not more noise. |
 | Back-off | After **3** notifications in a row without a reaction, the budget drops to 1 per week. After **5**, notifications pause for **30 days**, and the inbox says so with a "turn back on" button. | Silence is the clearest sign that we're bothering someone. Any reaction resets the count. |
@@ -111,7 +119,8 @@ same limits.
 
 - `open_requests`: the passenger, start and end, time, pickup/drop-off radii and time tolerance (the
   same as a search), status (`open` / `cancelled`; past ones have expired), whether the extra round
-  ran. With predictions: whether it came from a suggestion, `is_demo`.
+  ran. With predictions: whether it came from a suggestion. Whether a request is a demo request
+  isn't stored: it follows from the passenger's name (`notify.is_demo_request`).
 - `notifications`: recipient, kind (`request_for_driver` / `drive_for_passenger`), the request(s)
   and drive(s) it's about (merged ones in JSON lists), the driver's usual trip and suggested
   departure, created, read and acted-on times, and the action.
@@ -140,8 +149,33 @@ To show the feature:
   signing in as one of them shows "Publish your next drives?" for the rest of the week.
 - **Demo passengers** with recurring searches see "Request your next rides?".
 - A couple of **demo ride requests** a day reach the showcase drivers' inboxes, through the same
-  rules and limits as real ones. (Not built yet. Meanwhile, signing in as a demo driver, e.g. Jean
-  Dupont, shows the requests real testers sent them.)
+  rules and limits as real ones. (Not built yet.)
+- **Demo requests by hand** (built): someone viewing the demo as one demo driver (e.g. Jean Dupont)
+  asks for a ride on the Passenger page. Being under a demo driver's name, the request only reaches
+  demo drivers, through the same rules and limits, and the reply names the demo drivers told (their
+  names are fictional; real drivers' names are never returned). Signing in as one of them shows the
+  request in their inbox.
+
+Why this way: requests from real passengers no longer reach demo drivers, so the demo needs its own
+requests to show the driver's side. Making the demo identity, not a flag the visitor sets, decide it
+keeps the rule in one place on the server, and with names typed freely, signing in as a demo driver
+is already how the demo is shown. The cost: a real visitor who types a name a demo driver has (there
+are ~11,000, with common Swiss names) is treated as that demo driver, as they already were on the
+Driver page and in the inbox. Email sign-in should give demo accounts a flag of their own and
+replace `demo_drives.is_demo_user`.
+
+Demo drives are **never bookable**: searches, the drive list and the inbox mark every drive with
+`bookable` (`false` for demo drives), and they stay labelled "Demo". When a demo drive and a real
+one fit a passenger equally well, the real one comes first.
+
+**Switching demo drives off:** with `DEMO_DRIVES=off` in the app's environment, the next
+maintenance run (at startup, then hourly) deletes every demo drive and the trips' stored routes
+(`demo_routes`), and creates none. They're hidden from searches, the drive list, `GET
+/api/drives/{id}` and the inbox right away, demo drivers' history is no longer used, and requests
+under demo drivers' names are ordinary real requests. Notifications already sent to demo drivers
+are left to the 30-day retention. Switching back on recreates the drives at the next run, but
+fetches every trip's route from OSRM again, one a second: with ~1,500 trips, the network comes back
+over about half an hour.
 
 ## Privacy
 

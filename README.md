@@ -61,7 +61,15 @@ At startup and then every hour, the app runs [backend/maintenance.py](backend/ma
   Driver page. Demo drives that have departed or no longer match the list are deleted, and missing
   ones for the next 7 days are added. They're flagged `is_demo` in the database. Each trip's road
   route is fetched from OSRM once (one call per second, its usage limit) and stored once in
-  `demo_routes`, shared by all the trip's drives.
+  `demo_routes`, shared by all the trip's drives. Demo drives are labelled "Demo", never bookable
+  (`"bookable": false` in the API), and real passengers' ride requests never reach demo drivers;
+  a request made under a demo driver's name reaches demo drivers only (see
+  [docs/ride-predictions.md](docs/ride-predictions.md#demo-data)).
+- **Switching demo drives off**: set `DEMO_DRIVES=off` in the app's environment (default `on`).
+  They're hidden everywhere at once, and the next maintenance run deletes them and their stored
+  routes, and creates none. Back `on`, they're recreated, fetching the ~1,500 routes again (about
+  half an hour). In production it's the optional GitHub repo variable `DEMO_DRIVES`, see
+  [Deploying to AWS](#deploying-to-aws).
 - **Visitors' data is kept for 30 days**: drives are deleted 30 days after their departure, searches
   30 days after they were made, and then names with no drive or search left. Nothing in the UI shows
   any of this by then. On the server, deleted data also remains in the daily disk snapshots for 7
@@ -149,6 +157,10 @@ Requires Terraform >= 1.10, the AWS CLI logged in to the target account (`aws lo
    subprocess.run(["gh", "secret", "set", "AWS_ACCESS_KEY_ID", "--body", k["AccessKeyId"]], check=True)
    subprocess.run(["gh", "secret", "set", "AWS_SECRET_ACCESS_KEY", "--body", k["SecretAccessKey"]], check=True)'
    ```
+   Optional repo variable, not from Terraform: `DEMO_DRIVES`, `on` (or unset) or `off`, the
+   [demo drives switch](#demo-drives-and-data-retention). Change it with
+   `gh variable set DEMO_DRIVES --body off`; it takes effect at the next deploy (push to `main` or
+   re-run the workflow).
 4. **First deploy**: push to `main`, or run the *Test and deploy* workflow from the Actions tab. The
    app is then at `terraform output app_url`, with the demo drives created at startup.
 
@@ -219,7 +231,9 @@ Dockerfile        app image (uvicorn, non-root, DB on /data)
 - `DELETE /api/drives/{id}?driver_name=…` — driver cancels their own drive
 - `GET  /api/ride_requests?passenger_name=…` — a passenger's recent searches (deduplicated)
 - `POST /api/requests` — passenger asks for a ride nobody has posted (same body as `/api/match`);
-  returns the request and how many drivers were told
+  returns the request and how many drivers were told (`drivers_told`: real drivers only, for a real
+  passenger), and `demo_request`; a demo request (under a demo driver's name) also gets
+  `demo_drivers_told`, the demo drivers' names
 - `GET  /api/requests?passenger_name=…`, `DELETE /api/requests/{id}?passenger_name=…` — a
   passenger's open ride requests; cancel one
 - `GET  /api/notifications?name=…` — a user's inbox and settings; `POST /api/notifications/read?name=…`,
@@ -229,5 +243,8 @@ Dockerfile        app image (uvicorn, non-root, DB on /data)
   returns ranked driver matches, a last-mile transit suggestion for the best ones, up to 5 rides just
   outside the selection (`outside_matches`, each saying what it's outside of), and a pure
   public-transport alternative
+
+Every drive and match carries `is_demo` and `bookable` (`false` for demo drives, which are
+fictional). Among matches that fit equally well, real drives come first.
 
 Full request/response shapes are documented in the implementation brief.

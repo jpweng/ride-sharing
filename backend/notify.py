@@ -12,7 +12,16 @@ Who is told about a request (notify_drivers):
   - except the passenger, drivers who already posted a matching drive (the
     passenger sees it already), drivers who muted the route or turned
     request notifications off, and drivers over their budget;
-  - visitors' drivers before demo drivers, then the most frequent first.
+  - the most frequent first.
+
+Real and demo never mix (is_demo_request): a real passenger's request only
+reaches drivers of real (visitors') drives, so nobody waits for a driver
+who doesn't exist, and the "drivers told" count is of real drivers only. A
+request made under a demo driver's name (someone viewing the demo as, e.g.,
+Jean Dupont) is a demo request: it only reaches demo drivers, so the demo
+still shows requests arriving, and no real driver acts on a fictional need.
+With demo drives off (demo_drives.enabled), there are no demo requests and
+no demo drivers.
 
 Demo drivers' history isn't stored: it follows from their templates in
 demo_drives.py (each one driven on its weekdays, minus DEMO_SKIP_RATE).
@@ -106,17 +115,32 @@ def _demo_geometry(key: tuple[str, str]) -> list | None:
     return _demo_geometries[key]
 
 
-def _history(now: datetime) -> list[dict]:
+def is_demo_request(request: dict) -> bool:
+    """A request made under a demo driver's name: it only reaches demo
+    drivers, and a real passenger's request only real ones."""
+    return demo_drives.is_demo_user(request["passenger_name"])
+
+
+def _history(now: datetime, demo: bool = False) -> list[dict]:
     """
     Past trips, as drive-like dicts: the driver, both ends, road distance and
     duration, the time of day ("time"), whether it's a demo driver, and a
     "dates" function giving the days it was driven (computed only for trips
     that pass the cheap tests: a demo template is up to 65 days).
     Route geometry is loaded later, for the few trips that need it.
+    `demo`: the demo drivers' trips (none while demo drives are off);
+    otherwise the visitors' drives, except those posted under a demo
+    driver's name.
     """
     since = now - timedelta(weeks=HISTORY_WEEKS)
     trips = []
+    if demo:
+        if demo_drives.enabled():
+            trips += _demo_history(since, now)
+        return trips
     for d in db.past_visitor_drives(_iso(since), _iso(now)):
+        if demo_drives.is_demo_user(d["driver_name"]):
+            continue
         departure = datetime.fromisoformat(d["departure_time"]).replace(tzinfo=None)
         trips.append({
             **d,
@@ -124,7 +148,12 @@ def _history(now: datetime) -> list[dict]:
             "dates": lambda day=departure.date(): [day],
             "load_geometry": lambda geometry=d.get("route_geometry"): geometry,
         })
+    return trips
 
+
+def _demo_history(since: datetime, now: datetime) -> list[dict]:
+    """The demo drivers' past trips, from their templates (see _history)."""
+    trips = []
     routes = db.all_demo_routes()
     for spec in demo_drives.DEMO_DRIVES:
         key = (spec["origin"]["name"], spec["destination"]["name"])
@@ -164,6 +193,7 @@ def _candidates(request: dict, now: datetime) -> list[dict]:
     """
     Drivers whose past trips fit the request, best first:
     [{driver_name, is_demo, times, same_weekday, score, trip, match}].
+    Demo drivers for a demo request, real drivers otherwise, never both.
     """
     asked = datetime.fromisoformat(request["requested_time"])
     origin = (request["origin_lat"], request["origin_lon"])
@@ -171,7 +201,7 @@ def _candidates(request: dict, now: datetime) -> list[dict]:
     window = timedelta(minutes=HISTORY_TIME_TOLERANCE_MIN)
 
     by_driver = {}
-    for trip in _history(now):
+    for trip in _history(now, demo=is_demo_request(request)):
         departure = datetime.combine(asked.date(), trip["time"])
         duration = timedelta(seconds=trip.get("route_duration_s") or 0)
         # The pickup is somewhere between the departure and the arrival.
@@ -206,9 +236,7 @@ def _candidates(request: dict, now: datetime) -> list[dict]:
         c["score"] = (
             c["times"] + SAME_WEEKDAY_BONUS * c["same_weekday"] - c["match"]["score"] / RANK_MINUTES_PER_POINT
         )
-    # Real drivers first: the demo network's thousands of fictional drivers,
-    # with weeks of history each, would otherwise always take the places.
-    return sorted(by_driver.values(), key=lambda c: (c["is_demo"], -c["score"]))
+    return sorted(by_driver.values(), key=lambda c: -c["score"])
 
 
 # ---------------------------------------------------------------------
@@ -407,9 +435,11 @@ def inbox(name: str) -> dict:
         if n["kind"] == "drive_for_passenger":
             drives = [db.get_drive(i) for i in n["drive_ids"] or []]
             item["drives"] = [
-                {k: d[k] for k in ("id", "driver_name", "origin_name", "destination_name", "departure_time",
-                                   "seats_available", "is_demo")}
-                for d in drives if d
+                search.with_bookable({k: d[k] for k in (
+                    "id", "driver_name", "origin_name", "destination_name", "departure_time",
+                    "seats_available", "is_demo",
+                )})
+                for d in drives if d and (demo_drives.enabled() or not d["is_demo"])
             ]
         items.append(item)
     state = backoff(name)

@@ -169,16 +169,17 @@ def test_muted_route_and_notifications_off(isolated_db):
     assert notify.notify_drivers(_request()) == []
 
 
-def test_real_drivers_before_demo_drivers(isolated_db, monkeypatch):
+def test_real_requests_reach_real_drivers_only(isolated_db, monkeypatch):
     db.save_demo_route("Aigle", "Bern", {"geometry": AIGLE_BERN, "distance_m": 100_000, "duration_s": 6000})
     monkeypatch.setattr(demo_drives, "PLACES", {**demo_drives.PLACES, "Aigle": (46.317162, 6.966930)})
     template = demo_drives._drive("Demo Driver", "Aigle", "Bern", "18:00", demo_drives.DAILY)
     monkeypatch.setattr(demo_drives, "DEMO_DRIVES", [template])
     _past_drive("Real Driver", 7)
 
-    # The demo driver drove it ~80 times, the real one once: the real one comes first.
-    assert notify.notify_drivers(_request(), limit=2) == ["Real Driver", "Demo Driver"]
-    assert _inbox("Demo Driver")[0]["details"]["trip"]["times"] > 50
+    # The demo driver drove it ~80 times, the real one once: only the real
+    # one is told. More details in test_demo_separation.py.
+    assert notify.notify_drivers(_request(), limit=2) == ["Real Driver"]
+    assert _inbox("Demo Driver") == []
 
 
 def test_posting_a_drive_tells_waiting_passengers_once_a_day(isolated_db, force_haversine, fake_transit):

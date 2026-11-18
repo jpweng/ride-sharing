@@ -114,3 +114,10 @@ def isolated_db(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", db_path)
     db.init_db()
     return db
+
+
+@pytest.fixture(autouse=True)
+def demo_drives_on_by_default(monkeypatch):
+    """Tests run with demo drives on (the default), whatever DEMO_DRIVES is
+    set to in the shell; switch tests set it themselves."""
+    monkeypatch.delenv("DEMO_DRIVES", raising=False)

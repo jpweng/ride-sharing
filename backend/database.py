@@ -284,8 +284,11 @@ def list_drives(
     limit: int | None = None,
     departing_from: str | None = None,
     departing_until: str | None = None,
+    include_demo: bool = True,
 ) -> list[dict]:
     clauses, params = [], []
+    if not include_demo:
+        clauses.append("d.is_demo = 0")
     if upcoming_only:
         clauses.append("d.departure_time >= ?")
         params.append(now_iso())
@@ -402,6 +405,24 @@ def delete_demo_drives_before(departure_time: str) -> int:
             "DELETE FROM drives WHERE is_demo = 1 AND departure_time < ?", (departure_time,)
         )
         return cur.rowcount
+
+
+def delete_all_demo_drives() -> int:
+    """Delete every demo drive (demo drives switched off); returns how many."""
+    with get_conn() as conn:
+        return conn.execute("DELETE FROM drives WHERE is_demo = 1").rowcount
+
+
+def delete_unused_demo_routes() -> int:
+    """Delete the demo trips' routes no demo drive uses any more; returns how many."""
+    with get_conn() as conn:
+        return conn.execute("""
+            DELETE FROM demo_routes WHERE NOT EXISTS (
+                SELECT 1 FROM drives d
+                WHERE d.is_demo = 1 AND d.origin_name = demo_routes.origin_name
+                  AND d.destination_name = demo_routes.destination_name
+            )
+        """).rowcount
 
 
 def delete_visitor_drives_before(departure_time: str) -> int:
