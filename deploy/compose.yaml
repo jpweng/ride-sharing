@@ -1,6 +1,7 @@
 # Runs on the app server in /opt/ride-sharing. CI copies this file there on
 # every deploy and writes the variables below into .env next to it.
 #   APP_IMAGE, PROXY_IMAGE  ECR images to run
+#   ROUTING_IMAGE           ECR routing image (routing/), the newest one
 #   SITE_ADDRESS            Caddy site address (":80" or domain names)
 #   AWS_REGION, LOG_GROUP   CloudWatch Logs destination (and the SES Region)
 #   EMAIL_FROM              sender of sign-in emails, e.g. no-reply@rideandrail.ch
@@ -8,14 +9,65 @@
 #   ANDROID_CERT_SHA256     signing-certificate fingerprint(s) of the Android
 #                           app, comma-separated, for /.well-known/assetlinks.json
 #                           (optional; see mobile/android/README.md)
+#
+# Memory limits (the server has 2 GiB, see infra/variables.tf; the OS and
+# Docker take ~350 MB): the app peaked at ~260 MB in the load test
+# (loadtest/). OSRM maps its ~1 GB of data files (--mmap) and reads them
+# through the page cache: its limit caps that cache, which the kernel
+# shrinks under pressure instead of killing anything.
 
 services:
+  osrm:
+    image: ${ROUTING_IMAGE}
+    restart: unless-stopped
+    # Only the app reaches it, on the compose network: no published port.
+    # --mmap: data read from the image's files as needed, not copied into
+    # memory. No turn-by-turn data (ROUTE_STEPS): the app never asks for
+    # it. The algorithm (MLD) is the one the image's data was built for.
+    # The data path comes first: --disable-feature-dataset takes several
+    # values and would take it as one.
+    command:
+      - sh
+      - -c
+      - >-
+        exec osrm-routed /data/switzerland.osrm --algorithm "$$OSRM_ALGORITHM"
+        --port 5000 --threads 2 --max-viaroute-size 25
+        --mmap --disable-feature-dataset ROUTE_STEPS
+    mem_limit: 768m
+    healthcheck:
+      # No curl in the image: a raw HTTP request (Bern, two nearby points).
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/5000 &&
+          printf 'GET /route/v1/driving/7.4474,46.9480;7.4500,46.9500 HTTP/1.1\r\nHost: osrm\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"code":"Ok"' <&3
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: ${LOG_GROUP}
+        awslogs-stream: routing
+
   app:
     image: ${APP_IMAGE}
     restart: unless-stopped
+    depends_on:
+      # So the startup demo refresh gets road routes. If OSRM goes down
+      # later, the app falls back to straight lines (matching.py).
+      osrm:
+        condition: service_healthy
+    mem_limit: 512m
     environment:
       DB_PATH: /data/rideshare.db
       ANDROID_CERT_SHA256: ${ANDROID_CERT_SHA256:-}
+      OSRM_URL: http://osrm:5000
       # Sign-in emails (backend/mailer.py): Amazon SES, with the instance
       # role's credentials (infra/email.tf). Without EMAIL_FROM, sign-in
       # links can't be sent (the API answers 503) rather than being logged.
@@ -48,6 +100,7 @@ services:
   proxy:
     image: ${PROXY_IMAGE}
     restart: unless-stopped
+    mem_limit: 128m
     depends_on:
       app:
         condition: service_healthy

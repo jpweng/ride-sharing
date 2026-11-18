@@ -63,9 +63,23 @@ jobs:
           fi
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
+      # The newest image the "Routing data" workflow pushed (routing/).
+      - name: Find the routing image
+        id: routing
+        run: |
+          REPO_URL="${{ vars.ECR_ROUTING_REPOSITORY_URL }}"
+          if [ -z "$REPO_URL" ]; then echo "::error::Set the ECR_ROUTING_REPOSITORY_URL variable (terraform output github_actions_variables)"; exit 1; fi
+          TAG=$(aws ecr describe-images --repository-name "${REPO_URL#*/}" \
+            --query 'sort_by(imageDetails[?imageTags], &imagePushedAt)[-1].imageTags[0]' --output text)
+          if [ -z "$TAG" ] || [ "$TAG" = None ]; then
+            echo "::error::No routing image in ECR yet: run the Routing data workflow (it deploys when done)"; exit 1
+          fi
+          echo "image=$REPO_URL:$TAG" >> "$GITHUB_OUTPUT"
+
       - name: Deploy on the server
         env:
           PROXY_IMAGE: ${{ steps.proxy.outputs.image }}
+          ROUTING_IMAGE: ${{ steps.routing.outputs.image }}
         run: |
           INSTANCE_ID=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=${{ vars.SERVER_NAME }}" "Name=instance-state-name,Values=running" \
@@ -74,8 +88,8 @@ jobs:
 
           # ANDROID_CERT_SHA256 (optional) feeds /.well-known/assetlinks.json;
           # see mobile/android/README.md.
-          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\nEMAIL_FROM=%s\nPUBLIC_BASE_URL=%s\nANDROID_CERT_SHA256=%s\n' \
-            "$APP_IMAGE" "$PROXY_IMAGE" "${{ vars.SITE_ADDRESS }}" "${{ vars.AWS_REGION }}" "${{ vars.LOG_GROUP }}" \
+          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nROUTING_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\nEMAIL_FROM=%s\nPUBLIC_BASE_URL=%s\nANDROID_CERT_SHA256=%s\n' \
+            "$APP_IMAGE" "$PROXY_IMAGE" "$ROUTING_IMAGE" "${{ vars.SITE_ADDRESS }}" "${{ vars.AWS_REGION }}" "${{ vars.LOG_GROUP }}" \
             "${{ vars.EMAIL_FROM }}" "${{ vars.PUBLIC_BASE_URL }}" "${{ vars.ANDROID_CERT_SHA256 }}")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \

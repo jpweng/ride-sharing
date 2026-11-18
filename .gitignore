@@ -26,3 +26,7 @@ mobile/android/**/build/
 mobile/android/.gradle/
 mobile/android/local.properties
 signing-key-info.txt
+
+# Routing data build (routing/build.sh)
+routing/.work/
+loadtest/.work/

@@ -322,3 +322,46 @@ def test_address_to_address_trip_skips_address_pseudo_results(fake_http):
     assert option["from_station"] == "Veytaux, Grandchamp"
     assert option["to_station"] == "Fribourg, Pont de St-Jean"
     assert len(option["connections"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Answers are cached: many people at one event ask the same questions
+# ---------------------------------------------------------------------------
+
+def test_same_questions_are_asked_once(fake_http):
+    fake_http.nearby[VILLENEUVE_VD_CENTROID] = VILLENEUVE_NEARBY
+    fake_http.connections[("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean")] = VEYTAUX_FRIBOURG_CONNECTIONS
+
+    for _ in range(3):
+        assert transit.nearest_named_station(*VILLENEUVE_VD_CENTROID)["name"] == "Veytaux, Grandchamp"
+        assert transit.get_connections("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean", "2026-10-18T18:53")
+
+    assert len(fake_http.calls) == 2
+    # Another time is another question.
+    transit.get_connections("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean", "2026-10-18T19:53")
+    assert len(fake_http.calls) == 3
+
+
+def test_failures_are_not_cached(monkeypatch, fake_http):
+    fake_http.nearby[VILLENEUVE_VD_CENTROID] = VILLENEUVE_NEARBY
+    working_get = transit.requests.get
+
+    def boom(*args, **kwargs):
+        raise requests.ConnectionError("no network")
+    monkeypatch.setattr(transit.requests, "get", boom)
+    assert transit.nearest_named_station(*VILLENEUVE_VD_CENTROID) is None
+    assert transit.get_connections("Veytaux, Grandchamp", "Fribourg, Pont de St-Jean") == []
+
+    monkeypatch.setattr(transit.requests, "get", working_get)
+    assert transit.nearest_named_station(*VILLENEUVE_VD_CENTROID)["name"] == "Veytaux, Grandchamp"
+
+
+def test_cached_answers_expire(fake_http, monkeypatch):
+    fake_http.nearby[VILLENEUVE_VD_CENTROID] = VILLENEUVE_NEARBY
+    transit.nearest_named_station(*VILLENEUVE_VD_CENTROID)
+    later = transit.time.monotonic() + transit.STOPS_TTL_S + 1
+    monkeypatch.setattr(transit.time, "monotonic", lambda: later)
+
+    transit.nearest_named_station(*VILLENEUVE_VD_CENTROID)
+
+    assert len(fake_http.calls) == 2

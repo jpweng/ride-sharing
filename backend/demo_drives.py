@@ -25,6 +25,7 @@ Run it by hand with the backend on PYTHONPATH, e.g.:
     PYTHONPATH=backend uv run python backend/demo_drives.py
 """
 import itertools
+import os
 import random
 import time as clock
 from datetime import datetime, time, timedelta
@@ -39,8 +40,12 @@ DAYS_AHEAD = 7
 # datetime-local input sends.
 LOCAL_TZ = ZoneInfo("Europe/Zurich")
 
-# The public OSRM server asks for at most one request per second.
-ROUTING_PAUSE_S = 1.0
+# Pause after each route fetched: the public OSRM server asks for at most one
+# request per second, our own server (see routing/) needs no pause.
+# OSRM_PAUSE_S overrides it.
+ROUTING_PAUSE_S = float(os.environ.get(
+    "OSRM_PAUSE_S", "1.0" if matching.PUBLIC_OSRM_HOST in matching.OSRM_URL else "0"
+))
 
 MON_FRI = (0, 1, 2, 3, 4)
 DAILY = (0, 1, 2, 3, 4, 5, 6)
@@ -778,7 +783,8 @@ def _route(spec, cache: dict) -> dict:
         ])
         if cache[key]["source"] == "osrm":
             db.save_demo_route(*key, cache[key])
-            clock.sleep(ROUTING_PAUSE_S)
+            if ROUTING_PAUSE_S:
+                clock.sleep(ROUTING_PAUSE_S)
     return cache[key]
 
 
@@ -794,11 +800,17 @@ def refresh(now: datetime | None = None) -> tuple[int, int]:
     deleted = db.delete_demo_drives_before(_departure_iso(now))
     expected = _expected(now)
 
-    # Upcoming demo drives from templates that changed or were removed.
+    # Upcoming demo drives from templates that changed or were removed, and
+    # straight-line ones (routing was down when they were made) whose road
+    # route can be had now.
+    routes = {}
     existing, outdated = set(), []
-    for drive_id, driver_name, departure_time, origin_name, destination_name in db.demo_drive_keys():
+    for drive_id, driver_name, departure_time, origin_name, destination_name, route_source in db.demo_drive_keys():
         spec = expected.get((driver_name, departure_time))
-        if spec and spec["origin"]["name"] == origin_name and spec["destination"]["name"] == destination_name:
+        if (
+            spec and spec["origin"]["name"] == origin_name and spec["destination"]["name"] == destination_name
+            and (route_source == "osrm" or _route(spec, routes)["source"] != "osrm")
+        ):
             existing.add((driver_name, departure_time))
         else:
             outdated.append(drive_id)
@@ -806,7 +818,7 @@ def refresh(now: datetime | None = None) -> tuple[int, int]:
         deleted += db.delete_drives(outdated[i:i + BATCH_SIZE])
 
     created = 0
-    routes, batch = {}, []
+    batch = []
     for (driver_name, departure_time), spec in expected.items():
         if (driver_name, departure_time) in existing:
             continue
