@@ -49,3 +49,20 @@ you copy the link from the server's output; `ses` sends through Amazon SES in `S
 (default `eu-north-1`) from `EMAIL_FROM`. `PUBLIC_BASE_URL` (default `http://localhost:8000`) is the
 site's address for the links; it's never taken from the request. The email is in the language the
 page was in, from the `email.*` keys of the dictionaries.
+
+## Endpoints
+
+Access levels and error codes as in [API](api.md).
+
+- `POST /api/auth/link` `{email, language}` — public; emails a sign-in link. Always `{"ok": true}`
+  (429 `too_many_requests` over the per-IP limit, 503 `email_unavailable` if sending fails)
+- `POST /api/auth/verify` `{token}` — public; uses the link's token, sets the session cookie,
+  returns `{user}` (400 `invalid_link`, 403 `account_banned`)
+- `GET  /api/auth/me` — public; `{user}` or `{user: null}`: name, email, `is_demo`,
+  `profile_complete`, `needs_conduct`
+- `POST /api/auth/profile` `{first_name, last_name, adult, accept_conduct}` — a session, profile
+  complete or not; the name only counts the first time
+- `POST /api/auth/sign_out` — ends the session, clears the cookie
+- `GET  /api/auth/demo_drivers`, `POST /api/auth/demo` `{driver_name}` — public; the demo drivers
+  offered, and a read-only session as one of them
+- `DELETE /api/account` — a session (not a demo-driver view); deletes the account and its data

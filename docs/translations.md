@@ -25,3 +25,8 @@ languages (a new feature can add its own `<prefix>.json` to each).
 any language, if the HTML or a script (app.js, pwa.js) uses an unknown key, if the English in the HTML drifts from
 the English dictionary, if a file holds another prefix's keys or unsorted keys, or if an informal form ("du", "tu") slips in. The translations were written without native review; have native speakers check them,
 the privacy notice above all, before showing the site widely.
+
+## Endpoint
+
+- `GET  /i18n/<lang>.json` — public; a language's dictionary, merged from
+  `frontend/i18n/<lang>/*.json` (see above), `no-cache`

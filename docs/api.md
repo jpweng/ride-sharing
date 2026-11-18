@@ -12,20 +12,10 @@ Who is asking comes only from the session cookie; no endpoint takes a user's nam
 403 `profile_incomplete`; demo-driver view: 403 `demo_read_only`. POST/PUT/DELETE requests from
 another site: 403 `cross_site_request`.
 
-Sign-in and account:
-
-- `POST /api/auth/link` `{email, language}` — public; emails a sign-in link. Always `{"ok": true}`
-  (429 `too_many_requests` over the per-IP limit, 503 `email_unavailable` if sending fails)
-- `POST /api/auth/verify` `{token}` — public; uses the link's token, sets the session cookie,
-  returns `{user}` (400 `invalid_link`, 403 `account_banned`)
-- `GET  /api/auth/me` — public; `{user}` or `{user: null}`: name, email, `is_demo`,
-  `profile_complete`, `needs_conduct`
-- `POST /api/auth/profile` `{first_name, last_name, adult, accept_conduct}` — a session, profile
-  complete or not; the name only counts the first time
-- `POST /api/auth/sign_out` — ends the session, clears the cookie
-- `GET  /api/auth/demo_drivers`, `POST /api/auth/demo` `{driver_name}` — public; the demo drivers
-  offered, and a read-only session as one of them
-- `DELETE /api/account` — a session (not a demo-driver view); deletes the account and its data
+A feature describes its own endpoints in its `docs/<topic>.md`, with these access levels and error
+codes: sign-in and account in [Sign-in and accounts](sign-in.md#endpoints), the service worker and
+the Android app's asset links in [Installable app](pwa.md#endpoints), the dictionaries in
+[Translations](translations.md#endpoint). The rides endpoints are below.
 
 Rides:
 
@@ -65,17 +55,6 @@ passenger pays (for a match, for the part they ride), `price_by_passengers` what
 … passengers up to the seats, `driver_price_chf` the driver's price, and `train_fare`
 (`full_chf`, `half_chf`, `approximate`, `source`: `t601` or `ojp`) the train for the same distance.
 The match's `transit_option` has a `fare` of the same shape, between its two stations.
-
-Installable app:
-
-- `GET  /sw.js` — public; the service worker, versioned by a hash of the frontend files, with the
-  list of the app's files, `no-cache`
-- `GET  /.well-known/assetlinks.json` — public; Digital Asset Links for the Android app
-
-Translations:
-
-- `GET  /i18n/<lang>.json` — public; a language's dictionary, merged from
-  `frontend/i18n/<lang>/*.json` (see [Translations](translations.md)), `no-cache`
 
 Full request/response shapes of the ride endpoints are also documented in the
 [implementation brief](../RIDESHARE_IMPLEMENTATION_BRIEF.md) (it predates sign-in: ignore the names

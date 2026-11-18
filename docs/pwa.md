@@ -41,3 +41,9 @@ Bubblewrap) and the step-by-step guide: signing key, Play App Signing, the close
 The site proves it belongs to the app with `/.well-known/assetlinks.json`, generated from the
 `ANDROID_CERT_SHA256` environment variable (comma-separated SHA-256 certificate fingerprints;
 an empty list when unset), which the deploy takes from the GitHub repo variable of the same name.
+
+## Endpoints
+
+- `GET  /sw.js` — public; the service worker, versioned by a hash of the frontend files, with the
+  list of the app's files, `no-cache`
+- `GET  /.well-known/assetlinks.json` — public; Digital Asset Links for the Android app
