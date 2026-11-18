@@ -7,6 +7,7 @@
   "errors.demo_read_only": "You're viewing the demo as a fictional driver: nothing can be changed. Sign in with your email address to post drives and requests.",
   "errors.drive_not_found": "This drive no longer exists.",
   "errors.email_unavailable": "The email couldn't be sent. Please try again later.",
+  "errors.event_not_found": "This event wasn't found. It may be over.",
   "errors.invalid_email": "Enter a valid email address.",
   "errors.invalid_link": "This sign-in link is invalid, has expired or was already used. Ask for a new one.",
   "errors.invalid_time": "Invalid date or time.",

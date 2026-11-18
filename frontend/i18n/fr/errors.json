@@ -7,6 +7,7 @@
   "errors.demo_read_only": "Vous découvrez la démo en tant que conducteur fictif : rien ne peut être modifié. Connectez-vous avec votre adresse e-mail pour publier des trajets et des demandes.",
   "errors.drive_not_found": "Ce trajet n'existe plus.",
   "errors.email_unavailable": "L'e-mail n'a pas pu être envoyé. Réessayez plus tard, s'il vous plaît.",
+  "errors.event_not_found": "Cet événement est introuvable. Il est peut-être terminé.",
   "errors.invalid_email": "Saisissez une adresse e-mail valide.",
   "errors.invalid_link": "Ce lien de connexion n'est pas valable, a expiré ou a déjà été utilisé. Demandez-en un nouveau.",
   "errors.invalid_time": "Date ou heure invalide.",
