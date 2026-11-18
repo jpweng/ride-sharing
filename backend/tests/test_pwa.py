@@ -32,8 +32,10 @@ def _png_size(data):
     return struct.unpack(">II", data[16:24])
 
 
-def _sw_list(name):
-    source = (FRONTEND / "sw.js").read_text()
+def _sw_list(name, source=None):
+    """A list from sw.js as the server serves it (the shell is filled in then)."""
+    if source is None:
+        source = TestClient(main.app).get("/sw.js").text
     block = re.search(rf"const {name} = \[(.*?)\];", source, re.S).group(1)
     return re.findall(r'"([^"]+)"', block)
 
@@ -106,6 +108,16 @@ def test_service_worker_is_versioned(client):
     assert f'const VERSION = "{pwa.frontend_version()}";' in source
 
 
+def test_source_has_the_lines_the_server_fills_in():
+    # The source stays valid JavaScript on its own (an empty shell).
+    source = (FRONTEND / "sw.js").read_text()
+    assert pwa.SW_VERSION_LINE in source
+    assert pwa.SW_SHELL_LINE in source
+    assert _sw_list("SHELL", source) == []
+    served = TestClient(main.app).get("/sw.js").text
+    assert pwa.SW_SHELL_LINE not in served
+
+
 def test_version_changes_with_any_frontend_file(tmp_path, monkeypatch):
     copy = tmp_path / "frontend"
     shutil.copytree(FRONTEND, copy)
@@ -117,13 +129,39 @@ def test_version_changes_with_any_frontend_file(tmp_path, monkeypatch):
 
 
 def test_shell_files_exist(client):
-    for path in _sw_shell():
+    shell = _sw_shell()
+    assert len(shell) == len(set(shell))
+    for path in shell:
         # Only our own files: a third-party file in the shell would make
         # every update depend on that site being reachable.
         assert not path.startswith(("https://", "http://", "//")), path
-        # i18n/<lang>.json is merged by the backend from i18n/<lang>/.
-        assert (FRONTEND / path).is_file() or re.fullmatch(r"i18n/\w+\.json", path), path
         assert client.get(f"/{path}").status_code == 200, path
+
+
+def test_shell_is_every_frontend_file_the_browser_uses():
+    shell = set(_sw_shell())
+    # Every page, script, stylesheet and icon...
+    for pattern in ("*.html", "*.js", "*.css", "styles/*.css", "icons/*.png", "*.webmanifest"):
+        for path in FRONTEND.glob(pattern):
+            if path.name != "sw.js":
+                assert path.relative_to(FRONTEND).as_posix() in shell, path
+    # ...the merged translations rather than the files they come from...
+    assert {f"i18n/{lang}.json" for lang in ("en", "de", "fr", "it")} <= shell
+    assert not [path for path in shell if path.startswith(tuple(f"i18n/{lang}/" for lang in ("en", "de", "fr", "it")))]
+    # ...and nothing browsers don't use.
+    assert "sw.js" not in shell
+    assert not [path for path in shell if path.endswith((".py", ".md"))]
+
+
+def test_new_frontend_file_joins_the_shell(tmp_path, monkeypatch):
+    copy = tmp_path / "frontend"
+    shutil.copytree(FRONTEND, copy)
+    monkeypatch.setattr(pwa, "FRONTEND_DIR", str(copy))
+    (copy / "styles" / "new-feature.css").write_text("/* new */\n")
+    (copy / "README.md").write_text("notes\n")
+    shell = pwa.shell_files()
+    assert "styles/new-feature.css" in shell
+    assert "README.md" not in shell
 
 
 def test_libs_are_the_leaflet_index_html_loads():

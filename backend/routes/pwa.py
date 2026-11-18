@@ -2,11 +2,13 @@
 Installable app (PWA) and the Android app (a Trusted Web Activity):
 
   GET /sw.js                       -- the service worker, versioned by the
-                                      frontend's content.
+                                      frontend's content, with the list of
+                                      the app's files (its shell).
   GET /.well-known/assetlinks.json -- Digital Asset Links for the Android
                                       app, from ANDROID_CERT_SHA256.
 """
 import hashlib
+import json
 import logging
 import mimetypes
 import os
@@ -17,6 +19,7 @@ from fastapi import APIRouter, Response
 from fastapi.responses import JSONResponse
 
 import api
+import translations
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -29,6 +32,10 @@ FRONTEND_DIR = api.FRONTEND_DIR
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 SW_VERSION_LINE = 'const VERSION = "dev";'
+SW_SHELL_LINE = "const SHELL = [];"
+
+# Frontend files browsers never ask for, kept out of the shell.
+NOT_FOR_BROWSERS = {".py", ".md"}
 
 
 def frontend_version() -> str:
@@ -42,6 +49,30 @@ def frontend_version() -> str:
     return digest.hexdigest()[:16]
 
 
+def shell_files() -> list[str]:
+    """The service worker's shell, relative to the site root: every file
+    under frontend/ that the browser uses (not sw.js itself, scripts such as
+    icons/make_icons.py, READMEs or hidden files), with each language's
+    translations as the browser loads them, i18n/<lang>.json, instead of
+    the files they're merged from."""
+    root = Path(FRONTEND_DIR)
+    i18n_dirs = {Path("i18n") / language for language in translations.LANGUAGES}
+    files = [f"i18n/{language}.json" for language in translations.LANGUAGES]
+    for path in root.rglob("*"):
+        relative = path.relative_to(root)
+        if (
+            not path.is_file()
+            or relative == Path("sw.js")
+            or path.suffix in NOT_FOR_BROWSERS
+            or path.name.upper().startswith("README")
+            or any(part.startswith(".") or part == "__pycache__" for part in relative.parts)
+            or relative.parent in i18n_dirs
+        ):
+            continue
+        files.append(relative.as_posix())
+    return sorted(files)
+
+
 @router.get("/sw.js", include_in_schema=False)
 def service_worker():
     # The version names the service worker's cache: a new one makes browsers
@@ -49,9 +80,12 @@ def service_worker():
     # Computed per request (the files are small), so it also follows edits
     # during development. no-cache: browsers must always check for a new one.
     source = (Path(FRONTEND_DIR) / "sw.js").read_text()
-    if SW_VERSION_LINE not in source:
-        raise RuntimeError(f"frontend/sw.js must contain {SW_VERSION_LINE!r}")
+    for line in (SW_VERSION_LINE, SW_SHELL_LINE):
+        if line not in source:
+            raise RuntimeError(f"frontend/sw.js must contain {line!r}")
     source = source.replace(SW_VERSION_LINE, f'const VERSION = "{frontend_version()}";')
+    shell = "".join(f"  {json.dumps(path)},\n" for path in shell_files())
+    source = source.replace(SW_SHELL_LINE, f"const SHELL = [\n{shell}];")
     return Response(source, media_type="text/javascript", headers={"Cache-Control": "no-cache"})
 
 

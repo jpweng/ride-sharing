@@ -220,7 +220,9 @@ The site is a Progressive Web App: on Android, Chrome offers to install it; on i
   - The app's own files (the pages, CSS, JS, dictionaries and icons) are network-first: every load
     asks the server, so a fix deployed during an event reaches users on their next launch. Each
     successful load refreshes a cached copy, which is used only when the network fails, so the
-    installed app still opens offline.
+    installed app still opens offline. The server lists them when it serves `/sw.js`: every file
+    under `frontend/` except `sw.js` and scripts such as `make_icons.py`, with the merged
+    `i18n/<lang>.json` dictionaries, so a new file needs no change to `sw.js`.
   - The pinned map library (Leaflet from unpkg) never changes at its URL, so it's served from the
     cache once fetched. It's cached on a best-effort basis, so unpkg being down can't block an
     update.
