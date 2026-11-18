@@ -2,6 +2,7 @@
   "meta.title": "Ride and Rail — en voiture jusqu'au train",
   "privacy.title": "Confidentialité — Ride and Rail",
   "conduct.title": "Code de conduite — Ride and Rail",
+  "offline.title": "Hors ligne — Ride and Rail",
   "header.subtitle": "En voiture jusqu'au train",
   "banner.app": "<strong>Démo</strong> — un prototype pour tester. Les trajets marqués <span class=\"badge demo\">Démo</span> sont fictifs. Les autres voient votre prénom et l'initiale de votre nom. <a href=\"privacy.html\">Confidentialité</a> · <a href=\"conduct.html\">Code de conduite</a>",
   "banner.privacy": "<strong>Démo</strong> — un prototype pour tester. <a href=\"./\">Retour à l'application</a>",
@@ -181,6 +182,7 @@
   "errors.price_too_high": "Ce prix dépasse le maximum pour ce trajet.",
   "errors.price_too_low": "Ce prix est inférieur au minimum pour ce trajet.",
   "errors.no_distance": "Le départ et la destination sont au même endroit.",
+  "errors.offline": "Vous êtes hors ligne. Vérifiez votre connexion et réessayez.",
   "errors.request_failed": "La requête a échoué ({status}).",
   "errors.not_signed_in": "Connectez-vous d'abord, s'il vous plaît.",
   "errors.profile_incomplete": "Terminez d'abord la création de votre compte, s'il vous plaît.",
@@ -201,5 +203,8 @@
   "email.signIn.button": "Se connecter à Ride and Rail",
   "email.signIn.linkHint": "Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :",
   "email.signIn.ignore": "Si vous n'avez pas demandé ce lien, vous pouvez ignorer cet e-mail : personne ne peut se connecter sans lui.",
-  "email.signIn.signature": "Ride and Rail"
+  "email.signIn.signature": "Ride and Rail",
+  "pwa.offline": "Vous êtes hors ligne. Pour trouver ou proposer un trajet, une connexion Internet est nécessaire.",
+  "pwa.updated": "Une nouvelle version de Ride and Rail est disponible.",
+  "pwa.reload": "Recharger"
 }

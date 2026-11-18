@@ -624,6 +624,43 @@ body.doc-page {
 .doc .todo { color: var(--demo-text); background: var(--demo-bg); padding: 2px 6px; border-radius: 4px; }
 header a { text-decoration: none; }
 
+/* offline.html: the "Try again" link looks like a button. */
+.offline-retry {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* Notices from pwa.js: offline, or a new version to reload. Above the map
+   (Leaflet's panes and controls go up to z-index 1000). */
+.pwa-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  z-index: 2000;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--text);
+  color: white;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.pwa-banner button {
+  margin-left: 8px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .browse-limited { margin: 4px 0 10px; }
 
 /* Unread notifications, next to "Inbox" in the tabs. */
