@@ -9,8 +9,9 @@ suggestion via [transport.opendata.ch](https://transport.opendata.ch).
 See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for the full design rationale.
 
 **Ride requests:** a passenger can ask for a ride nobody has posted. A few drivers who made that
-trip before are told in their inbox, with strict limits so drivers don't get too many
-notifications, and the passenger is told when a drive that fits is posted.
+trip before, and a few who saved an [area](docs/driver-areas.md) it starts or ends in, are told in
+their inbox, with strict limits so drivers don't get too many notifications, and the passenger is
+told when a drive that fits is posted.
 
 **Prices:** drivers only share their costs, as Swiss law requires of carpooling. The driver sets a
 price per passenger inside a band: at least about the fuel, at most the car's real cost

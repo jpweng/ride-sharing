@@ -15,11 +15,14 @@ rules; in short:
   account; names without an account lose theirs when they're deleted
   ([data retention](demo-drives-and-data-retention.md)).
 
-For now areas are only stored and shown to their owner. They are the base for two things that come
-next, each in its own change: telling a driver about the ride requests that start or end in one of
-their areas (today only drivers who made the trip before are told, see
-[Ride predictions and ride requests](ride-predictions.md)), and a list where a driver browses
-those requests.
+**What they're for:** a driver is told, in their inbox, about the ride requests that start or end
+in one of their areas, on top of the drivers who made the trip before, and within the same limits
+(one notification a day, three a week). Who is chosen and in what order is in
+[Ride predictions and ride requests](ride-predictions.md#who-is-told); the matching itself is
+`areas.drivers_near()`. A request fits an area when its start or its destination is inside the
+circle; a driver whose areas cover both ends comes first. Turning request notifications off in the
+inbox turns these off too. A list where a driver browses the requests in their areas comes next,
+in its own change.
 
 In the browser, the section is [frontend/areas.js](../frontend/areas.js), a script of its own
 loaded after `app.js`, whose map, point picking and helpers it uses. `app.js` announces each point
