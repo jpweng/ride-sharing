@@ -90,11 +90,24 @@ else
   step osrm-contract osrm-contract /data/switzerland.osrm
 fi
 
+# The tools write some files (.fileIndex) as root with mode 0700: the build
+# context, read as the calling user, would copy them as empty files.
+docker run --rm -v "$DATA:/data" "$OSRM_IMAGE" chmod -R a+rX /data
+
 TAG="$DATA_DATE-$ALGORITHM"
 IMAGE="$IMAGE_NAME:$TAG"
 docker build --quiet -t "$IMAGE" -f "$HERE/Dockerfile" \
   --build-arg OSRM_IMAGE="$OSRM_IMAGE" --build-arg ALGORITHM="$ALGORITHM" \
   --label "org.opencontainers.image.source=$REAL_URL" "$DATA" >&2
+
+# The image must hold the files byte for byte.
+HOST_SUMS=$(cd "$DATA" && sha256sum -- * | sort)
+IMAGE_SUMS=$(docker run --rm -w /data "$IMAGE" sh -c 'sha256sum -- * | sort')
+if [ "$HOST_SUMS" != "$IMAGE_SUMS" ]; then
+  echo "The image's /data differs from $DATA:" >&2
+  diff <(echo "$HOST_SUMS") <(echo "$IMAGE_SUMS") >&2 || true
+  exit 1
+fi
 
 {
   echo
