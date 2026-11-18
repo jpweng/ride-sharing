@@ -22,6 +22,10 @@ Two core use cases:
   GET/DELETE /api/requests -- a passenger's open ride requests; cancel one.
   GET /api/notifications   -- a user's inbox; .../read, .../{id}/action and
                                /api/notification_settings act on it.
+  GET /api/events          -- current and upcoming events (events.json);
+                               /api/events/{slug} one with its schedule.
+  GET /e/{slug}            -- an event's shareable link: a small page with
+                               a link preview, redirecting to #/event/{slug}.
 
 No authentication: a driver/passenger is just a name, auto-registered on
 first use. This is a demo/prototype, not a production app.
@@ -37,11 +41,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import database as db
+import events
 import maintenance
 import matching
 import notify
@@ -361,6 +367,30 @@ def act_on_notification(notification_id: int, payload: NotificationAction):
 def update_notification_settings(payload: NotificationSettings):
     db.update_user_settings(payload.name.strip(), payload.notify_requests, reset_backoff=payload.resume)
     return notify.inbox(payload.name.strip())
+
+
+EventLang = Literal["de", "fr", "it", "en"]
+
+
+@app.get("/api/events")
+def list_events(lang: EventLang = events.DEFAULT_LANG):
+    return events.upcoming(lang)
+
+
+@app.get("/api/events/{slug}")
+def get_event(slug: str, lang: EventLang = events.DEFAULT_LANG):
+    event = events.BY_SLUG.get(slug)
+    if not event:
+        raise api_error(404, "event_not_found", "Event not found")
+    return events.detail(event, lang)
+
+
+@app.get("/e/{slug}", response_class=HTMLResponse)
+def event_link(slug: str, lang: str | None = None, accept_language: Annotated[str | None, Header()] = None):
+    # The link people share (WhatsApp, QR codes): short, no "#", and with a
+    # preview (title and dates) for the apps that show one.
+    page = events.share_page(slug, lang, accept_language)
+    return HTMLResponse(page, status_code=200 if slug in events.BY_SLUG else 404)
 
 
 # Serve the static frontend last, so it doesn't shadow the /api/* routes above.

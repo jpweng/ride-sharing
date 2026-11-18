@@ -59,6 +59,7 @@
     <!-- BROWSE RIDES (public) -->
     <section id="page-browse" class="page">
       <div class="page-title" data-i18n="browse.title">Upcoming rides</div>
+      <div class="event-strip" id="browse-events" hidden></div>
       <button class="submit-btn secondary" id="browse-refresh" data-i18n="browse.refresh">Refresh</button>
       <div class="drive-list" id="browse-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
     </section>
@@ -66,6 +67,8 @@
     <!-- PASSENGER PAGE -->
     <section id="page-ride" class="page">
       <div class="page-title" data-i18n="ride.title">Find a ride</div>
+      <!-- Current and upcoming events (events.json), one line of links -->
+      <div class="event-strip" id="ride-events" hidden></div>
 
       <label data-i18n="form.from">From</label>
       <div class="point-picker">
@@ -194,6 +197,22 @@
 
       <button class="submit-btn" id="drive-submit" data-i18n="drive.submit">Offer drive</button>
       <div class="status-msg" id="drive-status"></div>
+
+      <!-- After a drive to an event: post the drive back at once -->
+      <div class="return-box" id="drive-return" hidden>
+        <div class="section-title" id="drive-return-title"></div>
+        <div class="hint" id="drive-return-hint"></div>
+        <label for="drive-return-time" data-i18n="drive.returnTime">Leaving at</label>
+        <select id="drive-return-time" class="auto-width"></select>
+        <button type="button" class="submit-btn" id="drive-return-submit" data-i18n="drive.returnSubmit">Offer the drive back</button>
+        <button type="button" class="link-btn" id="drive-return-dismiss" data-i18n="drive.returnDismiss">No, thanks</button>
+        <div class="status-msg" id="drive-return-status"></div>
+      </div>
+    </section>
+
+    <!-- EVENT PAGE (public): #/event/<slug>, the shareable link /e/<slug> -->
+    <section id="page-event" class="page">
+      <div id="event-body"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
     </section>
 
     <div class="hint" id="picker-hint" hidden data-i18n="form.pickerHint">Type an address to search, or click "Pick on map" then click a point on the map.</div>
@@ -203,6 +222,8 @@
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- QR codes for the event pages' links -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1" crossorigin="anonymous"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>

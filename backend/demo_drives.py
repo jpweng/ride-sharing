@@ -13,7 +13,9 @@ day or night. A hand-written core of drives is filled out by generated
 ones: about 3,000 commuters, 700 shift workers, 5,600 drivers between ~700
 pairs of neighbouring places, and the corridors' drivers: about 130,000
 drives a week in all. Each trip's road route is stored once, in the
-demo_routes table, not on each of its drives.
+demo_routes table, not on each of its drives. On the days of the events in
+events.json, drivers from the nearby towns also go there and back after
+closing time (EVENT_DRIVES).
 
 Demo drives are flagged `is_demo` and are the only drives touched here:
 drives posted by visitors are never modified or deleted. refresh() is
@@ -31,6 +33,7 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import database as db
+import events
 import matching
 
 DAYS_AHEAD = 7
@@ -749,6 +752,68 @@ for _a, _b in _regional_pairs():
     DEMO_DRIVES += _generated_regional(_a, _b)
 
 
+# --- Events ------------------------------------------------------------------
+# Drives to and from the events in events.json on the days they're open, so
+# an event's page always finds rides: from the EVENT_ORIGINS nearest places
+# EVENT_MIN_KM to EVENT_MAX_KM away, a driver arrives in the afternoon or
+# evening and leaves again between closing time and 1.5 hours after it; on
+# Fridays and Saturdays, two. Unlike DEMO_DRIVES, these aren't weekly: each
+# has its own `departure` date and time.
+EVENT_ORIGINS = 8
+EVENT_MIN_KM = 10
+EVENT_MAX_KM = 70
+EVENT_BUSY_DAYS = (4, 5)  # Friday, Saturday
+
+
+def _event_origins(event):
+    lat, lon = event["place"]["lat"], event["place"]["lon"]
+    near = sorted(
+        (matching.haversine_km(lat, lon, *PLACES[name]), name)
+        for name in PLACES
+        if EVENT_MIN_KM <= matching.haversine_km(lat, lon, *PLACES[name]) <= EVENT_MAX_KM
+    )
+    return [name for _, name in near[:EVENT_ORIGINS]]
+
+
+def _dated_drive(driver, origin, destination, departure, seats):
+    return {
+        "driver_name": driver,
+        "origin": origin,
+        "destination": destination,
+        "departure": departure,
+        "seats_available": seats,
+    }
+
+
+def _generated_event_drives(event):
+    venue = {"name": event["place"]["name"], "lat": event["place"]["lat"], "lon": event["place"]["lon"]}
+    drives = []
+    for town in _event_origins(event):
+        home = {"name": town, "lat": PLACES[town][0], "lon": PLACES[town][1]}
+        km = matching.haversine_km(home["lat"], home["lon"], venue["lat"], venue["lon"])
+        # Roads are ~1.3x the straight line, at ~60 km/h on average.
+        travel = timedelta(minutes=5 * round(km * 1.3 / 5))
+        for day in events.schedule(event):
+            opens = datetime.fromisoformat(day["open"])
+            closes = datetime.fromisoformat(day["close"])
+            for n in range(2 if opens.weekday() in EVENT_BUSY_DAYS else 1):
+                rng = random.Random(f"event {event['slug']} {town} {day['date']} #{n}")
+                driver = _new_driver(rng, town)
+                # Arrive from an hour after opening to 1.5 hours before closing.
+                window = max(int((closes - opens).total_seconds() // 60) - 150, 0)
+                arrival = opens + timedelta(minutes=60 + 5 * rng.randrange(window // 5 + 1))
+                back = closes + timedelta(minutes=5 * rng.randrange(19))
+                seats = rng.choice((1, 2, 3, 3, 4))
+                drives.append(_dated_drive(driver, home, venue, arrival - travel, seats))
+                drives.append(_dated_drive(driver, venue, home, back, seats))
+    return drives
+
+
+EVENT_DRIVES = []
+for _event in events.EVENTS:
+    EVENT_DRIVES += _generated_event_drives(_event)
+
+
 def _departure_iso(dt: datetime) -> str:
     return dt.isoformat(timespec="minutes")
 
@@ -762,6 +827,10 @@ def _expected(now: datetime) -> dict:
             departure = datetime.combine(date, spec["time"])
             if date.weekday() in spec["weekdays"] and departure > now:
                 expected[(spec["driver_name"], _departure_iso(departure))] = spec
+    until = datetime.combine(now.date() + timedelta(days=DAYS_AHEAD), time())
+    for spec in EVENT_DRIVES:
+        if now < spec["departure"] < until:
+            expected[(spec["driver_name"], _departure_iso(spec["departure"]))] = spec
     return expected
 
 
