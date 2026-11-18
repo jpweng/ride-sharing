@@ -71,6 +71,10 @@ Optional repo variable: `ANDROID_CERT_SHA256`, the Android app's signing-certifi
 for `/.well-known/assetlinks.json` (see [mobile/android/README.md](../mobile/android/README.md)). Unset,
 that file is an empty list.
 
+Optional, for sign-in with Google and Apple: the repo variables `GOOGLE_CLIENT_ID`, `APPLE_CLIENT_ID`,
+`APPLE_TEAM_ID`, `APPLE_KEY_ID` and the repo secrets `GOOGLE_CLIENT_SECRET`, `APPLE_PRIVATE_KEY`; see
+[Sign-in with Google or Apple](social-login.md#setting-it-up). Without them the buttons aren't shown.
+
 **Domain + HTTPS**: the site runs at <https://rideandrail.ch>. The domain is registered at Hostpoint,
 and its DNS is a Route 53 hosted zone managed by Terraform ($0.50/month). To set up a domain:
 1. Set `domain_name` in `infra/terraform.tfvars` and run `terraform apply`. This creates the hosted

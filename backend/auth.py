@@ -147,6 +147,12 @@ def _start_session(user_id: int, is_demo: bool) -> str:
     return token
 
 
+def start_session(user_id: int) -> str:
+    """A session for a user who has just proved who they are another way
+    than by the email link (social.py): its token."""
+    return _start_session(user_id, is_demo=False)
+
+
 # ---------------------------------------------------------------------
 # Sessions
 # ---------------------------------------------------------------------

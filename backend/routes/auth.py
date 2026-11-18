@@ -21,6 +21,7 @@ import bookings
 import database as db
 import mailer
 import notify
+import social
 from api import (
     SESSION_COOKIE, _clear_session_cookie, _set_session_cookie, api_error, current_session, signed_in,
 )
@@ -80,7 +81,14 @@ def verify_sign_in_link(payload: SignInVerify, request: Request, response: Respo
 
 @router.get("/api/auth/me")
 def who_am_i(found: Annotated[dict | None, Depends(current_session)]):
-    return {"user": auth.public_user(found["user"]) if found else None}
+    if not found:
+        return {"user": None}
+    user = auth.public_user(found["user"])
+    if not user["name"]:
+        # First sign-in with Google or Apple: the name they gave, to fill in
+        # the profile page (the user can change it there).
+        user["suggested_name"] = social.suggested_name(found["user"]["id"])
+    return {"user": user}
 
 
 @router.post("/api/auth/profile")

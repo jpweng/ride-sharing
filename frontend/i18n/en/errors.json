@@ -29,10 +29,14 @@
   "errors.price_too_high": "This price is above the maximum for this drive.",
   "errors.price_too_low": "This price is below the minimum for this drive.",
   "errors.profile_incomplete": "Please finish setting up your account first.",
+  "errors.provider_not_found": "This way of signing in isn't available.",
   "errors.request_failed": "Request failed ({status}).",
   "errors.request_not_found": "This ride request no longer exists.",
   "errors.request_too_far": "A ride request can be at most 14 days ahead.",
   "errors.request_too_soon": "A ride request must be at least 1 hour ahead.",
+  "errors.social_cancelled": "You didn't finish signing in. Try again, or use the email link.",
+  "errors.social_email_unverified": "That account has no confirmed email address, so it can't be used to sign in here. Use the email link instead.",
+  "errors.social_failed": "Signing in didn't work. Please try again, or use the email link.",
   "errors.too_many_areas": "You already have the most areas you can save. Remove one first.",
   "errors.too_many_requests": "Too many requests from here. Please try again later."
 }

@@ -1,0 +1,19 @@
+/* Sign-in with Google or Apple on the sign-in page (see social.js). Linked
+   after style.css. */
+
+.social-signin[hidden], .social-btn[hidden] { display: none; }
+.social-or {
+  margin: 14px 0 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.social-btn {
+  display: block;
+  box-sizing: border-box;
+  margin-top: 8px;
+  text-align: center;
+  text-decoration: none;
+}
