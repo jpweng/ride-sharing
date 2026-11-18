@@ -3,7 +3,7 @@
   "areas.added": "Gebiet hinzugefügt: {name}, im Umkreis von {km} km.",
   "areas.empty": "Sie haben noch keine Gebiete. Fügen Sie unten eines hinzu.",
   "areas.full": "Sie haben {max} Gebiete gespeichert, mehr sind nicht möglich. Entfernen Sie eines, um ein anderes hinzuzufügen.",
-  "areas.hint": "Die Orte, von denen aus oder zu denen Sie üblicherweise fahren, zum Beispiel Ihr Zuhause oder Ihr Arbeitsort, jeweils mit einem Umkreis. Sie werden dazu dienen, Ihnen die Fahrtanfragen zu zeigen, die dort beginnen oder enden. Nur Sie sehen Ihre Gebiete.",
+  "areas.hint": "Die Orte, von denen aus oder zu denen Sie üblicherweise fahren, zum Beispiel Ihr Zuhause oder Ihr Arbeitsort, jeweils mit einem Umkreis. Wenn jemand eine Fahrt anfragt, die dort beginnt oder endet, werden Sie in Ihrem Posteingang benachrichtigt, höchstens ein paar Mal pro Woche. Nur Sie sehen Ihre Gebiete.",
   "areas.loadFailed": "Ihre Gebiete konnten nicht geladen werden: {error}",
   "areas.needPlace": "Wählen Sie zuerst einen Ort.",
   "areas.place": "Ort",

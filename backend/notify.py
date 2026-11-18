@@ -1,6 +1,7 @@
 """
 Ride requests: a passenger asks for a ride nobody has posted, and a few
-drivers who made a suitable drive in the past are told. When a drive that
+drivers are told: those who made a suitable drive in the past, and those
+with an area (areas.py) the request starts or ends in. When a drive that
 fits an open request is posted, its passenger is told. The design, and the
 reasons behind every limit below, are in docs/ride-predictions.md.
 
@@ -8,11 +9,15 @@ Who is told about a request (notify_drivers):
   - drivers with a drive in the last HISTORY_WEEKS weeks whose route passes
     within the request's pickup and drop-off radii (matching.match_drive),
     with a pickup within HISTORY_TIME_TOLERANCE_MIN of the requested time
-    of day;
+    of day, the most frequent first: up to DRIVERS_PER_REQUEST of them;
+  - then drivers who saved an area the request starts or ends in
+    (areas.drivers_near), whether or not they ever made the trip: up to
+    AREA_DRIVERS_PER_REQUEST more, those with both ends in their areas
+    first, then the nearest to their area's centre;
   - except the passenger, drivers who already posted a matching drive (the
     passenger sees it already), drivers who muted the route or turned
-    request notifications off, and drivers over their budget;
-  - the most frequent first.
+    request notifications off, and drivers over their budget. The budget
+    is one per driver, whichever way they were chosen.
 
 Real and demo never mix (is_demo_request): a real passenger's request only
 reaches drivers of real (visitors') drives, so nobody waits for a driver
@@ -21,7 +26,8 @@ request made under a demo driver's name (someone viewing the demo as, e.g.,
 Jean Dupont) is a demo request: it only reaches demo drivers, so the demo
 still shows requests arriving, and no real driver acts on a fictional need.
 With demo drives off (demo_drives.enabled), there are no demo requests and
-no demo drivers.
+no demo drivers. Demo drivers have no areas: a demo request reaches nobody
+by area.
 
 Demo drivers' history isn't stored: it follows from their templates in
 demo_drives.py (each one driven on its weekdays, minus DEMO_SKIP_RATE).
@@ -37,6 +43,7 @@ bookings.py sends its own through send(): they aren't about a ride request.
 import random
 from datetime import datetime, timedelta, timezone
 
+import areas
 import database as db
 import demo_drives
 import matching
@@ -50,8 +57,9 @@ REQUEST_MAX_AHEAD = timedelta(days=14)
 HISTORY_WEEKS = 13
 HISTORY_TIME_TOLERANCE_MIN = 60
 
-DRIVERS_PER_REQUEST = 3
-EXTRA_ROUND_DRIVERS = 2
+DRIVERS_PER_REQUEST = 3  # drivers who made the trip before
+AREA_DRIVERS_PER_REQUEST = 3  # and as many with an area the request starts or ends in
+EXTRA_ROUND_DRIVERS = 2  # of either kind
 EXTRA_ROUND_AFTER = timedelta(hours=12)  # without an offer, and the trip still this far away
 
 MAX_PER_DAY = 1
@@ -324,9 +332,59 @@ def _unread_same_trip(driver_name: str, request: dict) -> dict | None:
 # ---------------------------------------------------------------------
 # Telling drivers about a request, passengers about a drive
 # ---------------------------------------------------------------------
+def _area_candidates(request: dict) -> list[dict]:
+    """Drivers with an area the request starts or ends in, best first
+    (areas.drivers_near). Drivers who fit equally well (several who picked
+    the same town as their area, say) take turns: the one told about a
+    request longest ago comes first. None for a demo request: demo drivers
+    have no areas, and no real driver acts on a fictional need."""
+    if is_demo_request(request):
+        return []
+    with db.get_conn() as conn:
+        last_told = dict(conn.execute(
+            """
+            SELECT recipient_name, MAX(created_at) FROM notifications
+            WHERE kind = 'request_for_driver' GROUP BY recipient_name
+            """
+        ).fetchall())
+    return sorted(
+        areas.drivers_near(request),
+        key=lambda d: (-len(d["ends"]), d["distance_km"], last_told.get(d["driver_name"], ""), d["driver_name"]),
+    )
+
+
+def _trip_details(candidate: dict, request: dict) -> dict:
+    """What a driver who made the trip is shown: their usual trip, and a
+    departure that reaches the pickup at the requested time."""
+    trip, m = candidate["trip"], candidate["match"]
+    lead = datetime.fromisoformat(m["pickup"]["time"]) - datetime.fromisoformat(m["departure_time"])
+    departure = _round_to_5_min(datetime.fromisoformat(request["requested_time"]) - lead)
+    return {
+        "trip": {
+            "origin": {"name": trip["origin_name"], "lat": trip["origin_lat"], "lon": trip["origin_lon"]},
+            "destination": {"name": trip["destination_name"], "lat": trip["destination_lat"],
+                            "lon": trip["destination_lon"]},
+            "time": trip["time"].strftime("%H:%M"),
+            "times": candidate["times"],
+        },
+        "suggested_departure": _iso(departure),
+        "pickup": m["pickup"],
+        "dropoff": m["dropoff"],
+    }
+
+
+def _area_details(candidate: dict) -> dict:
+    """What a driver chosen by area is shown: which of their areas, and
+    whether the request starts or ends in it."""
+    return {"area": candidate["area"], "ends": candidate["ends"]}
+
+
 def notify_drivers(request: dict, limit: int = DRIVERS_PER_REQUEST, exclude: set[str] = frozenset(),
-                   now: datetime | None = None) -> list[str]:
-    """Tell up to `limit` suitable drivers about `request`; returns their names."""
+                   now: datetime | None = None, area_limit: int = AREA_DRIVERS_PER_REQUEST,
+                   total: int | None = None) -> list[str]:
+    """Tell suitable drivers about `request`: up to `limit` who made the trip
+    before, then up to `area_limit` with an area it starts or ends in, and
+    no more than `total` in all. Returns their names."""
     now = now or local_now()
     origin = (request["origin_lat"], request["origin_lon"])
     destination = (request["destination_lat"], request["destination_lon"])
@@ -338,10 +396,19 @@ def notify_drivers(request: dict, limit: int = DRIVERS_PER_REQUEST, exclude: set
         )
     }
 
+    # Drivers who made the trip come first; one found both ways is told as
+    # one who made the trip.
+    candidates = [("trip", c) for c in _candidates(request, now)]
+    made_the_trip = {c["driver_name"] for _, c in candidates}
+    candidates += [("area", c) for c in _area_candidates(request) if c["driver_name"] not in made_the_trip]
+    left = {"trip": limit, "area": area_limit}
+
     told = []
-    for c in _candidates(request, now):
-        if len(told) >= limit:
+    for chosen_by, c in candidates:
+        if total is not None and len(told) >= total:
             break
+        if left[chosen_by] <= 0:
+            continue
         name = c["driver_name"]
         if name == request["passenger_name"] or name in exclude or name in already_posted:
             continue
@@ -352,28 +419,13 @@ def notify_drivers(request: dict, limit: int = DRIVERS_PER_REQUEST, exclude: set
             # "2 passengers…": better news, not more noise, so not counted
             # against the budget.
             db.merge_into_notification(same_trip["id"], request["id"])
-            told.append(name)
-            continue
-        if not backoff(name)["can_notify"]:
+        elif not backoff(name)["can_notify"]:
             continue  # the next candidate is tried; nothing waits in a queue
-
-        trip, m = c["trip"], c["match"]
-        # Leave so as to reach the pickup at the requested time.
-        lead = datetime.fromisoformat(m["pickup"]["time"]) - datetime.fromisoformat(m["departure_time"])
-        departure = _round_to_5_min(datetime.fromisoformat(request["requested_time"]) - lead)
-        _send(name, "request_for_driver", request["id"], details={
-            "trip": {
-                "origin": {"name": trip["origin_name"], "lat": trip["origin_lat"], "lon": trip["origin_lon"]},
-                "destination": {"name": trip["destination_name"], "lat": trip["destination_lat"],
-                                "lon": trip["destination_lon"]},
-                "time": trip["time"].strftime("%H:%M"),
-                "times": c["times"],
-            },
-            "suggested_departure": _iso(departure),
-            "pickup": m["pickup"],
-            "dropoff": m["dropoff"],
-        })
+        else:
+            details = _trip_details(c, request) if chosen_by == "trip" else _area_details(c)
+            _send(name, "request_for_driver", request["id"], details=details)
         told.append(name)
+        left[chosen_by] -= 1
     return told
 
 
@@ -431,7 +483,8 @@ def tell_drive_cancelled(drive: dict, now: datetime | None = None, exclude: set[
 def run_extra_rounds(now: datetime | None = None) -> int:
     """Once per request: if no fitting drive was posted EXTRA_ROUND_AFTER after
     it was made and the trip is still that far away, tell up to
-    EXTRA_ROUND_DRIVERS more drivers. Returns how many drivers were told."""
+    EXTRA_ROUND_DRIVERS more drivers, of either kind. Returns how many
+    drivers were told."""
     now = now or local_now()
     now_utc = now.replace(tzinfo=LOCAL_TZ).astimezone(timezone.utc)
     told = 0
@@ -440,7 +493,10 @@ def run_extra_rounds(now: datetime | None = None) -> int:
             continue
         if not db.notified_for_request(r["id"], "drive_for_passenger"):
             already = {n["recipient_name"] for n in db.notified_for_request(r["id"], "request_for_driver")}
-            told += len(notify_drivers(r, EXTRA_ROUND_DRIVERS, exclude=already, now=now))
+            told += len(notify_drivers(
+                r, EXTRA_ROUND_DRIVERS, exclude=already, now=now,
+                area_limit=EXTRA_ROUND_DRIVERS, total=EXTRA_ROUND_DRIVERS,
+            ))
         db.mark_extra_round_done(r["id"])
     return told
 
