@@ -16,7 +16,9 @@ FRONTEND = ROOT / "frontend"
 LANGS = ["en", "de", "fr", "it"]
 DICTS = {lang: json.loads((FRONTEND / "i18n" / f"{lang}.json").read_text()) for lang in LANGS}
 EN = DICTS["en"]
-PAGES = ["index.html", "privacy.html"]
+PAGES = ["index.html", "privacy.html", "conduct.html"]
+# Pages translated as whole texts, one <article lang="xx"> per language.
+DOC_PAGES = ["privacy.html", "conduct.html"]
 
 
 def _placeholders(text):
@@ -49,10 +51,18 @@ INFORMAL = {
 
 @pytest.mark.parametrize("lang", INFORMAL)
 def test_formal_tone(lang):
-    privacy = (FRONTEND / "privacy.html").read_text()
-    notice = re.search(rf'<article[^>]*lang="{lang}".*?</article>', privacy, re.S).group(0)
-    for key, text in [*DICTS[lang].items(), ("privacy.html", notice)]:
+    articles = [
+        (page, re.search(rf'<article[^>]*lang="{lang}".*?</article>', (FRONTEND / page).read_text(), re.S).group(0))
+        for page in DOC_PAGES
+    ]
+    for key, text in [*DICTS[lang].items(), *articles]:
         assert not re.findall(INFORMAL[lang], text, re.I), key
+
+
+@pytest.mark.parametrize("page", DOC_PAGES)
+def test_documents_in_every_language(page):
+    source = (FRONTEND / page).read_text()
+    assert set(re.findall(r'<article[^>]*lang="(\w+)"[^>]*data-i18n-block', source)) == set(LANGS)
 
 
 class _KeyedElements(HTMLParser):
@@ -113,7 +123,15 @@ def test_app_js_keys_exist():
 
 
 def test_api_error_codes_translated():
-    source = (ROOT / "backend" / "main.py").read_text()
-    codes = set(re.findall(r'api_error\(\d+, "(\w+)"', source))
-    assert codes
+    source = "".join(path.read_text() for path in (ROOT / "backend").glob("*.py"))
+    codes = set(re.findall(r'(?:api_error|AuthError)\(\d+, "(\w+)"', source))
+    assert {"not_signed_in", "invalid_link"} <= codes
     assert {f"errors.{code}" for code in codes} - set(EN) == set()
+
+
+def test_email_keys_exist():
+    # mailer.py's texts: t("<key>") is email.signIn.<key>.
+    source = (ROOT / "backend" / "mailer.py").read_text()
+    keys = set(re.findall(r'\bt\("(\w+)"', source))
+    assert keys
+    assert {f"email.signIn.{key}" for key in keys} - set(EN) == set()
