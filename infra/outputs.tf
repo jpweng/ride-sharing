@@ -25,6 +25,10 @@ output "ecr_proxy_repository_url" {
   value = aws_ecr_repository.proxy.repository_url
 }
 
+output "ecr_routing_repository_url" {
+  value = aws_ecr_repository.routing.repository_url
+}
+
 output "github_deploy_user" {
   description = "IAM user whose access key goes into the GitHub secrets AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY."
   value       = aws_iam_user.github_deploy.name
@@ -33,11 +37,12 @@ output "github_deploy_user" {
 output "github_actions_variables" {
   description = "Set these as repository variables (Settings > Secrets and variables > Actions > Variables)."
   value = {
-    AWS_REGION               = var.aws_region
-    ECR_REPOSITORY_URL       = aws_ecr_repository.app.repository_url
-    ECR_PROXY_REPOSITORY_URL = aws_ecr_repository.proxy.repository_url
-    SERVER_NAME              = var.project
-    LOG_GROUP                = aws_cloudwatch_log_group.app.name
+    AWS_REGION                 = var.aws_region
+    ECR_REPOSITORY_URL         = aws_ecr_repository.app.repository_url
+    ECR_PROXY_REPOSITORY_URL   = aws_ecr_repository.proxy.repository_url
+    ECR_ROUTING_REPOSITORY_URL = aws_ecr_repository.routing.repository_url # routing/, monthly
+    SERVER_NAME                = var.project
+    LOG_GROUP                  = aws_cloudwatch_log_group.app.name
     # Caddy site addresses: ":80" serves plain HTTP on any hostname/IP; domain
     # names make Caddy obtain certificates and redirect HTTP to HTTPS.
     SITE_ADDRESS = local.https_enabled ? "${var.domain_name}, www.${var.domain_name}" : ":80"

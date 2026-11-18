@@ -14,3 +14,4 @@ infra/.build/
 
 # Routing data build (routing/build.sh)
 routing/.work/
+loadtest/.work/
