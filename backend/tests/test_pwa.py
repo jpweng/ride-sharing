@@ -77,7 +77,7 @@ def test_apple_touch_icon():
     assert (width, height) == (180, 180)
 
 
-@pytest.mark.parametrize("page", ["index.html", "privacy.html"])
+@pytest.mark.parametrize("page", ["index.html", "privacy.html", "conduct.html"])
 def test_pages_are_installable(page):
     html = (FRONTEND / page).read_text()
     for tag in [

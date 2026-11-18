@@ -2,7 +2,9 @@
 # every deploy and writes the variables below into .env next to it.
 #   APP_IMAGE, PROXY_IMAGE  ECR images to run
 #   SITE_ADDRESS            Caddy site address (":80" or domain names)
-#   AWS_REGION, LOG_GROUP   CloudWatch Logs destination
+#   AWS_REGION, LOG_GROUP   CloudWatch Logs destination (and the SES Region)
+#   EMAIL_FROM              sender of sign-in emails, e.g. no-reply@rideandrail.ch
+#   PUBLIC_BASE_URL         the site's address, for links in emails
 #   ANDROID_CERT_SHA256     signing-certificate fingerprint(s) of the Android
 #                           app, comma-separated, for /.well-known/assetlinks.json
 #                           (optional; see mobile/android/README.md)
@@ -14,6 +16,14 @@ services:
     environment:
       DB_PATH: /data/rideshare.db
       ANDROID_CERT_SHA256: ${ANDROID_CERT_SHA256:-}
+      # Sign-in emails (backend/mailer.py): Amazon SES, with the instance
+      # role's credentials (infra/email.tf). Without EMAIL_FROM, sign-in
+      # links can't be sent (the API answers 503) rather than being logged.
+      EMAIL_BACKEND: ses
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SES_REGION: ${AWS_REGION}
+      # For the links in emails, e.g. https://rideandrail.ch.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
     volumes:
       - type: bind
         source: /data/app

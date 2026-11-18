@@ -16,9 +16,9 @@ FRONTEND = ROOT / "frontend"
 LANGS = ["en", "de", "fr", "it"]
 DICTS = {lang: json.loads((FRONTEND / "i18n" / f"{lang}.json").read_text()) for lang in LANGS}
 EN = DICTS["en"]
-PAGES = ["index.html", "privacy.html", "offline.html"]
-# Pages translated as whole texts, one <article lang="xx" data-i18n-block> each.
-BLOCK_PAGES = ["privacy.html", "offline.html"]
+PAGES = ["index.html", "privacy.html", "conduct.html", "offline.html"]
+# Pages translated as whole texts, one <article lang="xx" data-i18n-block> per language.
+DOC_PAGES = ["privacy.html", "conduct.html", "offline.html"]
 SCRIPTS = ["app.js", "pwa.js"]
 
 
@@ -52,12 +52,18 @@ INFORMAL = {
 
 @pytest.mark.parametrize("lang", INFORMAL)
 def test_formal_tone(lang):
-    blocks = [
+    articles = [
         (page, re.search(rf'<article[^>]*lang="{lang}".*?</article>', (FRONTEND / page).read_text(), re.S).group(0))
-        for page in BLOCK_PAGES
+        for page in DOC_PAGES
     ]
-    for key, text in [*DICTS[lang].items(), *blocks]:
+    for key, text in [*DICTS[lang].items(), *articles]:
         assert not re.findall(INFORMAL[lang], text, re.I), key
+
+
+@pytest.mark.parametrize("page", DOC_PAGES)
+def test_documents_in_every_language(page):
+    source = (FRONTEND / page).read_text()
+    assert set(re.findall(r'<article[^>]*lang="(\w+)"[^>]*data-i18n-block', source)) == set(LANGS)
 
 
 class _KeyedElements(HTMLParser):
@@ -121,9 +127,17 @@ def test_script_keys_exist(script):
 
 
 def test_api_error_codes_translated():
-    source = (ROOT / "backend" / "main.py").read_text()
-    codes = set(re.findall(r'api_error\(\d+, "(\w+)"', source))
+    source = "".join(path.read_text() for path in (ROOT / "backend").glob("*.py"))
+    codes = set(re.findall(r'(?:api_error|AuthError)\(\d+, "(\w+)"', source))
     # The service worker answers API calls with "offline" when there's no network.
     codes |= set(re.findall(r'code: "(\w+)"', (FRONTEND / "sw.js").read_text()))
-    assert "offline" in codes
+    assert {"not_signed_in", "invalid_link", "offline"} <= codes
     assert {f"errors.{code}" for code in codes} - set(EN) == set()
+
+
+def test_email_keys_exist():
+    # mailer.py's texts: t("<key>") is email.signIn.<key>.
+    source = (ROOT / "backend" / "mailer.py").read_text()
+    keys = set(re.findall(r'\bt\("(\w+)"', source))
+    assert keys
+    assert {f"email.signIn.{key}" for key in keys} - set(EN) == set()

@@ -46,6 +46,7 @@ const CACHE = CACHE_PREFIX + VERSION;
 const SHELL = [
   "index.html",
   "privacy.html",
+  "conduct.html",
   "offline.html",
   "style.css",
   "app.js",

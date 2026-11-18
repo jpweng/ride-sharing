@@ -41,5 +41,10 @@ output "github_actions_variables" {
     # Caddy site addresses: ":80" serves plain HTTP on any hostname/IP; domain
     # names make Caddy obtain certificates and redirect HTTP to HTTPS.
     SITE_ADDRESS = local.https_enabled ? "${var.domain_name}, www.${var.domain_name}" : ":80"
+    # Sign-in emails (backend/mailer.py): the sender, and the site's address
+    # for the links in them. Without a domain there is no SES identity, so
+    # nobody can sign in by email (the demo-driver view still works).
+    EMAIL_FROM      = local.email_enabled ? local.email_from : ""
+    PUBLIC_BASE_URL = local.https_enabled ? "https://${var.domain_name}" : "http://${aws_eip.app.public_ip}"
   }
 }
