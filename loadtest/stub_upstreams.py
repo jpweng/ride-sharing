@@ -7,7 +7,7 @@ transport.opendata.ch (/v1/locations, /v1/connections).
         [--locations-delay 0.15] [--connections-delay 0.5]
 
 then start the app with OSRM_URL=http://127.0.0.1:8081 and
-TRANSPORT_API_URL=http://127.0.0.1:8081/v1 (see README, "Load test").
+TRANSPORT_API_URL=http://127.0.0.1:8081/v1 (see docs/load-test.md).
 
 Routes look like real OSRM ones to the app: a gently winding line about 1.3
 times the straight-line distance, a point every ~25 m (the size of the
