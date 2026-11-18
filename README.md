@@ -12,6 +12,11 @@ See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for t
 trip before are told in their inbox, with strict limits so drivers don't get too many
 notifications, and the passenger is told when a drive that fits is posted.
 
+**Events:** Christmas markets and other events are ride destinations with a page of their own and
+a short link to share (`https://rideandrail.ch/e/<slug>`, also as a QR code): rides there, rides
+back from closing time until late, and drivers going there are offered to post their drive back at
+once. See [Events](docs/events.md).
+
 **Prices:** drivers only share their costs, as Swiss law requires of carpooling. The driver sets a
 price per passenger inside a band: at least about the fuel, at most the car's real cost
 (CHF 0.75/km) shared with one passenger, and never more than the train's 2nd class full fare. Each
@@ -71,6 +76,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 
 - [Demo drives and data retention](docs/demo-drives-and-data-retention.md): the rolling week of
   fictional drives, switching them off, how long users' data is kept
+- [Events](docs/events.md): events as destinations, their pages and shareable links, the drive
+  back, how to add an event
 - [Sign-in and accounts](docs/sign-in.md): email links, sessions, who may do what, limits, bans,
   account deletion, email sending
 - [Train fares](docs/train-fares.md): the T601 distance tariff and the optional OJP fare lookup
@@ -105,6 +112,8 @@ backend/
   fares.py        train fares: T601 distance tariff, optional OJP fare lookup
   transit.py      transport.opendata.ch integration
   operators.py    Swiss public transport operators and their logos, for each transit leg
+  events.py       events as destinations: loads and validates events.json, hours, return times, /e/ page
+  events.json     the events (Christmas markets...): adding one is a pull request, see docs/events.md
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
 frontend/
@@ -116,6 +125,8 @@ frontend/
   app.js          Leaflet map, point picking, address autocomplete, API calls
   i18n.js         language choice and translation of the page (see docs/translations.md)
   i18n/           en/de/fr/it dictionaries, one file per key prefix
+  events.js       events: the event page #/event/<slug>, the list of events, the drive back
+  vendor/         third-party scripts served from this site (the QR code library)
   style.css       teal/white theme, logo and text wordmark: base, layout, shared components
   styles/         one stylesheet per feature, linked right after style.css by the pages using it
   manifest.webmanifest, sw.js, pwa.js   installable app (see docs/pwa.md)
