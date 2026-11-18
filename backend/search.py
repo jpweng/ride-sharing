@@ -12,17 +12,29 @@ Every drive returned says whether it can be booked ("bookable"): demo
 drives can't, they're fictional. With demo drives off (demo_drives.enabled),
 they're left out altogether.
 """
+import os
+import threading
 from datetime import datetime, timedelta
 
 import database as db
 import demo_drives
 import matching
 
+# Searches running at once. A search is Python work (one CPU at a time, the
+# GIL) and holds ~30-50 MB of parsed routes while it runs. In the load test
+# (loadtest/), 40 at once took the app to 1.6 GB, and even two at once cost
+# twice the CPU each (their threads keep taking the GIL from each other
+# around SQLite calls). One at a time, the others wait their turn, ~0.2 s
+# each, and the server does the most searches per second.
+SEARCH_CONCURRENCY = int(os.environ.get("SEARCH_CONCURRENCY", "1"))
+_search_slots = threading.BoundedSemaphore(SEARCH_CONCURRENCY)
+
 
 def with_bookable(drive: dict) -> dict:
     """The drive, marked as bookable unless it's a fictional demo drive."""
     drive["bookable"] = not drive.get("is_demo")
     return drive
+
 
 # The wider limits for rides outside the passenger's selection: twice their
 # circles and time flexibility, and at least 5 km / 1 h more.
@@ -40,6 +52,17 @@ def upcoming_matches(
     dropoff_radius_km: float = matching.DEFAULT_DROPOFF_RADIUS_KM,
     time_tolerance_min: float = matching.DEFAULT_TIME_TOLERANCE_MIN,
     max_results: int = matching.MAX_RESULTS,
+) -> list[dict]:
+    with _search_slots:
+        return _upcoming_matches(
+            origin, destination, requested_time,
+            pickup_radius_km, dropoff_radius_km, time_tolerance_min, max_results,
+        )
+
+
+def _upcoming_matches(
+    origin, destination, requested_time,
+    pickup_radius_km, dropoff_radius_km, time_tolerance_min, max_results,
 ) -> list[dict]:
     # Only drives that can reach the pickup near the requested time
     # (matching filters on the pickup time exactly): there are tens of

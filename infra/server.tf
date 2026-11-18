@@ -142,7 +142,7 @@ data "aws_iam_policy_document" "app" {
       "ecr:BatchGetImage",
       "ecr:GetDownloadUrlForLayer",
     ]
-    resources = [aws_ecr_repository.app.arn, aws_ecr_repository.proxy.arn]
+    resources = [aws_ecr_repository.app.arn, aws_ecr_repository.proxy.arn, aws_ecr_repository.routing.arn]
   }
 
   statement {

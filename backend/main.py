@@ -50,6 +50,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
+import anyio.to_thread
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -69,6 +70,8 @@ import transit
 logger = logging.getLogger("uvicorn.error")
 
 MAINTENANCE_INTERVAL_S = 3600
+
+APP_THREADS = int(os.environ.get("APP_THREADS", "16"))
 
 # Where the site is, for the links in emails. Never taken from the request's
 # Host header: a forged one would send people links to another site.
@@ -97,6 +100,11 @@ async def _maintenance_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Requests are handled in a thread pool (the endpoints are synchronous):
+    # fewer threads than the default 40, which in the load test only added
+    # memory, each holding a request's data. Enough to wait on
+    # transport.opendata.ch for several requests at once.
+    anyio.to_thread.current_default_thread_limiter().total_tokens = APP_THREADS
     if os.environ.get("EMAIL_BACKEND") == "ses" and not os.environ.get("PUBLIC_BASE_URL"):
         logger.warning("PUBLIC_BASE_URL is not set: no sign-in links can be sent")
     task = asyncio.create_task(_maintenance_loop())

@@ -21,7 +21,10 @@ rest of the app can treat "no transit data available" as a normal case --
 useful both for genuine outages and for this build sandbox, which does not
 have outbound access to this host.
 """
+import os
 import re
+import threading
+import time
 
 import requests
 from datetime import datetime
@@ -30,8 +33,48 @@ from urllib.parse import urlencode
 import matching
 import operators
 
-TRANSPORT_API_BASE = "https://transport.opendata.ch/v1"
+# TRANSPORT_API_URL points it elsewhere, e.g. at the load test's stand-in
+# (loadtest/stub_upstreams.py), which must never load the real API.
+TRANSPORT_API_BASE = os.environ.get("TRANSPORT_API_URL", "https://transport.opendata.ch/v1").rstrip("/")
 REQUEST_TIMEOUT_S = 6
+
+# Answers are kept for a while: at an event, many people ask the same
+# questions (the venue's stop, the connections from the same drop-offs) at
+# once, and the API throttles a client asking the same question every few
+# seconds. Stops barely change; connections carry live delays.
+STOPS_TTL_S = 6 * 3600
+CONNECTIONS_TTL_S = 5 * 60
+CACHE_MAX_ENTRIES = 4000
+
+
+class _TtlCache:
+    """A small thread-safe cache of successful answers, oldest dropped first."""
+
+    def __init__(self, max_entries: int):
+        self.max_entries = max_entries
+        self.entries = {}
+        self.lock = threading.Lock()
+
+    def get(self, key):
+        with self.lock:
+            hit = self.entries.get(key)
+            if hit is None or hit[0] < time.monotonic():
+                return None
+            return hit[1]
+
+    def put(self, key, value, ttl_s: float):
+        with self.lock:
+            self.entries.pop(key, None)
+            self.entries[key] = (time.monotonic() + ttl_s, value)
+            while len(self.entries) > self.max_entries:
+                del self.entries[next(iter(self.entries))]
+
+    def clear(self):
+        with self.lock:
+            self.entries.clear()
+
+
+_cache = _TtlCache(CACHE_MAX_ENTRIES)
 
 # How far a town's train station may be from the point geo.admin gives for
 # that town (the municipality's centroid) and still count as "its" station.
@@ -57,8 +100,13 @@ def _nearby_stops(lat: float, lon: float) -> list[dict]:
     route from it (it just returns no connections). Only entries with an id
     are actual stops, so everything else is dropped here.
     Note: this API's `x`/`y` query params are (lat, lon), not (lon, lat).
-    Raises on network/parse errors; callers fail soft.
+    Raises on network/parse errors; callers fail soft. Cached by the
+    coordinate rounded to ~10 m.
     """
+    key = ("stops", round(lat, 4), round(lon, 4))
+    stops = _cache.get(key)
+    if stops is not None:
+        return stops
     resp = requests.get(
         f"{TRANSPORT_API_BASE}/locations",
         params={"x": lat, "y": lon, "type": "coordinate"},
@@ -71,6 +119,7 @@ def _nearby_stops(lat: float, lon: float) -> list[dict]:
         if not station.get("id") or coordinate.get("x") is None or coordinate.get("y") is None:
             continue
         stops.append(station)
+    _cache.put(key, stops, STOPS_TTL_S)
     return stops
 
 
@@ -99,13 +148,19 @@ def nearest_named_station(lat: float, lon: float) -> dict | None:
 
 
 def _search_stations(query: str) -> list[dict]:
+    key = ("search", query)
+    stations = _cache.get(key)
+    if stations is not None:
+        return stations
     resp = requests.get(
         f"{TRANSPORT_API_BASE}/locations",
         params={"query": query, "type": "station"},
         timeout=REQUEST_TIMEOUT_S,
     )
     resp.raise_for_status()
-    return resp.json().get("stations", [])
+    stations = resp.json().get("stations", [])
+    _cache.put(key, stations, STOPS_TTL_S)
+    return stations
 
 
 def station_for_place(place_name: str, lat: float, lon: float) -> dict | None:
@@ -181,7 +236,8 @@ def get_connections(from_station: str, to_station: str, when_iso: str | None = N
     Fetch up to `limit` journey options between two named stations.
     when_iso: ISO 8601 datetime string for the desired departure time;
     defaults to "now" (the API's own default) if omitted/unparseable.
-    Returns [] if the API is unreachable or returns no connections.
+    Returns [] if the API is unreachable or returns no connections. Answers
+    are cached for CONNECTIONS_TTL_S.
     """
     params = {"from": from_station, "to": to_station, "limit": limit}
     if when_iso:
@@ -192,6 +248,10 @@ def get_connections(from_station: str, to_station: str, when_iso: str | None = N
         except ValueError:
             pass
 
+    key = ("connections", tuple(sorted(params.items())))
+    cached = _cache.get(key)
+    if cached is not None:
+        return cached
     try:
         resp = requests.get(f"{TRANSPORT_API_BASE}/connections", params=params, timeout=REQUEST_TIMEOUT_S)
         resp.raise_for_status()
@@ -239,6 +299,7 @@ def get_connections(from_station: str, to_station: str, when_iso: str | None = N
             })
         except (KeyError, TypeError):
             continue
+    _cache.put(key, simplified, CONNECTIONS_TTL_S)
     return simplified
 
 

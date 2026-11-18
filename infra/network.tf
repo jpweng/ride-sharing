@@ -93,8 +93,8 @@ resource "aws_vpc_security_group_ingress_rule" "web_http3" {
   to_port           = 443
 }
 
-# Outbound: apt, ECR, SSM, CloudWatch Logs, Let's Encrypt, OSRM,
-# transport.opendata.ch.
+# Outbound: apt, ECR, SSM, CloudWatch Logs, Let's Encrypt,
+# transport.opendata.ch. (Routing is served on the server itself.)
 resource "aws_vpc_security_group_egress_rule" "web_all" {
   security_group_id = aws_security_group.web.id
   cidr_ipv4         = "0.0.0.0/0"

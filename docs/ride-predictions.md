@@ -176,8 +176,8 @@ maintenance run (at startup, then hourly) deletes every demo drive and the trips
 /api/drives/{id}` and the inbox right away, demo drivers' history is no longer used, and requests
 under demo drivers' names are ordinary real requests. Notifications already sent to demo drivers
 are left to the 30-day retention. Switching back on recreates the drives at the next run, but
-fetches every trip's route from OSRM again, one a second: with ~1,500 trips, the network comes back
-over about half an hour.
+fetches every trip's route from OSRM again: ~1,500 trips, a minute or so from our own OSRM server
+(against the public one, one a second, the network comes back over about half an hour).
 
 ## Privacy
 

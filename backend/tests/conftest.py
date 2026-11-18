@@ -29,6 +29,14 @@ import pytest  # noqa: E402
 import transit  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def empty_transit_cache():
+    """Each test starts without transit answers cached by an earlier one."""
+    transit._cache.clear()
+    yield
+    transit._cache.clear()
+
+
 @pytest.fixture
 def force_haversine(monkeypatch):
     """
