@@ -3,7 +3,18 @@ SQLite data access layer for the ride-sharing prototype.
 
 Kept deliberately simple: plain `sqlite3` (no ORM), one module-level
 connection helper, and a handful of small functions used by the API layer.
-This is a prototype/demo database, not a production schema.
+The schema is created and migrated at startup (init_db), so it works on an
+existing database.
+
+Users: `users.name` is unique and is what other users see (drives,
+requests and notifications store it as driver_name, passenger_name,
+recipient_name). Three kinds of user rows exist:
+  - accounts: signed in by email (see auth.py); their name is their first
+    name and last initial ("Marie M.", "Marie M. 2" if taken), fixed once
+    chosen;
+  - demo drivers (is_demo = 1): fictional, from demo_drives.py, no email;
+  - legacy names: typed by visitors before sign-in existed, no email. Their
+    data expires under the 30-day retention (maintenance.py).
 """
 import sqlite3
 import json
@@ -124,7 +135,51 @@ CREATE TABLE IF NOT EXISTS route_mutes (
     created_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+-- Sign-in links asked for (see auth.py), also the log the per-email and
+-- per-IP limits count. token_hash is NULL when no email was sent (over the
+-- per-email limit, or a banned account). Deleted after a day.
+CREATE TABLE IF NOT EXISTS sign_in_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash TEXT UNIQUE,             -- SHA-256 of the token in the link
+    email TEXT NOT NULL,
+    ip TEXT,
+    language TEXT NOT NULL,
+    created_at TEXT NOT NULL,           -- UTC
+    expires_at TEXT NOT NULL,           -- UTC
+    used_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash TEXT NOT NULL UNIQUE,    -- SHA-256 of the cookie's value
+    user_id INTEGER NOT NULL,
+    is_demo INTEGER NOT NULL DEFAULT 0, -- "view as a demo driver": read-only
+    created_at TEXT NOT NULL,           -- UTC
+    last_seen_at TEXT NOT NULL,         -- UTC, updated at most once a day
+    expires_at TEXT NOT NULL,           -- UTC; sliding, see auth.py
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 """
+
+# Columns added to users after it was first created, for existing databases.
+_USER_COLUMNS = {
+    # Ride requests (notify.py).
+    "notify_requests": "INTEGER NOT NULL DEFAULT 1",
+    # Unanswered notifications before this don't count (see notify.py).
+    "backoff_reset_at": "TEXT",
+    # Sign-in (auth.py).
+    "email": "TEXT",                    # lower-case; NULL for demo and legacy users
+    "first_name": "TEXT",
+    "last_name": "TEXT",
+    "language": "TEXT",                 # de/fr/it/en, for emails
+    "is_demo": "INTEGER NOT NULL DEFAULT 0",
+    "created_at": "TEXT",
+    "adult_confirmed_at": "TEXT",       # "I am 18 or older", UTC
+    "conduct_version": "TEXT",          # code of conduct accepted (conduct.html)
+    "conduct_accepted_at": "TEXT",
+    "banned_at": "TEXT",                # set by an admin (admin.py): no sign-in
+}
 
 
 @contextmanager
@@ -146,18 +201,25 @@ def init_db():
         columns = {r["name"] for r in conn.execute("PRAGMA table_info(drives)")}
         if "is_demo" not in columns:
             conn.execute("ALTER TABLE drives ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0")
-        # Databases created before ride requests.
+        # Databases created before ride requests and sign-in.
         user_columns = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
-        if "notify_requests" not in user_columns:
-            conn.execute("ALTER TABLE users ADD COLUMN notify_requests INTEGER NOT NULL DEFAULT 1")
-        if "backoff_reset_at" not in user_columns:
-            # Unanswered notifications before this don't count (see notify.py).
-            conn.execute("ALTER TABLE users ADD COLUMN backoff_reset_at TEXT")
+        for column, ddl in _USER_COLUMNS.items():
+            if column not in user_columns:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {column} {ddl}")
+        if "is_demo" not in user_columns:
+            # Demo drivers from before users.is_demo: those with demo drives.
+            conn.execute(
+                "UPDATE users SET is_demo = 1 WHERE id IN (SELECT driver_id FROM drives WHERE is_demo = 1)"
+            )
         conn.executescript("""
             CREATE INDEX IF NOT EXISTS drives_departure_time ON drives (departure_time);
             CREATE INDEX IF NOT EXISTS drives_driver_name ON drives (driver_name);
             CREATE INDEX IF NOT EXISTS notifications_recipient ON notifications (recipient_name, created_at);
             CREATE INDEX IF NOT EXISTS open_requests_time ON open_requests (requested_time);
+            CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email IS NOT NULL;
+            CREATE INDEX IF NOT EXISTS sign_in_links_email ON sign_in_links (email, created_at);
+            CREATE INDEX IF NOT EXISTS sign_in_links_ip ON sign_in_links (ip, created_at);
+            CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
         """)
         moved = _move_demo_geometry_to_demo_routes(conn)
     if moved:
@@ -186,19 +248,26 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
-def get_or_create_user(name: str) -> int:
+def get_or_create_user(name: str, is_demo: bool = False) -> int:
     with get_conn() as conn:
-        return _get_or_create_user(conn, name)
+        return _get_or_create_user(conn, name, is_demo)
 
 
-def _get_or_create_user(conn: sqlite3.Connection, name: str) -> int:
+def _get_or_create_user(conn: sqlite3.Connection, name: str, is_demo: bool = False) -> int:
     # Writing first opens the write transaction, so delete_inactive_users()
     # can't remove the user before the caller's insert in the same
     # transaction references it.
     name = name.strip()
     if not name:
         raise ValueError("Name must not be empty")
-    conn.execute("INSERT INTO users (name) VALUES (?) ON CONFLICT (name) DO NOTHING", (name,))
+    conn.execute(
+        """
+        INSERT INTO users (name, is_demo, created_at) VALUES (?, ?, ?)
+        ON CONFLICT (name) DO UPDATE SET is_demo = 1
+        WHERE excluded.is_demo = 1 AND users.is_demo = 0 AND users.email IS NULL
+        """,
+        (name, int(is_demo), now_iso()),
+    )
     return conn.execute("SELECT id FROM users WHERE name = ?", (name,)).fetchone()["id"]
 
 
@@ -233,7 +302,7 @@ def create_drives(drives: list[dict]) -> int:
 
 
 def _insert_drive(conn: sqlite3.Connection, *, driver_name, route_geometry, is_demo=False, **fields) -> int:
-    driver_id = _get_or_create_user(conn, driver_name)
+    driver_id = _get_or_create_user(conn, driver_name, is_demo)
     cur = conn.execute(
         """
         INSERT INTO drives (
@@ -480,14 +549,18 @@ def delete_ride_requests_before(created_at: str) -> int:
 
 
 def delete_inactive_users() -> int:
-    """Delete users with no drives, searches, ride requests or notifications
-    left, with their route mutes; returns how many."""
+    """Delete names (legacy and demo users) with no drives, searches, ride
+    requests, notifications or sessions left, with their route mutes;
+    returns how many. Accounts (with an email) stay until their owner
+    deletes them."""
     inactive = """
         SELECT id FROM users
-        WHERE id NOT IN (SELECT driver_id FROM drives)
+        WHERE email IS NULL
+          AND id NOT IN (SELECT driver_id FROM drives)
           AND id NOT IN (SELECT passenger_id FROM ride_requests)
           AND id NOT IN (SELECT passenger_id FROM open_requests)
           AND id NOT IN (SELECT recipient_id FROM notifications)
+          AND id NOT IN (SELECT user_id FROM sessions)
     """
     with get_conn() as conn:
         conn.execute(f"DELETE FROM route_mutes WHERE user_id IN ({inactive})")
@@ -706,3 +779,240 @@ def all_demo_routes() -> dict[tuple[str, str], dict]:
     with get_conn() as conn:
         rows = conn.execute("SELECT origin_name, destination_name, distance_m, duration_s FROM demo_routes")
         return {(r["origin_name"], r["destination_name"]): dict(r) for r in rows}
+
+
+def is_demo_user(user_id: int) -> bool:
+    with get_conn() as conn:
+        row = conn.execute("SELECT is_demo FROM users WHERE id = ?", (user_id,)).fetchone()
+    return bool(row and row["is_demo"])
+
+
+def notified_about_drive(drive_id: int) -> list[dict]:
+    """drive_for_passenger notifications that include `drive_id`: the
+    passengers who were told about this drive."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT n.* FROM notifications n, json_each(n.drive_ids) d
+            WHERE n.kind = 'drive_for_passenger' AND d.value = ?
+            """,
+            (drive_id,),
+        ).fetchall()
+        return [_notification_row_to_dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------
+# Accounts, sign-in links and sessions (see auth.py)
+# ---------------------------------------------------------------------
+def get_user(user_id: int) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_email(email: str) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        return dict(row) if row else None
+
+
+def create_account(email: str, placeholder_name: str, language: str) -> dict:
+    """A new account for a verified email, with a placeholder name until its
+    owner chooses theirs (set_profile). Returns the user."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO users (name, email, language, created_at) VALUES (?, ?, ?, ?)",
+            (placeholder_name, email, language, now_iso()),
+        )
+        user_id = cur.lastrowid
+    return get_user(user_id)
+
+
+def set_user_language(user_id: int, language: str) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET language = ? WHERE id = ?", (language, user_id))
+
+
+def name_taken(name: str) -> bool:
+    with get_conn() as conn:
+        return conn.execute("SELECT 1 FROM users WHERE name = ?", (name,)).fetchone() is not None
+
+
+def set_profile(user_id: int, conduct_version: str, name: str | None = None,
+                first_name: str | None = None, last_name: str | None = None) -> dict:
+    """Record the 18+ confirmation and the code of conduct's acceptance, and
+    the name if given (only the first time: drives and requests store it).
+    Raises sqlite3.IntegrityError if the name was taken meanwhile."""
+    now = now_iso()
+    with get_conn() as conn:
+        if name is not None:
+            conn.execute(
+                "UPDATE users SET name = ?, first_name = ?, last_name = ? WHERE id = ?",
+                (name, first_name, last_name, user_id),
+            )
+        conn.execute(
+            """
+            UPDATE users SET adult_confirmed_at = ?, conduct_version = ?, conduct_accepted_at = ?
+            WHERE id = ?
+            """,
+            (now, conduct_version, now, user_id),
+        )
+    return get_user(user_id)
+
+
+def set_banned(email: str, banned: bool) -> bool:
+    """Ban or unban the account with this email, ending its sessions;
+    returns whether there is one."""
+    user = get_user_by_email(email)
+    if user is None:
+        return False
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET banned_at = ? WHERE id = ?", (now_iso() if banned else None, user["id"]))
+        if banned:
+            conn.execute("DELETE FROM sessions WHERE user_id = ?", (user["id"],))
+    return True
+
+
+def add_sign_in_link(token_hash: str | None, email: str, ip: str | None, language: str, expires_at: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO sign_in_links (token_hash, email, ip, language, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (token_hash, email, ip, language, now_iso(), expires_at),
+        )
+
+
+def delete_sign_in_link(token_hash: str) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM sign_in_links WHERE token_hash = ?", (token_hash,))
+
+
+def count_sign_in_links(since: str, email: str | None = None, ip: str | None = None,
+                        sent_only: bool = False) -> int:
+    """Sign-in links asked for since `since` (UTC) for an email or from an IP."""
+    sql, params = "SELECT COUNT(*) FROM sign_in_links WHERE created_at >= ?", [since]
+    if email is not None:
+        sql += " AND email = ?"
+        params.append(email)
+    if ip is not None:
+        sql += " AND ip = ?"
+        params.append(ip)
+    if sent_only:
+        sql += " AND token_hash IS NOT NULL"
+    with get_conn() as conn:
+        return conn.execute(sql, params).fetchone()[0]
+
+
+def use_sign_in_link(token_hash: str, now: str) -> dict | None:
+    """Mark the link used and return it ({email, language}) if it exists, is
+    unused and hasn't expired; None otherwise. Single use even if two
+    requests race: only one UPDATE can match."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "UPDATE sign_in_links SET used_at = ? WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?",
+            (now, token_hash, now),
+        )
+        if cur.rowcount != 1:
+            return None
+        row = conn.execute("SELECT email, language FROM sign_in_links WHERE token_hash = ?", (token_hash,)).fetchone()
+        return dict(row)
+
+
+def delete_sign_in_links_before(created_at: str) -> int:
+    with get_conn() as conn:
+        return conn.execute("DELETE FROM sign_in_links WHERE created_at < ?", (created_at,)).rowcount
+
+
+def create_session(token_hash: str, user_id: int, is_demo: bool, expires_at: str) -> None:
+    now = now_iso()
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO sessions (token_hash, user_id, is_demo, created_at, last_seen_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (token_hash, user_id, int(is_demo), now, now, expires_at),
+        )
+
+
+def get_session(token_hash: str) -> dict | None:
+    """The session and its user: {"session": {...}, "user": {...}}."""
+    with get_conn() as conn:
+        row = conn.execute("SELECT * FROM sessions WHERE token_hash = ?", (token_hash,)).fetchone()
+        if row is None:
+            return None
+        user = conn.execute("SELECT * FROM users WHERE id = ?", (row["user_id"],)).fetchone()
+        return {"session": dict(row), "user": dict(user)}
+
+
+def extend_session(session_id: int, last_seen_at: str, expires_at: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?",
+            (last_seen_at, expires_at, session_id),
+        )
+
+
+def delete_session(token_hash: str) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM sessions WHERE token_hash = ?", (token_hash,))
+
+
+def delete_user_sessions(user_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+
+
+def delete_expired_sessions(now: str) -> int:
+    with get_conn() as conn:
+        return conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,)).rowcount
+
+
+def delete_account(user_id: int) -> dict:
+    """Delete a user and everything about them, in one transaction: their
+    drives, searches, ride requests (and drivers' notifications about them),
+    notifications, route mutes, sessions and sign-in links. Returns how many
+    rows of each. Passengers must be told about cancelled drives first
+    (notify.tell_drive_cancelled)."""
+    with get_conn() as conn:
+        user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        if user is None:
+            return {}
+        request_ids = [r[0] for r in conn.execute("SELECT id FROM open_requests WHERE passenger_id = ?", (user_id,))]
+        # Drivers' notifications about the user's requests: drop those
+        # requests from merged ones, delete the others.
+        others = 0
+        if request_ids:
+            rows = conn.execute(
+                f"""
+                SELECT DISTINCT n.id, n.request_ids FROM notifications n, json_each(n.request_ids) r
+                WHERE r.value IN ({",".join("?" * len(request_ids))})
+                """,
+                request_ids,
+            ).fetchall()
+            for row in rows:
+                remaining = [i for i in json.loads(row["request_ids"]) if i not in request_ids]
+                if remaining:
+                    conn.execute(
+                        "UPDATE notifications SET request_ids = ?, request_id = ? WHERE id = ?",
+                        (json.dumps(remaining), remaining[-1], row["id"]),
+                    )
+                else:
+                    conn.execute("DELETE FROM notifications WHERE id = ?", (row["id"],))
+                others += 1
+        deleted = {
+            "others_notifications": others,
+            "notifications": conn.execute("DELETE FROM notifications WHERE recipient_id = ?", (user_id,)).rowcount,
+            "drives": conn.execute("DELETE FROM drives WHERE driver_id = ?", (user_id,)).rowcount,
+            "searches": conn.execute("DELETE FROM ride_requests WHERE passenger_id = ?", (user_id,)).rowcount,
+            "ride_requests": conn.execute("DELETE FROM open_requests WHERE passenger_id = ?", (user_id,)).rowcount,
+            "route_mutes": conn.execute("DELETE FROM route_mutes WHERE user_id = ?", (user_id,)).rowcount,
+            "sessions": conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,)).rowcount,
+            "sign_in_links": conn.execute(
+                "DELETE FROM sign_in_links WHERE email = ?", (user["email"],)
+            ).rowcount if user["email"] else 0,
+        }
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    return deleted

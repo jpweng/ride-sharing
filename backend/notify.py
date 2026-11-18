@@ -20,6 +20,9 @@ demo_drives.py (each one driven on its weekdays, minus DEMO_SKIP_RATE).
 Notifications are stored first (the notifications table), then handed to
 each channel in CHANNELS. The only channel today is the in-app inbox, which
 shows the stored rows; email will plug in there with the same limits.
+
+Kinds: request_for_driver, drive_for_passenger, and drive_cancelled (a drive
+a passenger was told about was cancelled, see tell_drive_cancelled).
 """
 import random
 from datetime import datetime, timedelta, timezone
@@ -365,6 +368,26 @@ def tell_passengers(drive: dict, now: datetime | None = None) -> int:
     return fitted
 
 
+def tell_drive_cancelled(drive: dict, now: datetime | None = None) -> int:
+    """An upcoming drive is cancelled (by its driver, or because they deleted
+    their account): tell the passengers who were told about it. The drive's
+    details are kept in the notification, as the drive itself is deleted.
+    Returns how many passengers were told."""
+    now = now or local_now()
+    if datetime.fromisoformat(drive["departure_time"]).replace(tzinfo=None) <= now:
+        return 0
+    details = {"drive": {k: drive[k] for k in (
+        "driver_name", "origin_name", "destination_name", "departure_time", "is_demo",
+    )}}
+    told = set()
+    for n in db.notified_about_drive(drive["id"]):
+        if n["recipient_name"] in told:
+            continue
+        _send(n["recipient_name"], "drive_cancelled", n["request_id"], details=details)
+        told.add(n["recipient_name"])
+    return len(told)
+
+
 def run_extra_rounds(now: datetime | None = None) -> int:
     """Once per request: if no fitting drive was posted EXTRA_ROUND_AFTER after
     it was made and the trip is still that far away, tell up to
@@ -396,11 +419,16 @@ def _request_summary(request_id: int) -> dict | None:
     )}
 
 
-def inbox(name: str) -> dict:
+def inbox(name: str, demo_view: bool = False) -> dict:
     """A user's notifications, newest first, with what they're about, and
-    their request-notification settings."""
+    their request-notification settings. `demo_view` (someone viewing the
+    demo as a demo driver, without signing in) leaves out notifications
+    about real passengers' requests: their trips are nobody else's business."""
     items = []
     for n in db.list_notifications(name):
+        request = db.get_open_request(n["request_id"])
+        if demo_view and not (request and db.is_demo_user(request["passenger_id"])):
+            continue
         item = {k: n[k] for k in ("id", "kind", "created_at", "read_at", "acted_at", "action", "details")}
         item["request"] = _request_summary(n["request_id"])
         item["passengers"] = len(n["request_ids"])

@@ -55,14 +55,14 @@ LOCARNO_CHUR_ROUTE_GEOMETRY = [
 
 
 def _post_drive(driver_name, origin, destination, departure_time, seats_available=3):
+    driver = main.db.get_user(main.db.get_or_create_user(driver_name))
     payload = main.DriveCreate(
-        driver_name=driver_name,
         origin={"name": origin[0], "lat": origin[1], "lon": origin[2]},
         destination={"name": destination[0], "lat": destination[1], "lon": destination[2]},
         departure_time=departure_time,
         seats_available=seats_available,
     )
-    return main.post_drive(payload)
+    return main.post_drive(payload, driver)
 
 
 def _set_route(drive, geometry):
@@ -86,7 +86,6 @@ def test_bernard_marie_bern_match(isolated_db, force_haversine, fake_transit):
     _set_route(drive, AIGLE_BERN_ROUTE_GEOMETRY)
 
     payload = main.MatchRequest(
-        passenger_name="Marie",
         origin={"name": "Villeneuve VD", "lat": 46.3940315246582, "lon": 6.923530101776123},
         destination={"name": "Bern (BE)", "lat": 46.954559326171875, "lon": 7.420684814453125},
         requested_time=f"{DAY_1}T18:00",
@@ -115,7 +114,6 @@ def test_matteo_marie_versam_match_with_last_mile(isolated_db, force_haversine, 
 
     def search(dropoff_radius_km):
         return main.match_ride(main.MatchRequest(
-            passenger_name="Marie",
             origin={"name": "Riazzino", "lat": 46.18094253540039, "lon": 8.88644790649414},
             destination={"name": "Versam", "lat": 46.80705642700195, "lon": 9.311906814575195},
             requested_time=f"{DAY_2}T15:15",
@@ -143,7 +141,6 @@ def test_date_typo_request_yields_no_match(isolated_db, force_haversine, fake_tr
     )
 
     payload = main.MatchRequest(
-        passenger_name="Marie",
         origin={"name": "Riazzino", "lat": 46.18094253540039, "lon": 8.88644790649414},
         destination={"name": "Versam", "lat": 46.80705642700195, "lon": 9.311906814575195},
         requested_time=f"{DAY_3}T15:15",
@@ -166,7 +163,6 @@ def test_town_endpoints_use_their_train_stations(isolated_db, force_haversine, f
 
     def search(kind):
         return main.match_ride(main.MatchRequest(
-            passenger_name="Antoine",
             origin={"name": "Villeneuve (VD)", "lat": 46.40636, "lon": 6.95311, "kind": kind},
             destination={"name": "Fribourg (FR)", "lat": 46.80337, "lon": 7.16178, "kind": kind},
             requested_time=f"{DAY_1}T18:53",
@@ -191,7 +187,6 @@ def test_drives_at_the_edge_of_the_time_tolerance_still_match(isolated_db, force
     _post_drive("Too early", aigle, bern, f"{DAY_1}T15:55")
 
     payload = main.MatchRequest(
-        passenger_name="Marie",
         origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
         destination={"name": "Bern", "lat": 46.9546, "lon": 7.4207},
         requested_time=f"{DAY_1}T18:00",
@@ -208,7 +203,6 @@ def test_a_drive_that_left_earlier_matches_by_its_pickup_time(isolated_db, force
 
     def search(tolerance):
         return main.match_ride(main.MatchRequest(
-            passenger_name="Marie",
             origin={"name": "Near Fribourg", "lat": 46.75, "lon": 7.30},
             destination={"name": "Bern", "lat": 46.9480, "lon": 7.4474},
             requested_time=f"{DAY_1}T17:45",
@@ -229,7 +223,6 @@ def test_rides_just_outside_the_selection_are_proposed_and_marked(isolated_db, f
     _post_drive("Too late", aigle, bern, f"{DAY_1}T23:00")
 
     result = main.match_ride(main.MatchRequest(
-        passenger_name="Marie",
         origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
         destination={"name": "Bern", "lat": 46.9546, "lon": 7.4207},
         requested_time=f"{DAY_1}T18:00",
