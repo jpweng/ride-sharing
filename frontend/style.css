@@ -42,10 +42,19 @@ header h1 {
   white-space: nowrap;
 }
 
-/* Text wordmark until there's a logo */
+/* The logo (icons/logo.svg), then the name as a text wordmark */
 .wordmark {
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+.wordmark::before {
+  content: "";
+  display: inline-block;
+  width: 1.3em;
+  height: 1.3em;
+  margin-right: 0.4em;
+  vertical-align: -0.3em;
+  background: url("icons/logo.svg") center / contain no-repeat;
 }
 .wordmark .wm-ride { color: var(--accent); }
 .wordmark .wm-and {

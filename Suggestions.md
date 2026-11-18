@@ -3,7 +3,7 @@
 - **Audience:** investors and real testers. For now the site only needs to be shown, but real
   drivers are coming soon, so nothing built now should assume the demo stays a demo.
 - **Languages:** the three national languages (German, French, Italian) plus English.
-- **Branding:** no logo yet.
+- **Branding:** the logo is `frontend/icons/logo.svg`; the app icons are generated from it.
 
 ## Done
 
