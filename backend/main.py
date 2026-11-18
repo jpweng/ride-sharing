@@ -14,19 +14,28 @@ Two core use cases:
                                also offers a pure-public-transport option
                                (see transit.py).
   GET /api/drives          -- browse all upcoming posted drives
-                               (?driver_name= narrows to one driver's own).
+                               (?mine=true: the signed-in driver's own).
   GET /api/drives/{id}     -- a single drive with full route geometry.
   DELETE /api/drives/{id}  -- a driver cancels one of their drives.
-  GET /api/ride_requests   -- a passenger's recent searches.
+  GET /api/ride_requests   -- the signed-in passenger's recent searches.
   POST /api/requests       -- a passenger asks for a ride nobody has posted;
                                a few drivers who made the trip before are
                                told (see notify.py).
   GET/DELETE /api/requests -- a passenger's open ride requests; cancel one.
   GET /api/notifications   -- a user's inbox; .../read, .../{id}/action and
                                /api/notification_settings act on it.
+  /api/auth/*, /api/account -- sign-in by email link, sessions, account
+                               deletion (see auth.py).
 
-No authentication: a driver/passenger is just a name, auto-registered on
-first use. This is a demo/prototype, not a production app.
+Who you are comes from the session cookie only (auth.py): browsing and
+searching are public; posting, cancelling and your own drives, searches,
+requests and inbox need a signed-in user. "View as a demo driver" sessions
+can read their demo driver's pages but not change anything.
+
+Cross-site request forgery: the session cookie is SameSite=Lax, so
+browsers don't send it with cross-site POST/PUT/DELETE requests; on top of
+that, every such request to /api/ must come from this site's own pages
+(Origin header, or Sec-Fetch-Site), see reject_cross_site_writes.
 
 An hourly background task keeps a rolling week of fictional demo drives in
 the database and deletes visitors' data a month after it's last useful (see
@@ -38,12 +47,16 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+import auth
 import database as db
+import mailer
 import maintenance
 import matching
 import notify
@@ -54,6 +67,17 @@ import transit
 logger = logging.getLogger("uvicorn.error")
 
 MAINTENANCE_INTERVAL_S = 3600
+
+# Where the site is, for the links in emails. Never taken from the request's
+# Host header: a forged one would send people links to another site.
+PUBLIC_BASE_URL = (os.environ.get("PUBLIC_BASE_URL") or "http://localhost:8000").rstrip("/")
+
+# The session cookie is Secure unless COOKIE_SECURE=0 (only for testing over
+# plain HTTP on another host than localhost: browsers accept Secure cookies
+# on http://localhost). Secure cookies get the __Host- prefix: no Domain, path
+# /, HTTPS only, so a subdomain can't set or overwrite it.
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1") != "0"
+SESSION_COOKIE = "__Host-session" if COOKIE_SECURE else "session"
 
 
 async def _maintenance_loop():
@@ -71,6 +95,8 @@ async def _maintenance_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if os.environ.get("EMAIL_BACKEND") == "ses" and not os.environ.get("PUBLIC_BASE_URL"):
+        logger.warning("PUBLIC_BASE_URL is not set: no sign-in links can be sent")
     task = asyncio.create_task(_maintenance_loop())
     yield
     task.cancel()
@@ -97,6 +123,93 @@ def api_error(status: int, code: str, message: str) -> HTTPException:
     return HTTPException(status, {"code": code, "message": message})
 
 
+@app.exception_handler(auth.AuthError)
+def _auth_error(request: Request, e: auth.AuthError):
+    return JSONResponse({"detail": {"code": e.code, "message": e.message}}, status_code=e.status)
+
+
+# ---------------------------------------------------------------------
+# Cross-site request forgery
+# ---------------------------------------------------------------------
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _same_origin(request: Request) -> bool:
+    """Whether a request comes from this site's own pages. Browsers send
+    Origin with every POST/PUT/DELETE (and Sec-Fetch-Site with every
+    request); a request with neither isn't from a browser, so it has no
+    victim's cookie to abuse."""
+    origin = request.headers.get("origin")
+    if origin is not None:
+        return origin != "null" and urlsplit(origin).netloc.lower() == request.headers.get("host", "").lower()
+    fetch_site = request.headers.get("sec-fetch-site")
+    if fetch_site is not None:
+        return fetch_site in ("same-origin", "none")
+    return True
+
+
+@app.middleware("http")
+async def reject_cross_site_writes(request: Request, call_next):
+    if request.method in UNSAFE_METHODS and request.url.path.startswith("/api/") and not _same_origin(request):
+        e = api_error(403, "cross_site_request", "Requests that change data must come from this site")
+        return JSONResponse({"detail": e.detail}, status_code=e.status_code)
+    return await call_next(request)
+
+
+# ---------------------------------------------------------------------
+# Sessions: who is asking
+# ---------------------------------------------------------------------
+def _set_session_cookie(response: Response, token: str, ttl: timedelta) -> None:
+    response.set_cookie(
+        SESSION_COOKIE, token, max_age=int(ttl.total_seconds()),
+        path="/", secure=COOKIE_SECURE, httponly=True, samesite="lax",
+    )
+
+
+def _clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(SESSION_COOKIE, path="/", secure=COOKIE_SECURE, httponly=True, samesite="lax")
+
+
+def current_session(request: Request, response: Response) -> dict | None:
+    """The request's session ({"session", "user"}), or None."""
+    token = request.cookies.get(SESSION_COOKIE)
+    found = auth.session_for(token)
+    if found and found["extended"]:
+        _set_session_cookie(response, token, auth.SESSION_TTL)  # sliding expiry
+    return found
+
+
+def signed_in(found: Annotated[dict | None, Depends(current_session)]) -> dict:
+    """A session, whether or not the user has finished their profile."""
+    if found is None:
+        raise api_error(401, "not_signed_in", "Sign in first")
+    return found
+
+
+def member(found: Annotated[dict, Depends(signed_in)]) -> dict:
+    """The signed-in user, with their profile complete (name, 18+, code of
+    conduct). Demo drivers' sessions count: they can read their pages."""
+    user = dict(found["user"])
+    if not auth.profile_complete(user):
+        raise api_error(403, "profile_incomplete", "Complete your profile first")
+    user["is_demo"] = bool(user["is_demo"] or found["session"]["is_demo"])
+    return user
+
+
+def writer(user: Annotated[dict, Depends(member)]) -> dict:
+    """A signed-in user who may change things: not a demo driver's session."""
+    if user["is_demo"]:
+        raise api_error(403, "demo_read_only", "Viewing as a demo driver: nothing can be changed")
+    return user
+
+
+Member = Annotated[dict, Depends(member)]
+Writer = Annotated[dict, Depends(writer)]
+
+
+# ---------------------------------------------------------------------
+# Request bodies
+# ---------------------------------------------------------------------
 class LatLon(BaseModel):
     name: str
     lat: float
@@ -109,7 +222,6 @@ class LatLon(BaseModel):
 
 
 class DriveCreate(BaseModel):
-    driver_name: str = Field(min_length=1)
     origin: LatLon
     destination: LatLon
     departure_time: str  # ISO 8601
@@ -120,7 +232,6 @@ class DriveCreate(BaseModel):
 
 
 class MatchRequest(BaseModel):
-    passenger_name: str = Field(min_length=1)
     origin: LatLon
     destination: LatLon
     requested_time: str  # ISO 8601
@@ -136,14 +247,32 @@ class RideRequestCreate(MatchRequest):
 
 
 class NotificationAction(BaseModel):
-    name: str = Field(min_length=1)
     action: Literal["offer", "decline", "mute", "view"]
 
 
 class NotificationSettings(BaseModel):
-    name: str = Field(min_length=1)
     notify_requests: bool | None = None
     resume: bool = False  # turn notifications back on after the back-off paused them
+
+
+class SignInLinkRequest(BaseModel):
+    email: str = Field(max_length=auth.MAX_EMAIL_LENGTH)
+    language: str = "en"  # of the email
+
+
+class SignInVerify(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+
+
+class ProfileUpdate(BaseModel):
+    first_name: str | None = Field(default=None, max_length=200)
+    last_name: str | None = Field(default=None, max_length=200)
+    adult: bool = False  # "I am 18 or older"
+    accept_conduct: bool = False  # the code of conduct, version auth.CONDUCT_VERSION
+
+
+class DemoSignIn(BaseModel):
+    driver_name: str
 
 
 @app.get("/api/health")
@@ -151,8 +280,86 @@ def health():
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
 
 
+# ---------------------------------------------------------------------
+# Sign-in, profile, sign-out, account deletion (see auth.py)
+# ---------------------------------------------------------------------
+@app.post("/api/auth/link")
+def request_sign_in_link(payload: SignInLinkRequest, request: Request):
+    # The same answer whether or not the email has an account, and whether
+    # or not an email was actually sent (see auth.request_link).
+    if os.environ.get("EMAIL_BACKEND") == "ses" and not os.environ.get("PUBLIC_BASE_URL"):
+        logger.error("PUBLIC_BASE_URL is not set: no sign-in link sent")
+        raise api_error(503, "email_unavailable", "The sign-in email couldn't be sent; try again later")
+    try:
+        auth.request_link(payload.email, payload.language, request.client.host if request.client else None,
+                          PUBLIC_BASE_URL)
+    except mailer.EmailError:
+        logger.exception("Sending a sign-in link failed")
+        raise api_error(503, "email_unavailable", "The sign-in email couldn't be sent; try again later")
+    return {"ok": True}
+
+
+@app.post("/api/auth/verify")
+def verify_sign_in_link(payload: SignInVerify, request: Request, response: Response):
+    user, token = auth.verify(payload.token)
+    auth.end_session(request.cookies.get(SESSION_COOKIE))  # a previous one in this browser
+    _set_session_cookie(response, token, auth.SESSION_TTL)
+    return {"user": auth.public_user(user)}
+
+
+@app.get("/api/auth/me")
+def who_am_i(found: Annotated[dict | None, Depends(current_session)]):
+    return {"user": auth.public_user(found["user"]) if found else None}
+
+
+@app.post("/api/auth/profile")
+def complete_profile(payload: ProfileUpdate, found: Annotated[dict, Depends(signed_in)]):
+    if found["session"]["is_demo"]:
+        raise api_error(403, "demo_read_only", "Viewing as a demo driver: nothing can be changed")
+    user = auth.complete_profile(found["user"], payload.first_name, payload.last_name,
+                                 payload.adult, payload.accept_conduct)
+    return {"user": auth.public_user(user)}
+
+
+@app.post("/api/auth/sign_out")
+def sign_out(request: Request, response: Response):
+    auth.end_session(request.cookies.get(SESSION_COOKIE))
+    _clear_session_cookie(response)
+    return {"signed_out": True}
+
+
+@app.get("/api/auth/demo_drivers")
+def list_demo_drivers():
+    return auth.demo_drivers()
+
+
+@app.post("/api/auth/demo")
+def view_as_demo_driver(payload: DemoSignIn, request: Request, response: Response):
+    user, token = auth.demo_session(payload.driver_name)
+    auth.end_session(request.cookies.get(SESSION_COOKIE))
+    _set_session_cookie(response, token, auth.DEMO_SESSION_TTL)
+    return {"user": auth.public_user(user)}
+
+
+@app.delete("/api/account")
+def delete_account(response: Response, found: Annotated[dict, Depends(signed_in)]):
+    user = found["user"]
+    if user["is_demo"] or found["session"]["is_demo"]:
+        raise api_error(403, "demo_read_only", "Viewing as a demo driver: nothing can be changed")
+    # Passengers who were told about the user's upcoming drives hear they're cancelled.
+    for drive in db.list_drives(upcoming_only=True, driver_name=user["name"], with_geometry=False):
+        notify.tell_drive_cancelled(drive)
+    deleted = db.delete_account(user["id"])
+    logger.info("Account deleted: %s", {k: v for k, v in deleted.items() if v})
+    _clear_session_cookie(response)
+    return {"deleted": True}
+
+
+# ---------------------------------------------------------------------
+# Drives
+# ---------------------------------------------------------------------
 @app.post("/api/drives")
-def post_drive(payload: DriveCreate):
+def post_drive(payload: DriveCreate, user: Writer):
     try:
         datetime.fromisoformat(payload.departure_time)
     except ValueError:
@@ -178,7 +385,7 @@ def post_drive(payload: DriveCreate):
                                 f"The price per passenger must be at least CHF {price_band['min_chf']:.2f}")
 
     drive_id = db.create_drive(
-        driver_name=payload.driver_name.strip(),
+        driver_name=user["name"],
         origin_name=payload.origin.name,
         origin_lat=payload.origin.lat,
         origin_lon=payload.origin.lon,
@@ -223,10 +430,13 @@ def get_price_band(
 
 @app.get("/api/drives")
 def get_drives(
+    found: Annotated[dict | None, Depends(current_session)],
     upcoming_only: bool = True,
-    driver_name: str | None = None,
+    mine: bool = False,
     limit: Annotated[int | None, Query(ge=1, le=500)] = None,
 ):
+    # mine=true: the signed-in driver's own drives (their Driver page).
+    driver_name = member(signed_in(found))["name"] if mine else None
     # Without route geometry, which can be ~60 KB per drive: the map gets it
     # from /api/drives/{id} for the drive it shows.
     drives = db.list_drives(
@@ -244,40 +454,46 @@ def get_drive(drive_id: int):
 
 
 @app.delete("/api/drives/{drive_id}")
-def cancel_drive(drive_id: int, driver_name: str):
-    # No real auth in this prototype -- requiring the driver's name just keeps
-    # one user from cancelling someone else's drive by accident.
+def cancel_drive(drive_id: int, user: Writer):
     drive = db.get_drive(drive_id)
     if not drive:
         raise api_error(404, "drive_not_found", "Drive not found")
-    if drive["driver_name"] != driver_name.strip():
+    if drive["driver_id"] != user["id"]:
         raise api_error(403, "not_your_drive", "Only the driver who posted this drive can cancel it")
+    notify.tell_drive_cancelled(drive)
     db.delete_drive(drive_id)
     return {"deleted": drive_id}
 
 
+# ---------------------------------------------------------------------
+# Searches and ride requests
+# ---------------------------------------------------------------------
 @app.get("/api/ride_requests")
-def get_ride_requests(passenger_name: str):
-    return db.list_recent_ride_requests(passenger_name)
+def get_ride_requests(user: Member):
+    return db.list_recent_ride_requests(user["name"])
 
 
 @app.post("/api/match")
-def match_ride(payload: MatchRequest):
+def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(current_session)] = None):
     try:
         datetime.fromisoformat(payload.requested_time)
     except ValueError:
         raise api_error(400, "invalid_time", "requested_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
 
-    db.save_ride_request(
-        passenger_name=payload.passenger_name.strip(),
-        origin_name=payload.origin.name,
-        origin_lat=payload.origin.lat,
-        origin_lon=payload.origin.lon,
-        destination_name=payload.destination.name,
-        destination_lat=payload.destination.lat,
-        destination_lon=payload.destination.lon,
-        requested_time=payload.requested_time,
-    )
+    # Searching is public; a signed-in passenger's search is kept for their
+    # "recent searches" (and ride predictions later). Not demo sessions'.
+    user = found["user"] if found else None
+    if user and auth.profile_complete(user) and not (user["is_demo"] or found["session"]["is_demo"]):
+        db.save_ride_request(
+            passenger_name=user["name"],
+            origin_name=payload.origin.name,
+            origin_lat=payload.origin.lat,
+            origin_lon=payload.origin.lon,
+            destination_name=payload.destination.name,
+            destination_lat=payload.destination.lat,
+            destination_lon=payload.destination.lon,
+            requested_time=payload.requested_time,
+        )
 
     passenger_origin = (payload.origin.lat, payload.origin.lon)
     passenger_destination = (payload.destination.lat, payload.destination.lon)
@@ -337,7 +553,7 @@ def match_ride(payload: MatchRequest):
 
 
 @app.post("/api/requests")
-def create_ride_request(payload: RideRequestCreate):
+def create_ride_request(payload: RideRequestCreate, user: Writer):
     try:
         asked = datetime.fromisoformat(payload.requested_time).replace(tzinfo=None)
     except ValueError:
@@ -349,7 +565,7 @@ def create_ride_request(payload: RideRequestCreate):
         raise api_error(400, "request_too_far", "A ride request can be at most 14 days ahead")
 
     request = db.create_open_request(
-        payload.passenger_name.strip(), payload.origin.model_dump(), payload.destination.model_dump(),
+        user["name"], payload.origin.model_dump(), payload.destination.model_dump(),
         asked.isoformat(timespec="minutes"),
         payload.pickup_radius_km, payload.dropoff_radius_km, payload.time_tolerance_min,
     )
@@ -358,41 +574,46 @@ def create_ride_request(payload: RideRequestCreate):
 
 
 @app.get("/api/requests")
-def get_ride_requests_open(passenger_name: str):
-    return db.list_open_requests(notify.local_now().isoformat(timespec="minutes"), passenger_name)
+def get_ride_requests_open(user: Member):
+    return db.list_open_requests(notify.local_now().isoformat(timespec="minutes"), user["name"])
 
 
 @app.delete("/api/requests/{request_id}")
-def cancel_ride_request(request_id: int, passenger_name: str):
+def cancel_ride_request(request_id: int, user: Writer):
     request = db.get_open_request(request_id)
     if not request:
         raise api_error(404, "request_not_found", "Ride request not found")
-    if request["passenger_name"] != passenger_name.strip():
+    if request["passenger_id"] != user["id"]:
         raise api_error(403, "not_your_request", "Only the passenger who made this request can cancel it")
     db.set_request_status(request_id, "cancelled")
     return {"cancelled": request_id}
 
 
+# ---------------------------------------------------------------------
+# Inbox
+# ---------------------------------------------------------------------
 @app.get("/api/notifications")
-def get_notifications(name: str):
-    return notify.inbox(name.strip())
+def get_notifications(user: Member):
+    return notify.inbox(user["name"], demo_view=user["is_demo"])
 
 
 @app.post("/api/notifications/read")
-def read_notifications(name: str):
-    return {"read": db.mark_notifications_read(name)}
+def read_notifications(user: Member):
+    # Allowed when viewing as a demo driver: reading changes nothing anyone
+    # else sees (it isn't an answer, see notify.backoff).
+    return {"read": db.mark_notifications_read(user["name"])}
 
 
 @app.post("/api/notifications/{notification_id}/action")
-def act_on_notification(notification_id: int, payload: NotificationAction):
+def act_on_notification(notification_id: int, payload: NotificationAction, user: Writer):
     n = db.get_notification(notification_id)
-    if not n or n["recipient_name"] != payload.name.strip():
+    if not n or n["recipient_id"] != user["id"]:
         raise api_error(404, "notification_not_found", "Notification not found")
     if payload.action == "mute":
         request = db.get_open_request(n["request_id"])
         if request:
             db.add_route_mute(
-                payload.name.strip(),
+                user["name"],
                 (request["origin_lat"], request["origin_lon"]),
                 (request["destination_lat"], request["destination_lon"]),
             )
@@ -401,9 +622,9 @@ def act_on_notification(notification_id: int, payload: NotificationAction):
 
 
 @app.put("/api/notification_settings")
-def update_notification_settings(payload: NotificationSettings):
-    db.update_user_settings(payload.name.strip(), payload.notify_requests, reset_backoff=payload.resume)
-    return notify.inbox(payload.name.strip())
+def update_notification_settings(payload: NotificationSettings, user: Writer):
+    db.update_user_settings(user["name"], payload.notify_requests, reset_backoff=payload.resume)
+    return notify.inbox(user["name"])
 
 
 # Serve the static frontend last, so it doesn't shadow the /api/* routes above.

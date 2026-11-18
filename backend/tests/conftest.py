@@ -126,3 +126,17 @@ def isolated_db(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", db_path)
     db.init_db()
     return db
+
+
+@pytest.fixture
+def user_named(isolated_db):
+    """name -> a user row, for calling the API's route functions directly
+    as that (signed-in) user. test_auth.py tests the sign-in itself."""
+    import auth
+
+    def make(name: str) -> dict:
+        first, _, last = name.partition(" ")
+        user_id = db.get_or_create_user(name)
+        # Name, 18+ and code of conduct done, as after the first sign-in.
+        return db.set_profile(user_id, auth.CONDUCT_VERSION, name, first, last or "X")
+    return make

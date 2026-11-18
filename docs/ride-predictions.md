@@ -23,7 +23,7 @@ match leaves with nothing. This feature uses each person's own history to fill b
 | Publishing predictions | **Never automatic:** the user confirms every drive or request | A predicted drive that doesn't happen breaks a passenger's plans; a wrong request wastes drivers' attention. One tap to confirm keeps most of the convenience. |
 | Suggestions and notifications | Suggestions only appear on the user's own page; they **never send a notification** | Notifications are kept for things another person is waiting on. Guesses about the user's own habits can wait until they visit. |
 | Which requests reach drivers | Only requests the passenger made or confirmed | Same reason: drivers only hear about real needs. |
-| Channel | An in-app inbox for now, behind a channel interface | There are no email addresses yet (identity is a typed name). Email sign-in is on the "Before real drivers" list; email notifications plug in then, with no change to the throttling. |
+| Channel | An in-app inbox for now, behind a channel interface | Accounts now have an email address (sign-in by email link, `backend/auth.py`), and `backend/mailer.py` can send; email notifications can plug in as a channel, with no change to the throttling. Not built yet. |
 | History used | The last 13 weeks, within the existing 30-day retention for visitors | A weekly habit shows up after 3 weeks, so 30 days is enough to start. Keeping more history for real users is a separate privacy decision. |
 | Demo | 3 months of fictional history | So investors and testers can see suggestions and notifications without building up weeks of their own history. |
 
@@ -140,8 +140,9 @@ To show the feature:
   signing in as one of them shows "Publish your next drives?" for the rest of the week.
 - **Demo passengers** with recurring searches see "Request your next rides?".
 - A couple of **demo ride requests** a day reach the showcase drivers' inboxes, through the same
-  rules and limits as real ones. (Not built yet. Meanwhile, signing in as a demo driver, e.g. Jean
-  Dupont, shows the requests real testers sent them.)
+  rules and limits as real ones. (Not built yet. Since sign-in by email, "view as a demo driver"
+  no longer shows real users' requests sent to demo drivers: their trips are nobody else's
+  business. Until demo requests exist, a demo driver's inbox is empty.)
 
 ## Privacy
 

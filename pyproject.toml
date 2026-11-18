@@ -5,6 +5,7 @@ description = "Swiss ride-share prototype: FastAPI backend + Leaflet frontend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "boto3==1.44.5",
     "fastapi==0.146.0",
     "requests==2.32.3",
     "tzdata==2026.5",
@@ -13,6 +14,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "httpx==0.28.1",
     "pytest==8.3.3",
 ]
 

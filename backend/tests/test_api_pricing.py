@@ -21,10 +21,12 @@ BULLE = {"name": "Bulle", "lat": 46.6193, "lon": 7.0569}
 
 
 def _post(price=None, seats=3, origin=VEVEY, destination=BULLE):
+    # The signed-in driver, as main.post_drive gets them from the session.
+    driver = db.get_user(db.get_or_create_user("Jean D."))
     return main.post_drive(main.DriveCreate(
-        driver_name="Jean Dupont", origin=origin, destination=destination,
+        origin=origin, destination=destination,
         departure_time=f"{TOMORROW}T08:00", seats_available=seats, price_chf=price,
-    ))
+    ), driver)
 
 
 def _band():
@@ -55,7 +57,7 @@ def test_drivers_price_is_stored_and_shown(isolated_db, force_haversine):
     assert drive["price_by_passengers"][1] < drive["price_chf"]
     assert drive["train_fare"]["approximate"] is True
     assert main.get_drive(drive["id"])["price_chf"] == band["max_chf"]
-    assert main.get_drives()[0]["driver_price_chf"] == band["max_chf"]
+    assert main.get_drives(None)[0]["driver_price_chf"] == band["max_chf"]
 
 
 def test_without_a_price_the_default_is_stored(isolated_db, force_haversine):
@@ -71,13 +73,12 @@ def test_prices_outside_the_band_are_rejected(isolated_db, force_haversine, delt
         _post(price=round(price, 2))
     assert exc.value.status_code == 400
     assert exc.value.detail["code"] == code
-    assert main.get_drives() == []
+    assert main.get_drives(None) == []
 
 
 def test_match_shows_the_passengers_price_and_the_train_fare(isolated_db, force_haversine, fake_transit):
     _post(price=_band()["max_chf"])
     result = main.match_ride(main.MatchRequest(
-        passenger_name="Marie",
         origin=VEVEY,
         destination=BULLE,
         requested_time=f"{TOMORROW}T08:00",
@@ -94,7 +95,7 @@ def test_transit_option_has_the_train_fare(isolated_db, force_haversine, fake_tr
     fake_transit.set_connections("Vevey", "Bulle", [{"departure": f"{TOMORROW}T08:00:00", "arrival": f"{TOMORROW}T08:40:00",
                                                      "duration": "00d00:40:00", "transfers": 1, "products": ["S"]}])
     option = main.match_ride(main.MatchRequest(
-        passenger_name="Marie", origin=VEVEY, destination=BULLE, requested_time=f"{TOMORROW}T08:00",
+        origin=VEVEY, destination=BULLE, requested_time=f"{TOMORROW}T08:00",
     ))["transit_option"]
     assert option["fare"]["source"] == "t601"
     assert option["fare"]["half_chf"] == pytest.approx(option["fare"]["full_chf"] / 2, abs=0.01)
@@ -104,7 +105,7 @@ def test_drives_posted_before_prices_get_the_default(isolated_db, force_haversin
     drive = _post()
     with db.get_conn() as conn:
         conn.execute("UPDATE drives SET driver_price_chf = NULL WHERE id = ?", (drive["id"],))
-    listed = main.get_drives()[0]
+    listed = main.get_drives(None)[0]
     assert listed["driver_price_chf"] == _band()["default_chf"]
 
 
