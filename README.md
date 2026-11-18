@@ -428,7 +428,8 @@ backend/
   auth.py         sign-in by email link, sessions, profile (18+, code of conduct), demo-driver view
   mailer.py       email: console backend (development, tests) or Amazon SES
   admin.py        command line: ban / unban an account
-  database.py     SQLite schema (created and migrated at startup) + access layer
+  database.py     SQLite access layer; init_db() applies migrations/ at startup
+  migrations/     schema changes, one idempotent file each (YYYYMMDDHHMM_name.py), in name order
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
   search.py       upcoming drives that fit a trip (used by searches and ride requests)
   notify.py       ride requests: which drivers are told, limits, the inbox
