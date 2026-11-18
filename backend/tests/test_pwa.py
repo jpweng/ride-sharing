@@ -31,10 +31,14 @@ def _png_size(data):
     return struct.unpack(">II", data[16:24])
 
 
-def _sw_shell():
+def _sw_list(name):
     source = (FRONTEND / "sw.js").read_text()
-    block = re.search(r"const SHELL = \[(.*?)\];", source, re.S).group(1)
+    block = re.search(rf"const {name} = \[(.*?)\];", source, re.S).group(1)
     return re.findall(r'"([^"]+)"', block)
+
+
+def _sw_shell():
+    return _sw_list("SHELL")
 
 
 # --- manifest -------------------------------------------------------------
@@ -113,17 +117,23 @@ def test_version_changes_with_any_frontend_file(tmp_path, monkeypatch):
 
 def test_shell_files_exist(client):
     for path in _sw_shell():
-        if path.startswith("https://"):
-            continue
+        # Only our own files: a third-party file in the shell would make
+        # every update depend on that site being reachable.
+        assert not path.startswith(("https://", "http://", "//")), path
         assert (FRONTEND / path).is_file(), path
         assert client.get(f"/{path}").status_code == 200, path
 
 
-def test_shell_has_the_leaflet_index_html_loads():
+def test_libs_are_the_leaflet_index_html_loads():
     index = (FRONTEND / "index.html").read_text()
     loaded = set(re.findall(r'"(https://unpkg\.com/[^"]+)"', index))
     assert loaded
-    assert loaded == {path for path in _sw_shell() if path.startswith("https://")}
+    assert loaded == set(_sw_list("LIBS"))
+
+
+def test_shell_is_network_first():
+    source = (FRONTEND / "sw.js").read_text()
+    assert 'fetch(request, { cache: "no-cache" })' in source
 
 
 def test_shell_covers_offline_page_needs():

@@ -110,8 +110,13 @@ The site is a Progressive Web App: on Android, Chrome offers to install it; on i
   PNGs, same names and sizes) and regenerate:
   `uv run --with pillow python frontend/icons/make_icons.py`.
 - [sw.js](frontend/sw.js), the service worker, registered by [pwa.js](frontend/pwa.js):
-  - The app shell (the pages, CSS, JS, dictionaries, icons and the pinned Leaflet) is downloaded
-    once per version and served from the cache, so the app opens fast on a slow mobile network.
+  - The app's own files (the pages, CSS, JS, dictionaries and icons) are network-first: every load
+    asks the server, so a fix deployed during an event reaches users on their next launch. Each
+    successful load refreshes a cached copy, which is used only when the network fails, so the
+    installed app still opens offline.
+  - The pinned map library (Leaflet from unpkg) never changes at its URL, so it's served from the
+    cache once fetched. It's cached on a best-effort basis, so unpkg being down can't block an
+    update.
   - `/api/*` always goes to the network and is never cached, so stale rides are never shown as
     current. Offline, API calls get a 503 with the error code `offline` (shown as `errors.offline`),
     and pwa.js shows an "offline" notice at the bottom of the page.
@@ -122,10 +127,10 @@ The site is a Progressive Web App: on Android, Chrome offers to install it; on i
   by a hash of all the frontend files ([backend/main.py](backend/main.py)), so every deploy that
   changes a frontend file is a new service worker version, with no version number to bump by hand.
   Browsers check `/sw.js` on every page load (pwa.js also checks when the app comes back to the
-  foreground, at most every 30 minutes). The new version downloads its files into a new cache, takes
-  over at once (`skipWaiting` + `clients.claim`) and deletes the old cache. A window that was open
-  during the deploy keeps its old code and gets a "New version available — Reload" notice; the next
-  launch always runs the new version.
+  foreground, at most every 30 minutes). The new version downloads its offline copy into a new
+  cache, takes over at once (`skipWaiting` + `clients.claim`) and deletes the old cache. Since the
+  app's files are network-first, any launch with a connection runs the latest version. A window that
+  was open during the deploy keeps its old code and gets a "New version available — Reload" notice.
 
 The Android app is a Trusted Web Activity: the site opened full screen by Chrome, published on
 Google Play. [mobile/android/](mobile/android/) holds its configuration (`twa-manifest.json` for
