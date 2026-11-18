@@ -37,6 +37,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
+import anyio.to_thread
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -52,6 +53,8 @@ import transit
 logger = logging.getLogger("uvicorn.error")
 
 MAINTENANCE_INTERVAL_S = 3600
+
+APP_THREADS = int(os.environ.get("APP_THREADS", "16"))
 
 
 async def _maintenance_loop():
@@ -69,6 +72,11 @@ async def _maintenance_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Requests are handled in a thread pool (the endpoints are synchronous):
+    # fewer threads than the default 40, which in the load test only added
+    # memory, each holding a request's data. Enough to wait on
+    # transport.opendata.ch for several requests at once.
+    anyio.to_thread.current_default_thread_limiter().total_tokens = APP_THREADS
     task = asyncio.create_task(_maintenance_loop())
     yield
     task.cancel()

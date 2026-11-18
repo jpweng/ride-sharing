@@ -15,11 +15,13 @@ from datetime import datetime, timedelta
 import database as db
 import matching
 
-# Searches running at once. Each is pure Python (one CPU at a time anyway,
-# the GIL) and holds ~30-50 MB of parsed routes while it runs: 40 at once
-# (uvicorn's thread pool) took the load test's app to 1.6 GB. More wait
-# here instead, a fraction of a second each.
-SEARCH_CONCURRENCY = int(os.environ.get("SEARCH_CONCURRENCY", "2"))
+# Searches running at once. A search is Python work (one CPU at a time, the
+# GIL) and holds ~30-50 MB of parsed routes while it runs. In the load test
+# (loadtest/), 40 at once took the app to 1.6 GB, and even two at once cost
+# twice the CPU each (their threads keep taking the GIL from each other
+# around SQLite calls). One at a time, the others wait their turn, ~0.2 s
+# each, and the server does the most searches per second.
+SEARCH_CONCURRENCY = int(os.environ.get("SEARCH_CONCURRENCY", "1"))
 _search_slots = threading.BoundedSemaphore(SEARCH_CONCURRENCY)
 
 # The wider limits for rides outside the passenger's selection: twice their

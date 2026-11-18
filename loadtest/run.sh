@@ -29,6 +29,7 @@ cd "$ROOT"
 uv sync --quiet
 
 export DB_PATH="$WORK/loadtest.db"
+export MALLOC_ARENA_MAX=${MALLOC_ARENA_MAX:-2} # as in the app image (Dockerfile)
 export OSRM_URL="http://127.0.0.1:$STUB_PORT"
 export TRANSPORT_API_URL="http://127.0.0.1:$STUB_PORT/v1"
 PY="$ROOT/.venv/bin/python"
