@@ -28,6 +28,10 @@ Two core use cases:
                                /api/events/{slug} one with its schedule.
   GET /e/{slug}            -- an event's shareable link: a small page with
                                a link preview, redirecting to #/event/{slug}.
+  GET /sw.js               -- the service worker, versioned by the
+                               frontend's content (installable app).
+  GET /.well-known/assetlinks.json -- Digital Asset Links for the Android
+                               app, from ANDROID_CERT_SHA256.
   /api/auth/*, /api/account -- sign-in by email link, sessions, account
                                deletion (see auth.py).
 
@@ -47,10 +51,14 @@ maintenance.py). DEMO_DRIVES=off in the environment removes the demo
 drives and hides them everywhere (see demo_drives.py).
 """
 import asyncio
+import hashlib
 import logging
+import mimetypes
 import os
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
@@ -631,6 +639,76 @@ def event_link(slug: str, lang: str | None = None, accept_language: Annotated[st
     # preview (title and dates) for the apps that show one.
     page = events.share_page(slug, lang, accept_language)
     return HTMLResponse(page, status_code=200 if slug in events.BY_SLUG else 404)
+
+
+# ---------------------------------------------------------------------
+# Installable app (PWA) and the Android app (a Trusted Web Activity).
+# ---------------------------------------------------------------------
+
+# Not in every system's MIME table (e.g. slim Docker images).
+mimetypes.add_type("application/manifest+json", ".webmanifest")
+
+SW_VERSION_LINE = 'const VERSION = "dev";'
+
+
+def frontend_version() -> str:
+    """A hash of every frontend file, which changes with each deploy that changes any of them."""
+    digest = hashlib.sha256()
+    root = Path(FRONTEND_DIR)
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and path.suffix != ".py":
+            digest.update(path.relative_to(root).as_posix().encode() + b"\0")
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:16]
+
+
+@app.get("/sw.js", include_in_schema=False)
+def service_worker():
+    # The version names the service worker's cache: a new one makes browsers
+    # install the new files and drop the old ones (see frontend/sw.js).
+    # Computed per request (the files are small), so it also follows edits
+    # during development. no-cache: browsers must always check for a new one.
+    source = (Path(FRONTEND_DIR) / "sw.js").read_text()
+    if SW_VERSION_LINE not in source:
+        raise RuntimeError(f"frontend/sw.js must contain {SW_VERSION_LINE!r}")
+    source = source.replace(SW_VERSION_LINE, f'const VERSION = "{frontend_version()}";')
+    return Response(source, media_type="text/javascript", headers={"Cache-Control": "no-cache"})
+
+
+ANDROID_PACKAGE_NAME = "ch.rideandrail.app"
+SHA256_FINGERPRINT = re.compile(r"^([0-9A-F]{2}:){31}[0-9A-F]{2}$")
+
+
+@app.get("/.well-known/assetlinks.json", include_in_schema=False)
+def asset_links():
+    """
+    Digital Asset Links: lets the Android app (mobile/android/) open this
+    site full screen, without a browser bar. ANDROID_CERT_SHA256 holds the
+    SHA-256 fingerprints of the app's signing certificates, comma-separated
+    (with Play App Signing: the app signing key's, from the Play Console).
+    Unset, the list is empty and the app would show a browser bar.
+    """
+    fingerprints = []
+    for value in os.environ.get("ANDROID_CERT_SHA256", "").split(","):
+        value = value.strip().upper()
+        if not value:
+            continue
+        if SHA256_FINGERPRINT.match(value):
+            fingerprints.append(value)
+        else:
+            logger.warning("Ignoring malformed ANDROID_CERT_SHA256 entry %r", value)
+    if not fingerprints:
+        return JSONResponse([])
+    return JSONResponse([
+        {
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+                "namespace": "android_app",
+                "package_name": ANDROID_PACKAGE_NAME,
+                "sha256_cert_fingerprints": fingerprints,
+            },
+        }
+    ])
 
 
 # Serve the static frontend last, so it doesn't shadow the /api/* routes above.

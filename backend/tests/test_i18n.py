@@ -1,7 +1,7 @@
 """
 Checks on the frontend translations (frontend/i18n/*.json): every language
-has the same keys and placeholders, and every key the HTML, app.js and the
-API's error codes use exists. A missing translation then fails CI instead of
+has the same keys and placeholders, and every key the HTML, the scripts and
+the API's error codes use exists. A missing translation then fails CI instead of
 showing a raw key on the site.
 """
 import json
@@ -16,9 +16,10 @@ FRONTEND = ROOT / "frontend"
 LANGS = ["en", "de", "fr", "it"]
 DICTS = {lang: json.loads((FRONTEND / "i18n" / f"{lang}.json").read_text()) for lang in LANGS}
 EN = DICTS["en"]
-PAGES = ["index.html", "privacy.html", "conduct.html"]
-# Pages translated as whole texts, one <article lang="xx"> per language.
-DOC_PAGES = ["privacy.html", "conduct.html"]
+PAGES = ["index.html", "privacy.html", "conduct.html", "offline.html"]
+# Pages translated as whole texts, one <article lang="xx" data-i18n-block> per language.
+DOC_PAGES = ["privacy.html", "conduct.html", "offline.html"]
+SCRIPTS = ["app.js", "pwa.js"]
 
 
 def _placeholders(text):
@@ -115,9 +116,12 @@ def test_html_english_matches_dictionary(page):
         assert " ".join(text.split()) == EN[key], key
 
 
-def test_app_js_keys_exist():
-    source = (FRONTEND / "app.js").read_text()
-    for key in set(re.findall(r'\bt\("([\w.]+)"', source)):
+@pytest.mark.parametrize("script", SCRIPTS)
+def test_script_keys_exist(script):
+    source = (FRONTEND / script).read_text()
+    keys = set(re.findall(r'\bt\("([\w.]+)"', source))  # t("…") and I18N.t("…")
+    assert keys
+    for key in keys:
         # Plurals (a `count` param) use key.one / key.other.
         assert key in EN or f"{key}.other" in EN, key
 
@@ -125,7 +129,9 @@ def test_app_js_keys_exist():
 def test_api_error_codes_translated():
     source = "".join(path.read_text() for path in (ROOT / "backend").glob("*.py"))
     codes = set(re.findall(r'(?:api_error|AuthError)\(\d+, "(\w+)"', source))
-    assert {"not_signed_in", "invalid_link"} <= codes
+    # The service worker answers API calls with "offline" when there's no network.
+    codes |= set(re.findall(r'code: "(\w+)"', (FRONTEND / "sw.js").read_text()))
+    assert {"not_signed_in", "invalid_link", "offline"} <= codes
     assert {f"errors.{code}" for code in codes} - set(EN) == set()
 
 

@@ -8,6 +8,9 @@
 #   PUBLIC_BASE_URL         the site's address, for links in emails
 #   DEMO_DRIVES             "on" (default when empty) or "off": fictional demo
 #                           drives, see backend/demo_drives.py
+#   ANDROID_CERT_SHA256     signing-certificate fingerprint(s) of the Android
+#                           app, comma-separated, for /.well-known/assetlinks.json
+#                           (optional; see mobile/android/README.md)
 #
 # Memory limits (the server has 2 GiB, see infra/variables.tf; the OS and
 # Docker take ~350 MB): the app peaked at ~260 MB in the load test
@@ -66,6 +69,7 @@ services:
     environment:
       DB_PATH: /data/rideshare.db
       DEMO_DRIVES: ${DEMO_DRIVES:-on}
+      ANDROID_CERT_SHA256: ${ANDROID_CERT_SHA256:-}
       OSRM_URL: http://osrm:5000
       # Sign-in emails (backend/mailer.py): Amazon SES, with the instance
       # role's credentials (infra/email.tf). Without EMAIL_FROM, sign-in

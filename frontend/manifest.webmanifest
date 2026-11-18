@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Ride and Rail",
+  "short_name": "Ride & Rail",
+  "description": "Shared rides to the train in Switzerland: car rides combined with public transport.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0f6e5f",
+  "background_color": "#f4f5f7",
+  "categories": ["travel", "navigation"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
