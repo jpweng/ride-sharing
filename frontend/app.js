@@ -91,6 +91,7 @@ function setPointCoords(role, lat, lon, name, kind = "point") {
   if (readout) readout.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
 
   zoomToTrip(role.split("-")[0]);
+  if (role.startsWith("drive-")) updatePriceBand();
 }
 
 // ---------------------------------------------------------------------
@@ -576,11 +577,37 @@ function demoBadge(d) {
   return d.is_demo ? `<span class="badge demo">${esc(t("badge.demo"))}</span>` : "";
 }
 
-// Prices are placeholders until pricing is designed (see pricing.py).
-function priceBadge(chf) {
-  if (typeof chf !== "number") return "";
-  const price = chf.toLocaleString(I18N.locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `<span class="badge price">${esc(t("price.demo", { price }))}</span>`;
+function fmtChf(chf) {
+  return chf.toLocaleString(I18N.locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// What a passenger pays for a drive or a match (see pricing.py), with the
+// train fare for the same distance next to it.
+function priceBadges(item) {
+  if (typeof item.price_chf !== "number") return "";
+  let html = `<span class="badge price">${esc(t("price.perSeat", { price: fmtChf(item.price_chf) }))}</span>`;
+  const train = item.train_fare;
+  if (train) {
+    const key = train.approximate ? "price.trainApprox" : "price.train";
+    html += `<span class="badge train-fare" title="${esc(t("price.trainHint"))}">${esc(t(key, { price: fmtChf(train.full_chf) }))}</span>`;
+  }
+  return html;
+}
+
+// The price per passenger falls as more join: "2 passengers: CHF 7.50
+// each · 3 passengers: ...", up to MAX_SHARED_SHOWN passengers.
+const MAX_SHARED_SHOWN = 4;
+
+function sharedPricesText(byPassengers) {
+  const items = byPassengers
+    .slice(1, MAX_SHARED_SHOWN)
+    .map((price, i) => t("price.withPassengers", { n: i + 2, price: fmtChf(price) }));
+  return items.length ? t("drive.priceShared", { list: items.join(" · ") }) : "";
+}
+
+function sharedPricesHtml(item) {
+  const text = sharedPricesText(item.price_by_passengers || []);
+  return text ? `<div class="meta">${esc(text)}</div>` : "";
 }
 
 function driveCardHtml(d) {
@@ -588,8 +615,116 @@ function driveCardHtml(d) {
   return `
     <div class="route">${esc(d.origin_name)} → ${esc(d.destination_name)}${demoBadge(d)}</div>
     <div class="meta">${fmtTime(d.departure_time)} · ${esc(t("common.seats", { count: d.seats_available }))} · ${km} km</div>
-    ${priceBadge(d.price_chf)}
+    ${priceBadges(d)}
+    ${sharedPricesHtml(d)}
   `;
+}
+
+// ---------------------------------------------------------------------
+// The driver's price: a band from /api/price_band once both ends are set,
+// prefilled with its default, a warning above the half-fare train ticket,
+// and what each passenger pays when more join (see pricing.py).
+// ---------------------------------------------------------------------
+const priceState = { band: null, tripKey: "", loading: false, error: "", request: 0 };
+
+function drivePriceInput() {
+  return document.getElementById("drive-price");
+}
+
+async function updatePriceBand() {
+  const origin = points["drive-origin"];
+  const destination = points["drive-destination"];
+  const input = drivePriceInput();
+  if (!origin || !destination) {
+    Object.assign(priceState, { band: null, tripKey: "", loading: false, error: "" });
+    priceState.request++;
+    input.value = "";
+    input.disabled = true;
+    renderPriceBand();
+    return;
+  }
+  const tripKey = [origin.lat, origin.lon, destination.lat, destination.lon].join(",");
+  if (tripKey === priceState.tripKey) return;
+  const request = ++priceState.request;
+  Object.assign(priceState, { band: null, tripKey, loading: true, error: "" });
+  input.disabled = true;
+  renderPriceBand();
+  try {
+    const params = new URLSearchParams({
+      origin_lat: origin.lat, origin_lon: origin.lon, destination_lat: destination.lat, destination_lon: destination.lon,
+    });
+    const band = await fetchJson(`/api/price_band?${params}`);
+    if (request !== priceState.request) return; // the trip changed meanwhile
+    priceState.band = band;
+    input.min = band.min_chf;
+    input.max = band.max_chf;
+    input.value = band.default_chf.toFixed(2);
+    input.disabled = false;
+  } catch (err) {
+    if (request !== priceState.request) return;
+    // Posting still works: the server then uses the default price.
+    Object.assign(priceState, { tripKey: "", error: err.message });
+  } finally {
+    if (request === priceState.request) {
+      priceState.loading = false;
+      renderPriceBand();
+    }
+  }
+}
+
+// Mirrors pricing.passenger_price_chf: min(price, ceiling, train), rounded
+// down to 10 centimes.
+function passengerPrice(price, passengers) {
+  const band = priceState.band;
+  const capped = Math.min(price, band.ceilings_chf[passengers - 1], band.train_fare.full_chf);
+  return Math.floor(capped * 10 + 1e-9) / 10;
+}
+
+function renderPriceBand() {
+  const bandEl = document.getElementById("drive-price-band");
+  const warnEl = document.getElementById("drive-price-warn");
+  const sharedEl = document.getElementById("drive-price-shared");
+  warnEl.hidden = true;
+  sharedEl.hidden = true;
+  const band = priceState.band;
+  if (!band) {
+    bandEl.textContent = priceState.error || t(priceState.loading ? "drive.priceLoading" : "drive.priceNeedPoints");
+    return;
+  }
+  bandEl.textContent = t("drive.priceBand", {
+    min: fmtChf(band.min_chf),
+    max: fmtChf(band.max_chf),
+    km: fmtNumber(band.km),
+    full: fmtChf(band.train_fare.full_chf),
+    half: fmtChf(band.train_fare.half_chf),
+  });
+  const price = Number(drivePriceInput().value);
+  if (!drivePriceInput().value || !(price >= band.min_chf && price <= band.max_chf)) return;
+  if (price > band.warn_above_chf) {
+    warnEl.textContent = t("drive.priceWarn", { half: fmtChf(band.warn_above_chf) });
+    warnEl.hidden = false;
+  }
+  const seats = Math.min(8, Math.max(1, parseInt(document.getElementById("drive-seats").value, 10) || 1));
+  const byPassengers = [...Array(seats).keys()].map((i) => passengerPrice(price, i + 1));
+  sharedEl.textContent = sharedPricesText(byPassengers);
+  sharedEl.hidden = !sharedEl.textContent;
+}
+
+drivePriceInput().addEventListener("input", renderPriceBand);
+document.getElementById("drive-seats").addEventListener("input", renderPriceBand);
+
+// The price to post: null to let the server use the default (no band yet),
+// undefined after showing why the typed price can't be posted.
+function drivePriceToPost() {
+  const band = priceState.band;
+  const input = drivePriceInput();
+  if (!band || !input.value) return null;
+  const price = Math.round(Number(input.value) * 100) / 100;
+  if (!(price >= band.min_chf && price <= band.max_chf)) {
+    showStatus("drive-status", t("drive.priceOutOfBand", { min: fmtChf(band.min_chf), max: fmtChf(band.max_chf) }), false);
+    return undefined;
+  }
+  return price;
 }
 
 async function loadMyDrives() {
@@ -640,6 +775,8 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
   if (!origin) return showStatus("drive-status", t("form.needOrigin"), false);
   if (!destination) return showStatus("drive-status", t("form.needDestination"), false);
   if (!departure) return showStatus("drive-status", t("drive.needDeparture"), false);
+  const price = drivePriceToPost();
+  if (price === undefined) return;
 
   const btn = document.getElementById("drive-submit");
   btn.disabled = true;
@@ -654,6 +791,7 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
         destination,
         departure_time: departure,
         seats_available: seats,
+        price_chf: price,
       }),
     });
     showStatus("drive-status", t("drive.offered", { from: origin.name, to: destination.name }), true);
@@ -661,6 +799,7 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
       clearPoint(role);
       document.getElementById(`name-${role}`).value = "";
     });
+    updatePriceBand();
     await loadMyDrives();
     showDriveOnMap(data);
   } catch (err) {
@@ -860,7 +999,7 @@ function renderMatches(matches, outside, passengerOrigin, passengerDestination, 
       <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
       <div class="meta">${esc(t("match.pickup", { time: fmtClock(m.pickup.time), km: fmtNumber(m.pickup.gap_km) }))}</div>
       <div class="meta">${esc(t("match.dropoff", { time: fmtClock(m.dropoff.time), km: fmtNumber(m.dropoff.gap_km) }))}</div>
-      ${priceBadge(m.price_chf)}
+      ${priceBadges(m)}
       ${timeDiffBadge(m.time_diff_min)}
       <span class="badge">${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</span>
       ${renderLastMile(m.last_mile_transit)}
@@ -932,7 +1071,15 @@ function renderTransitOption(transit) {
   }
   container.innerHTML = `<div class="transit-box alt"><strong>${esc(transit.from_station)} → ${esc(
     transit.to_station
-  )}</strong>${renderConnections(transit.connections)}</div>`;
+  )}</strong>${renderFare(transit.fare)}${renderConnections(transit.connections)}</div>`;
+}
+
+// The train ticket's price, 2nd class (see fares.py): from the SBB price
+// service when the server has a key, else estimated from the distance.
+function renderFare(fare) {
+  if (!fare) return "";
+  const key = fare.approximate ? "transit.fareApprox" : "transit.fare";
+  return `<div class="pt-fare">${esc(t(key, { full: fmtChf(fare.full_chf), half: fmtChf(fare.half_chf) }))}</div>`;
 }
 
 // One row per connection, flight-search style: operator logos, times,
@@ -1372,12 +1519,14 @@ window.addEventListener("i18n:change", () => {
   renderAccount();
   ["signin-status", "drive-status", "ride-status"].forEach(hideStatus);
   translateUnsetReadouts();
+  renderPriceBand();
   route();
   if (lastResults && location.hash === "#/ride") renderResults();
 });
 
 I18N.ready.then(() => {
   translateUnsetReadouts();
+  renderPriceBand();
   renderAccount();
   route();
 });

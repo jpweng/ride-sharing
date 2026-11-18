@@ -32,6 +32,7 @@ from zoneinfo import ZoneInfo
 
 import database as db
 import matching
+import pricing
 
 DAYS_AHEAD = 7
 
@@ -782,6 +783,12 @@ def _route(spec, cache: dict) -> dict:
     return cache[key]
 
 
+def _demo_price(route: dict) -> float | None:
+    """A demo driver's price: the default suggestion for the trip (pricing.py)."""
+    price_band = pricing.band(route["distance_m"] / 1000.0)
+    return price_band["default_chf"] if price_band else None
+
+
 # Drives are written in batches: one transaction each, short enough not to
 # hold up visitors posting a drive for long.
 BATCH_SIZE = 1000
@@ -828,6 +835,8 @@ def refresh(now: datetime | None = None) -> tuple[int, int]:
             "route_duration_s": route["duration_s"],
             "route_source": route["source"],
             "is_demo": True,
+            # Priced by the same rules as visitors' drives: the default suggestion.
+            "driver_price_chf": _demo_price(route),
         })
         if len(batch) == BATCH_SIZE:
             created += db.create_drives(batch)

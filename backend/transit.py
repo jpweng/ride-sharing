@@ -27,6 +27,7 @@ import requests
 from datetime import datetime
 from urllib.parse import urlencode
 
+import fares
 import matching
 import operators
 
@@ -253,6 +254,8 @@ def transit_option_for_trip(
     Convenience wrapper: resolve both ends to stations and fetch
     connections. origin_place / destination_place are the town names when
     the user picked a town rather than an address (see resolve_station).
+    The result's `fare` is the train fare between the two stations
+    (fares.py: from OJP when configured, else the distance tariff).
     Returns None if station lookup or connection search fails (e.g. no
     network access to transport.opendata.ch).
     """
@@ -269,4 +272,5 @@ def transit_option_for_trip(
         "from_station": origin_station["name"],
         "to_station": dest_station["name"],
         "connections": connections,
+        "fare": fares.fare_between_stations(origin_station, dest_station, when_iso),
     }

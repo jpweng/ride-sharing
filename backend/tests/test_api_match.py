@@ -97,7 +97,8 @@ def test_bernard_marie_bern_match(isolated_db, force_haversine, fake_transit):
     match = result["driver_matches"][0]
     assert match["pickup"]["gap_km"] < 1.0
     assert match["dropoff"]["gap_km"] < 5.0
-    assert match["price_chf"] == pricing.demo_price_chf(match["ride_km"])
+    assert 0 < match["price_chf"] <= match["train_fare"]["full_chf"]
+    assert match["price_chf"] <= pricing.ceiling_chf(match["ride_km"], 1)
 
 
 def test_matteo_marie_versam_match_with_last_mile(isolated_db, force_haversine, fake_transit):
