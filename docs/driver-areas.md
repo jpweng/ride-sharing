@@ -1,0 +1,39 @@
+# Driver areas
+
+A driver saves the places they usually drive from or to (home, work, ...), each with a radius, in
+the **Your areas** section of the Driver page. [backend/areas.py](../backend/areas.py) has the
+rules; in short:
+
+- **An area** is a place (typed or picked on the map, like a drive's start) and a radius.
+- **Radius:** the driver chooses 5, 10, 20 or 30 km for each area (`RADIUS_OPTIONS_KM`), 10 km by
+  default (`DEFAULT_RADIUS_KM`), and can change it later. Car commutes in Switzerland average about
+  15 km, so 10 km covers the usual pickups around a home or a workplace without taking in a whole
+  canton.
+- **At most 5 areas** per driver (`MAX_AREAS`): home, work and a few more, without turning into
+  "everywhere".
+- **Only their owner sees them.** They stay until the driver removes them or deletes their
+  account; names without an account lose theirs when they're deleted
+  ([data retention](demo-drives-and-data-retention.md)).
+
+For now areas are only stored and shown to their owner. They are the base for two things that come
+next, each in its own change: telling a driver about the ride requests that start or end in one of
+their areas (today only drivers who made the trip before are told, see
+[Ride predictions and ride requests](ride-predictions.md)), and a list where a driver browses
+those requests.
+
+In the browser, the section is [frontend/areas.js](../frontend/areas.js), a script of its own
+loaded after `app.js`, whose map, point picking and helpers it uses. `app.js` announces each point
+set on the map with a `point:set` event (`detail.role`).
+
+## Endpoints
+
+Access levels and error codes as in [API](api.md).
+
+- `GET  /api/areas` — signed in; `{areas, max_areas, radius_options_km, default_radius_km}`, the
+  areas oldest first, each with `id`, `name`, `lat`, `lon`, `radius_km`
+- `POST /api/areas` `{place: {name, lat, lon}, radius_km}` — may change; saves an area
+  (`radius_km` optional: the default). 400 `too_many_areas` with 5 already; 422 for a radius that
+  isn't one of the options
+- `PUT  /api/areas/{id}` `{radius_km}` — may change; changes the radius (404 `area_not_found`,
+  also for someone else's area)
+- `DELETE /api/areas/{id}` — may change; removes it (404 `area_not_found`)

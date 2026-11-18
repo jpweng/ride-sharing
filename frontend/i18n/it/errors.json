@@ -1,5 +1,6 @@
 {
   "errors.account_banned": "Questo account è chiuso.",
+  "errors.area_not_found": "Questa zona non esiste più.",
   "errors.consent_required": "Confermi di avere 18 anni o più e accetti il codice di condotta.",
   "errors.cross_site_request": "Questa richiesta è stata rifiutata per motivi di sicurezza. Ricarichi la pagina e riprovi.",
   "errors.demo_driver_not_found": "Questo conducente demo non esiste.",
@@ -24,5 +25,6 @@
   "errors.request_not_found": "Questa richiesta di passaggio non esiste più.",
   "errors.request_too_far": "Una richiesta di passaggio può essere fatta al massimo 14 giorni prima.",
   "errors.request_too_soon": "Una richiesta di passaggio va fatta almeno 1 ora prima.",
+  "errors.too_many_areas": "Ha già il numero massimo di zone. Ne rimuova prima una.",
   "errors.too_many_requests": "Troppe richieste da qui. Riprovi più tardi."
 }

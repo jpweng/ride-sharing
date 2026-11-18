@@ -41,6 +41,10 @@ A feature adds its own files instead of editing shared ones:
   `backend/database.py`.
 - **Styles:** a new `frontend/styles/<feature>.css`, linked right after `style.css` by the pages
   that use it. `style.css` is for the base, layout and shared components.
+- **Browser code:** a new `frontend/<feature>.js` for a feature's own section or page, loaded after
+  `app.js` by `index.html`. It uses `app.js`'s globals (the map, `points`, `PAGES`, `fetchJson`,
+  `t`) and hooks in by wrapping a page's `onShow`, as `areas.js` does. `app.js` keeps what the
+  pages share.
 - **Docs:** a new `docs/<topic>.md`, linked from the README's Documentation list. The feature's
   endpoints are described there (access level, error codes), not in `docs/api.md`.
 - New frontend files are in the service worker's offline copy automatically (the server lists them
