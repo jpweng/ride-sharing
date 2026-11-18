@@ -124,6 +124,13 @@ def isolated_db(tmp_path, monkeypatch):
     return db
 
 
+@pytest.fixture(autouse=True)
+def demo_drives_on_by_default(monkeypatch):
+    """Tests run with demo drives on (the default), whatever DEMO_DRIVES is
+    set to in the shell; switch tests set it themselves."""
+    monkeypatch.delenv("DEMO_DRIVES", raising=False)
+
+
 @pytest.fixture
 def user_named(isolated_db):
     """name -> a user row, for calling the API's route functions directly
