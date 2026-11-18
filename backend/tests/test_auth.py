@@ -233,6 +233,16 @@ def test_email_backend_chosen_by_environment(monkeypatch):
     monkeypatch.delenv("EMAIL_FROM", raising=False)
     with pytest.raises(mailer.EmailError):
         mailer.backend()
+    monkeypatch.setenv("EMAIL_FROM", "no-reply@example.ch")
+    monkeypatch.setattr(mailer, "SesBackend", lambda sender, region: (sender, region))
+    assert mailer.backend() == ("Ride and Rail <no-reply@example.ch>", "eu-north-1")
+
+
+def test_no_ses_email_without_the_sites_address(client, outbox, monkeypatch):
+    monkeypatch.setenv("EMAIL_BACKEND", "ses")
+    monkeypatch.delenv("PUBLIC_BASE_URL", raising=False)
+    assert _code(_ask_link(client, "a@example.ch")) == "email_unavailable"
+    assert outbox == []
 
 
 def test_email_failure_is_a_503_and_leaves_no_usable_token(client, monkeypatch):

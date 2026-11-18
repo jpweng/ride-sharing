@@ -68,7 +68,7 @@ MAINTENANCE_INTERVAL_S = 3600
 
 # Where the site is, for the links in emails. Never taken from the request's
 # Host header: a forged one would send people links to another site.
-PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
+PUBLIC_BASE_URL = (os.environ.get("PUBLIC_BASE_URL") or "http://localhost:8000").rstrip("/")
 
 # The session cookie is Secure unless COOKIE_SECURE=0 (only for testing over
 # plain HTTP on another host than localhost: browsers accept Secure cookies
@@ -93,8 +93,8 @@ async def _maintenance_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if os.environ.get("EMAIL_BACKEND") == "ses" and "localhost" in PUBLIC_BASE_URL:
-        logger.warning("PUBLIC_BASE_URL is %s: sign-in links won't work for users", PUBLIC_BASE_URL)
+    if os.environ.get("EMAIL_BACKEND") == "ses" and not os.environ.get("PUBLIC_BASE_URL"):
+        logger.warning("PUBLIC_BASE_URL is not set: no sign-in links can be sent")
     task = asyncio.create_task(_maintenance_loop())
     yield
     task.cancel()
@@ -282,6 +282,9 @@ def health():
 def request_sign_in_link(payload: SignInLinkRequest, request: Request):
     # The same answer whether or not the email has an account, and whether
     # or not an email was actually sent (see auth.request_link).
+    if os.environ.get("EMAIL_BACKEND") == "ses" and not os.environ.get("PUBLIC_BASE_URL"):
+        logger.error("PUBLIC_BASE_URL is not set: no sign-in link sent")
+        raise api_error(503, "email_unavailable", "The sign-in email couldn't be sent; try again later")
     try:
         auth.request_link(payload.email, payload.language, request.client.host if request.client else None,
                           PUBLIC_BASE_URL)

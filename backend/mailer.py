@@ -5,9 +5,9 @@ The backend is chosen by the EMAIL_BACKEND environment variable:
   - "console" (the default, for development and tests): nothing is sent;
     the email, link included, is written to the log and kept in `outbox`.
   - "ses": Amazon SES (API v2) in SES_REGION (default eu-north-1), from
-    EMAIL_FROM (e.g. "Ride and Rail <no-reply@rideandrail.ch>"). Credentials
-    come from the server's instance role (infra/email.tf), which may only
-    send from that domain.
+    EMAIL_FROM (an address, e.g. no-reply@rideandrail.ch, shown as "Ride and
+    Rail <no-reply@rideandrail.ch>"). Credentials come from the server's
+    instance role (infra/email.tf), which may only send from that address.
 
 Texts are translated like the rest of the UI, in frontend/i18n/<lang>.json
 under "email.*", so backend/tests/test_i18n.py checks them too (all four
@@ -25,6 +25,7 @@ logger = logging.getLogger("uvicorn.error")
 I18N_DIR = Path(__file__).resolve().parent.parent / "frontend" / "i18n"
 LANGUAGES = ("de", "fr", "it", "en")
 DEFAULT_SES_REGION = "eu-north-1"
+SENDER_NAME = "Ride and Rail"
 
 
 class EmailError(Exception):
@@ -77,14 +78,16 @@ def backend():
     """The configured backend (created on first use)."""
     global _backend
     if _backend is None:
-        kind = os.environ.get("EMAIL_BACKEND", "console")
+        kind = os.environ.get("EMAIL_BACKEND") or "console"
         if kind == "console":
             _backend = ConsoleBackend()
         elif kind == "ses":
             sender = os.environ.get("EMAIL_FROM", "").strip()
             if not sender:
                 raise EmailError("EMAIL_BACKEND=ses needs EMAIL_FROM")
-            _backend = SesBackend(sender, os.environ.get("SES_REGION", DEFAULT_SES_REGION))
+            if "<" not in sender:
+                sender = f"{SENDER_NAME} <{sender}>"
+            _backend = SesBackend(sender, os.environ.get("SES_REGION") or DEFAULT_SES_REGION)
         else:
             raise EmailError(f"Unknown EMAIL_BACKEND: {kind!r}")
     return _backend
