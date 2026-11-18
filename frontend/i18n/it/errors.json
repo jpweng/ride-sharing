@@ -1,6 +1,7 @@
 {
   "errors.account_banned": "Questo account è chiuso.",
   "errors.already_requested": "Ha già chiesto un posto su questo viaggio.",
+  "errors.area_not_found": "Questa zona non esiste più.",
   "errors.booking_not_found": "Questa prenotazione non esiste più.",
   "errors.booking_not_open": "Questa prenotazione ha già ricevuto una risposta o è stata annullata.",
   "errors.consent_required": "Confermi di avere 18 anni o più e accetti il codice di condotta.",
@@ -10,6 +11,7 @@
   "errors.drive_departed": "Questo viaggio è già partito.",
   "errors.drive_not_found": "Questo viaggio non esiste più.",
   "errors.email_unavailable": "Non è stato possibile inviare l'e-mail. Riprovi più tardi.",
+  "errors.event_not_found": "Evento non trovato. Forse è già finito.",
   "errors.invalid_email": "Inserisca un indirizzo e-mail valido.",
   "errors.invalid_link": "Questo link di accesso non è valido, è scaduto o è già stato usato. Ne chieda uno nuovo.",
   "errors.invalid_time": "Data o ora non valida.",
@@ -32,5 +34,6 @@
   "errors.request_not_found": "Questa richiesta di passaggio non esiste più.",
   "errors.request_too_far": "Una richiesta di passaggio può essere fatta al massimo 14 giorni prima.",
   "errors.request_too_soon": "Una richiesta di passaggio va fatta almeno 1 ora prima.",
+  "errors.too_many_areas": "Ha già il numero massimo di zone. Ne rimuova prima una.",
   "errors.too_many_requests": "Troppe richieste da qui. Riprovi più tardi."
 }

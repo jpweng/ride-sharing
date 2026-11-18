@@ -1,6 +1,7 @@
 {
   "errors.account_banned": "This account is closed.",
   "errors.already_requested": "You have already asked for a seat on this drive.",
+  "errors.area_not_found": "This area no longer exists.",
   "errors.booking_not_found": "This booking no longer exists.",
   "errors.booking_not_open": "This booking was already answered or cancelled.",
   "errors.consent_required": "Confirm that you are 18 or older and accept the code of conduct.",
@@ -10,6 +11,7 @@
   "errors.drive_departed": "This drive has already left.",
   "errors.drive_not_found": "This drive no longer exists.",
   "errors.email_unavailable": "The email couldn't be sent. Please try again later.",
+  "errors.event_not_found": "This event wasn't found. It may be over.",
   "errors.invalid_email": "Enter a valid email address.",
   "errors.invalid_link": "This sign-in link is invalid, has expired or was already used. Ask for a new one.",
   "errors.invalid_time": "Invalid date or time.",
@@ -32,5 +34,6 @@
   "errors.request_not_found": "This ride request no longer exists.",
   "errors.request_too_far": "A ride request can be at most 14 days ahead.",
   "errors.request_too_soon": "A ride request must be at least 1 hour ahead.",
+  "errors.too_many_areas": "You already have the most areas you can save. Remove one first.",
   "errors.too_many_requests": "Too many requests from here. Please try again later."
 }

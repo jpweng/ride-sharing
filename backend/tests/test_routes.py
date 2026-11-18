@@ -17,6 +17,8 @@ MODULES = sorted(info.name for info in pkgutil.iter_modules(routes.__path__))
 # (method, path) of the API, as in the OpenAPI description.
 API_ROUTES = {
     ("get", "/api/health"),
+    ("get", "/api/events"),
+    ("get", "/api/events/{slug}"),
     ("post", "/api/auth/link"),
     ("post", "/api/auth/verify"),
     ("get", "/api/auth/me"),
@@ -25,6 +27,10 @@ API_ROUTES = {
     ("get", "/api/auth/demo_drivers"),
     ("post", "/api/auth/demo"),
     ("delete", "/api/account"),
+    ("get", "/api/areas"),
+    ("post", "/api/areas"),
+    ("put", "/api/areas/{area_id}"),
+    ("delete", "/api/areas/{area_id}"),
     ("post", "/api/drives"),
     ("get", "/api/drives"),
     ("get", "/api/drives/{drive_id}"),

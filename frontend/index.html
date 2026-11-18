@@ -19,11 +19,13 @@
 <link rel="stylesheet" href="style.css" />
 <!-- Feature styles, in the order their rules had in style.css. -->
 <link rel="stylesheet" href="styles/transit.css" />
+<link rel="stylesheet" href="styles/events.css" />
 <link rel="stylesheet" href="styles/pricing.css" />
 <link rel="stylesheet" href="styles/bookings.css" />
 <link rel="stylesheet" href="styles/account.css" />
 <link rel="stylesheet" href="styles/pwa.css" />
 <link rel="stylesheet" href="styles/inbox.css" />
+<link rel="stylesheet" href="styles/areas.css" />
 </head>
 <body>
 <header>
@@ -277,6 +279,27 @@
 
       <button class="submit-btn" id="drive-submit" data-i18n="drive.submit">Offer drive</button>
       <div class="status-msg" id="drive-status"></div>
+
+      <!-- Driver areas (areas.js): the places the driver usually drives from or to -->
+      <div class="section-title" data-i18n="areas.title">Your areas</div>
+      <div class="hint" data-i18n="areas.hint">The places you usually drive from or to, such as home or work, each with a radius. They will be used to show you the ride requests that start or end there. Only you see your areas.</div>
+      <div id="areas-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
+      <div class="hint" id="areas-full" hidden></div>
+      <div id="areas-form">
+        <label data-i18n="areas.place">Place</label>
+        <div class="point-picker">
+          <button type="button" data-role="drive-area" data-i18n="form.pickOnMap">Pick on map</button>
+          <div class="autocomplete">
+            <input type="text" id="name-drive-area" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
+            <ul class="autocomplete-list" id="suggest-drive-area"></ul>
+          </div>
+        </div>
+        <div class="coord-readout" id="readout-drive-area">not set</div>
+        <label for="areas-radius" data-i18n="areas.radius">Radius</label>
+        <select id="areas-radius" class="auto-width"></select>
+        <button type="button" class="submit-btn secondary" id="areas-add" data-i18n="areas.add">Add area</button>
+      </div>
+      <div class="status-msg" id="areas-status"></div>
     </section>
 
     <div class="hint" id="picker-hint" hidden data-i18n="form.pickerHint">Type an address to search, or click "Pick on map" then click a point on the map.</div>
@@ -288,7 +311,11 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
+<script src="areas.js"></script>
 <script src="bookings.js"></script>
 <script src="pwa.js"></script>
+<!-- Events: the QR code library for the event pages' links, then events.js -->
+<script src="vendor/qrcode.min.js"></script>
+<script src="events.js"></script>
 </body>
 </html>
