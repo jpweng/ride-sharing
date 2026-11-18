@@ -121,3 +121,17 @@ def demo_drives_on_by_default(monkeypatch):
     """Tests run with demo drives on (the default), whatever DEMO_DRIVES is
     set to in the shell; switch tests set it themselves."""
     monkeypatch.delenv("DEMO_DRIVES", raising=False)
+
+
+@pytest.fixture
+def user_named(isolated_db):
+    """name -> a user row, for calling the API's route functions directly
+    as that (signed-in) user. test_auth.py tests the sign-in itself."""
+    import auth
+
+    def make(name: str) -> dict:
+        first, _, last = name.partition(" ")
+        user_id = db.get_or_create_user(name)
+        # Name, 18+ and code of conduct done, as after the first sign-in.
+        return db.set_profile(user_id, auth.CONDUCT_VERSION, name, first, last or "X")
+    return make

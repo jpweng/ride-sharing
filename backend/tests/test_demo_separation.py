@@ -61,10 +61,27 @@ def _past_drive(driver, days_ago=7, at="18:00"):
     )
 
 
-def _ask(passenger):
-    return main.create_ride_request(main.RideRequestCreate(
-        passenger_name=passenger, origin=VEVEY, destination=FRIBOURG, requested_time=f"{TOMORROW}T18:30",
-    ))
+@pytest.fixture
+def ask(user_named):
+    """Ask for a ride as `passenger`: a name (a real, signed-in user) or a
+    user row (_demo_user). The route function is called directly; over HTTP,
+    a demo-driver view is read-only and can't ask (see test_auth.py)."""
+    def ask(passenger):
+        user = user_named(passenger) if isinstance(passenger, str) else passenger
+        return main.create_ride_request(main.RideRequestCreate(
+            origin=VEVEY, destination=FRIBOURG, requested_time=f"{TOMORROW}T18:30",
+        ), user)
+    return ask
+
+
+def _demo_user(name):
+    """A demo driver's user row, as "view as a demo driver" signs in with."""
+    return db.get_user(db.get_or_create_user(name, is_demo=True))
+
+
+def _sent_to(name):
+    """Every notification sent to `name`, whoever is looking."""
+    return notify.inbox(name)["notifications"]
 
 
 def _upcoming_drive(driver, is_demo, day=TOMORROW, at="18:00"):
@@ -77,68 +94,70 @@ def _upcoming_drive(driver, is_demo, day=TOMORROW, at="18:00"):
     )
 
 
-def _match(passenger="Marie"):
+def _match():
     return main.match_ride(main.MatchRequest(
-        passenger_name=passenger, origin=VEVEY, destination=FRIBOURG, requested_time=f"{TOMORROW}T18:00",
+        origin=VEVEY, destination=FRIBOURG, requested_time=f"{TOMORROW}T18:00",
     ))
 
 
 # ---------------------------------------------------------------------
 # Ride requests
 # ---------------------------------------------------------------------
-def test_a_real_request_reaches_real_drivers_and_counts_only_them(isolated_db, demo_network):
+def test_a_real_request_reaches_real_drivers_and_counts_only_them(isolated_db, demo_network, ask, user_named):
     _past_drive("Real Driver")
 
-    result = _ask("Marie")
+    result = ask("Marie")
 
     assert result["drivers_told"] == 1
     assert result["demo_request"] is False
     assert "demo_drivers_told" not in result  # real drivers' names stay private
-    assert main.get_notifications("Real Driver")["unread"] == 1
-    assert main.get_notifications(DEMO_DRIVER)["notifications"] == []
+    assert main.get_notifications(user_named("Real Driver"))["unread"] == 1
+    assert _sent_to(DEMO_DRIVER) == []
 
 
-def test_a_real_request_only_demo_drivers_fit_tells_nobody(isolated_db, demo_network):
-    result = _ask("Marie")
+def test_a_real_request_only_demo_drivers_fit_tells_nobody(isolated_db, demo_network, ask):
+    result = ask("Marie")
 
     # The passenger is told no driver was asked (ride.askSentNone), not that
     # a fictional one was.
     assert result["drivers_told"] == 0
-    assert main.get_notifications(DEMO_DRIVER)["notifications"] == []
+    assert _sent_to(DEMO_DRIVER) == []
 
 
-def test_the_extra_round_doesnt_reach_demo_drivers_either(isolated_db, demo_network):
-    request = _ask("Marie")["request"]
+def test_the_extra_round_doesnt_reach_demo_drivers_either(isolated_db, demo_network, ask):
+    request = ask("Marie")["request"]
     with db.get_conn() as conn:
         conn.execute("UPDATE open_requests SET created_at = ? WHERE id = ?",
                      ((datetime.now() - timedelta(days=1)).astimezone().isoformat(), request["id"]))
 
     assert notify.run_extra_rounds() == 0
-    assert main.get_notifications(DEMO_DRIVER)["notifications"] == []
+    assert _sent_to(DEMO_DRIVER) == []
 
 
-def test_a_real_request_skips_drives_posted_under_a_demo_drivers_name(isolated_db, demo_network):
-    # Someone viewing the demo as a demo driver posted a drive: still a demo driver.
+def test_a_real_request_skips_drives_posted_under_a_demo_drivers_name(isolated_db, demo_network, ask):
+    # A drive under a demo driver's name that isn't a demo drive (from before
+    # sign-in, when anyone could post under that name): still a demo driver.
     _past_drive(DEMO_VIEWER)
-    assert _ask("Marie")["drivers_told"] == 0
-    assert main.get_notifications(DEMO_VIEWER)["notifications"] == []
+    assert ask("Marie")["drivers_told"] == 0
+    assert _sent_to(DEMO_VIEWER) == []
 
 
-def test_a_request_under_a_demo_name_reaches_demo_drivers_only(isolated_db, demo_network):
+def test_a_request_under_a_demo_name_reaches_demo_drivers_only(isolated_db, demo_network, ask):
     _past_drive("Real Driver")
 
-    result = _ask(DEMO_VIEWER)
+    result = ask(_demo_user(DEMO_VIEWER))
 
     assert result["demo_request"] is True
     assert result["drivers_told"] == 1
     assert result["demo_drivers_told"] == [DEMO_DRIVER]
-    # Signing in as the demo driver shows it, through the usual rules.
-    n = main.get_notifications(DEMO_DRIVER)["notifications"][0]
+    # Viewing as the demo driver shows it, through the usual rules: that
+    # view leaves out real passengers' requests, not demo ones.
+    n = main.get_notifications(_demo_user(DEMO_DRIVER))["notifications"][0]
     assert n["kind"] == "request_for_driver"
     assert n["request"]["passenger_name"] == DEMO_VIEWER
     assert n["details"]["trip"]["times"] > 50
     # No real driver acts on a fictional need.
-    assert main.get_notifications("Real Driver")["notifications"] == []
+    assert _sent_to("Real Driver") == []
 
 
 # ---------------------------------------------------------------------
@@ -155,7 +174,7 @@ def test_demo_drives_are_labelled_and_not_bookable(isolated_db, force_haversine,
     ]
     assert matches[0]["score"] == matches[1]["score"]
 
-    listed = {d["id"]: d["bookable"] for d in main.get_drives()}
+    listed = {d["id"]: d["bookable"] for d in main.get_drives(None)}
     assert listed == {demo_id: False, real_id: True}
     assert main.get_drive(demo_id)["bookable"] is False
     assert main.get_drive(real_id)["bookable"] is True
@@ -190,12 +209,12 @@ def test_switch_values(monkeypatch, value, on):
 
 
 def test_switched_off_demo_drives_are_hidden_everywhere(isolated_db, demo_network, demo_off,
-                                                        force_haversine, fake_transit):
+                                                        force_haversine, fake_transit, user_named):
     # Before maintenance has deleted them.
     demo_id = _upcoming_drive(DEMO_DRIVER, is_demo=True)
     real_id = _upcoming_drive("Real Driver", is_demo=False)
 
-    assert [d["id"] for d in main.get_drives()] == [real_id]
+    assert [d["id"] for d in main.get_drives(None)] == [real_id]
     with pytest.raises(main.HTTPException) as e:
         main.get_drive(demo_id)
     assert e.value.status_code == 404
@@ -205,17 +224,18 @@ def test_switched_off_demo_drives_are_hidden_everywhere(isolated_db, demo_networ
     # A passenger told about it earlier no longer sees it in their inbox.
     request = db.create_open_request("Marie", VEVEY, FRIBOURG, f"{TOMORROW}T18:30", 5, 5, 60)
     db.create_notification("Marie", "drive_for_passenger", request["id"], drive_ids=[demo_id, real_id])
-    drives = main.get_notifications("Marie")["notifications"][0]["drives"]
+    drives = main.get_notifications(user_named("Marie"))["notifications"][0]["drives"]
     assert [(d["id"], d["bookable"]) for d in drives] == [(real_id, True)]
 
 
-def test_switched_off_there_are_no_demo_requests_or_demo_drivers(isolated_db, demo_network, demo_off):
+def test_switched_off_there_are_no_demo_requests_or_demo_drivers(isolated_db, demo_network, demo_off,
+                                                                ask, user_named):
     _past_drive("Real Driver")
-    result = _ask(DEMO_VIEWER)  # just a name now
+    result = ask(DEMO_VIEWER)  # just a name now
     assert result["demo_request"] is False
     assert result["drivers_told"] == 1
-    assert main.get_notifications("Real Driver")["unread"] == 1
-    assert main.get_notifications(DEMO_DRIVER)["notifications"] == []
+    assert main.get_notifications(user_named("Real Driver"))["unread"] == 1
+    assert _sent_to(DEMO_DRIVER) == []
 
 
 def test_switching_off_deletes_demo_drives_and_routes_then_on_brings_them_back(

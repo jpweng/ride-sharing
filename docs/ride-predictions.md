@@ -23,7 +23,7 @@ match leaves with nothing. This feature uses each person's own history to fill b
 | Publishing predictions | **Never automatic:** the user confirms every drive or request | A predicted drive that doesn't happen breaks a passenger's plans; a wrong request wastes drivers' attention. One tap to confirm keeps most of the convenience. |
 | Suggestions and notifications | Suggestions only appear on the user's own page; they **never send a notification** | Notifications are kept for things another person is waiting on. Guesses about the user's own habits can wait until they visit. |
 | Which requests reach drivers | Only requests the passenger made or confirmed | Same reason: drivers only hear about real needs. |
-| Channel | An in-app inbox for now, behind a channel interface | There are no email addresses yet (identity is a typed name). Email sign-in is on the "Before real drivers" list; email notifications plug in then, with no change to the throttling. |
+| Channel | An in-app inbox for now, behind a channel interface | Accounts now have an email address (sign-in by email link, `backend/auth.py`), and `backend/mailer.py` can send; email notifications can plug in as a channel, with no change to the throttling. Not built yet. |
 | History used | The last 13 weeks, within the existing 30-day retention for visitors | A weekly habit shows up after 3 weeks, so 30 days is enough to start. Keeping more history for real users is a separate privacy decision. |
 | Demo | 3 months of fictional history | So investors and testers can see suggestions and notifications without building up weeks of their own history. |
 | Demo and real requests | **Never mixed:** a real passenger's request only reaches real drivers; a request made under a demo driver's name only reaches demo drivers | Nobody waits for a driver who doesn't exist, and no real driver acts on a fictional need. The demo still shows requests arriving (see [Demo data](#demo-data)). |
@@ -149,20 +149,22 @@ To show the feature:
   signing in as one of them shows "Publish your next drives?" for the rest of the week.
 - **Demo passengers** with recurring searches see "Request your next rides?".
 - A couple of **demo ride requests** a day reach the showcase drivers' inboxes, through the same
-  rules and limits as real ones. (Not built yet.)
-- **Demo requests by hand** (built): someone viewing the demo as one demo driver (e.g. Jean Dupont)
-  asks for a ride on the Passenger page. Being under a demo driver's name, the request only reaches
-  demo drivers, through the same rules and limits, and the reply names the demo drivers told (their
-  names are fictional; real drivers' names are never returned). Signing in as one of them shows the
-  request in their inbox.
+  rules and limits as real ones. (Not built yet. Until they exist, a demo driver's inbox is empty:
+  real passengers' requests never reach demo drivers, see below.)
+- **Demo requests by hand** (built on the server, but nothing in the app makes one for now): a
+  request made under a demo driver's name only reaches demo drivers, through the same rules and
+  limits, and the reply names the demo drivers told (their names are fictional; real drivers' names
+  are never returned). It was made for viewing the demo as one demo driver (e.g. Jean Dupont) and
+  asking for a ride on the Passenger page. Since sign-in by email, "view as a demo driver" is
+  read-only and can't ask for a ride.
 
-Why this way: requests from real passengers no longer reach demo drivers, so the demo needs its own
-requests to show the driver's side. Making the demo identity, not a flag the visitor sets, decide it
-keeps the rule in one place on the server, and with names typed freely, signing in as a demo driver
-is already how the demo is shown. The cost: a real visitor who types a name a demo driver has (there
-are ~11,000, with common Swiss names) is treated as that demo driver, as they already were on the
-Driver page and in the inbox. Email sign-in should give demo accounts a flag of their own and
-replace `demo_drives.is_demo_user`.
+Why this way: requests from real passengers no longer reach demo drivers, so nobody waits for a
+driver who doesn't exist, and the demo needs its own requests to show the driver's side. Making the
+demo identity, not a flag the visitor sets, decide it keeps the rule in one place on the server. A
+demo driver is recognised by name (`demo_drives.is_demo_user`); an account's name ("Marie M.") is
+never a demo driver's. `users.is_demo`, which sign-in by email added, should replace it. On top of
+this, "view as a demo driver" leaves out of the inbox any notification about a real user's request
+(`notify.inbox`): their trips are nobody else's business.
 
 Demo drives are **never bookable**: searches, the drive list and the inbox mark every drive with
 `bookable` (`false` for demo drives), and they stay labelled "Demo". When a demo drive and a real

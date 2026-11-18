@@ -4,7 +4,7 @@ month after they're last useful, without touching anything newer or the
 demo drives. Isolated temp DB and haversine routing -- no network.
 """
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import database as db
 import demo_drives
@@ -93,4 +93,35 @@ def test_run_refreshes_demo_drives_and_purges(isolated_db, force_haversine):
     assert maintenance.run(NOW) == {
         "demo_deleted": 0, "demo_created": 0, "demo_routes_deleted": 0, "extra_round_told": 0,
         "drives": 0, "searches": 0, "ride_requests": 0, "notifications": 0, "users": 0,
+        "sign_in_links": 0, "sessions": 0,
     }
+
+
+def test_accounts_stay_without_data_but_legacy_names_go(isolated_db):
+    # A legacy typed name (no email) and an account, neither with any data.
+    db.get_or_create_user("Legacy Name")
+    db.create_account("marie@example.ch", "~pending", "fr")
+
+    maintenance.purge_old_data(NOW)
+
+    assert _user_names() == {"~pending"}
+
+
+def test_old_sign_in_links_and_expired_sessions_are_deleted(isolated_db):
+    now = datetime.now(timezone.utc)
+    db.add_sign_in_link("old", "a@example.ch", "1.2.3.4", "en", now.isoformat())
+    db.add_sign_in_link("new", "a@example.ch", "1.2.3.4", "en", now.isoformat())
+    with sqlite3.connect(db.DB_PATH) as conn:
+        conn.execute("UPDATE sign_in_links SET created_at = ? WHERE token_hash = 'old'",
+                     ((now - timedelta(days=2)).isoformat(),))
+    user_id = db.get_or_create_user("Someone")
+    db.create_session("expired", user_id, False, (now - timedelta(minutes=1)).isoformat())
+    db.create_session("live", user_id, False, (now + timedelta(days=1)).isoformat())
+
+    changes = maintenance.purge_old_data(NOW)
+
+    assert (changes["sign_in_links"], changes["sessions"]) == (1, 1)
+    with sqlite3.connect(db.DB_PATH) as conn:
+        assert [r[0] for r in conn.execute("SELECT token_hash FROM sign_in_links")] == ["new"]
+        assert [r[0] for r in conn.execute("SELECT token_hash FROM sessions")] == ["live"]
+    assert "Someone" in _user_names()  # still has a session

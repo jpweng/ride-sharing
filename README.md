@@ -25,7 +25,7 @@ reasons behind them.
 - Routing: [OSRM demo server](https://router.project-osrm.org) (falls back to haversine if unreachable)
 - Public transport: [transport.opendata.ch](https://transport.opendata.ch) (all Swiss operators)
 - Address search: [geo.admin.ch Search API](https://api3.geo.admin.ch) (Swiss addresses/places)
-- Auth: none — you enter a first + last name once (remembered in the browser), which auto-registers a user
+- Sign-in: a one-time link sent by email (Amazon SES), server-side sessions in an HttpOnly cookie; see [Sign-in and accounts](#sign-in-and-accounts)
 - Languages: German, French, Italian and English, see [Translations](#translations)
 
 ## Run it
@@ -57,23 +57,76 @@ At startup and then every hour, the app runs [backend/maintenance.py](backend/ma
   something to show. They form a network over the whole country, from the cities down to small
   towns, denser in Ticino and Graubünden: weekday commutes, midday
   drives on the busy corridors and weekend trips, with departures spread over the day so a search
-  at most times finds something. Sign in as one of the drivers (e.g. Jean Dupont) to see their
-  Driver page. Demo drives that have departed or no longer match the list are deleted, and missing
-  ones for the next 7 days are added. They're flagged `is_demo` in the database. Each trip's road
+  at most times finds something. "View as a demo driver" on the sign-in page (e.g. Jean Dupont)
+  shows their Driver page, read-only. Demo drives that have departed or no longer match the list are
+  deleted, and missing ones for the next 7 days are added. They're flagged `is_demo` in the
+  database, and so are demo drivers in `users`. Each trip's road
   route is fetched from OSRM once (one call per second, its usage limit) and stored once in
   `demo_routes`, shared by all the trip's drives. Demo drives are labelled "Demo", never bookable
-  (`"bookable": false` in the API), and real passengers' ride requests never reach demo drivers;
-  a request made under a demo driver's name reaches demo drivers only (see
-  [docs/ride-predictions.md](docs/ride-predictions.md#demo-data)).
+  (`"bookable": false` in the API), and real passengers' ride requests never reach demo drivers
+  (see [docs/ride-predictions.md](docs/ride-predictions.md#demo-data)).
 - **Switching demo drives off**: set `DEMO_DRIVES=off` in the app's environment (default `on`).
   They're hidden everywhere at once, and the next maintenance run deletes them and their stored
   routes, and creates none. Back `on`, they're recreated, fetching the ~1,500 routes again (about
   half an hour). In production it's the optional GitHub repo variable `DEMO_DRIVES`, see
   [Deploying to AWS](#deploying-to-aws).
-- **Visitors' data is kept for 30 days**: drives are deleted 30 days after their departure, searches
-  30 days after they were made, and then names with no drive or search left. Nothing in the UI shows
-  any of this by then. On the server, deleted data also remains in the daily disk snapshots for 7
-  more days.
+- **Users' data is kept for 30 days**: drives are deleted 30 days after their departure, searches
+  30 days after they were made, ride requests 30 days after their time, notifications 30 days after
+  they were sent. Nothing in the UI shows any of this by then. Accounts stay until their owner
+  deletes them; names without an account are deleted once nothing references them. Sign-in links
+  are deleted after a day, expired sessions at once. On the server, deleted data also remains in
+  the daily disk snapshots for 7 more days.
+
+### Sign-in and accounts
+
+[backend/auth.py](backend/auth.py) has the details; in short:
+
+- **Sign-in link**: the user enters their email address; the server emails a link with a random
+  token, stored only as its SHA-256, valid once for 15 minutes. The link opens `#/signin/<token>`;
+  the page then POSTs the token (so it never appears in server logs, and mail scanners that open
+  links can't use it up), and the server starts a session. The answer to "send me a link" is the same
+  whether the address has an account or not.
+- **First sign-in**: first and last name, "I am 18 or older" and the
+  [code of conduct](frontend/conduct.html) (a draft for a lawyer to review), whose acceptance is
+  stored with its date and version (`CONDUCT_VERSION`; changing it asks everyone to accept the new
+  one). Other users see the first name and last initial ("Marie M.", "Marie M. 2" if taken); it
+  can't be changed later, as drives and requests store it.
+- **Sessions**: a random token in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie named
+  `__Host-session`, stored as its hash in `sessions`; 90 days from the last visit (extended at most
+  once a day), until sign-out, a ban or the account's deletion. `COOKIE_SECURE=0` drops `Secure`, only
+  for testing over plain HTTP on another host than `localhost`.
+- **Cross-site request forgery**: browsers don't send a `SameSite=Lax` cookie with cross-site
+  POST/PUT/DELETE requests, and on top of that the app refuses those requests to `/api/` unless their
+  `Origin` (or, without it, `Sec-Fetch-Site`) says they come from the site itself. Requests with
+  neither header don't come from a browser, so they carry no victim's cookie. No CSRF tokens are
+  needed this way, and the frontend stays plain `fetch` calls.
+- **Who may do what**: browsing drives and searching are public (a signed-in user's searches are
+  kept for their "recent searches"). Posting, cancelling and reading one's own drives, searches,
+  requests and inbox need a signed-in user with a complete profile, and use only the session's
+  user: the API takes no names.
+- **View as a demo driver**: a read-only session (1 day) as one of the fictional drivers, without
+  email, for investors and testers. It can read that driver's pages but not post, cancel, answer
+  notifications or change settings, and its inbox leaves out real passengers' requests. Demo drivers
+  have no email address, so they never receive email.
+- **Limits**: per IP, 10 links per 15 minutes and 50 a day (then 429); per address, 3 per
+  15 minutes and 10 a day (then no email is sent, with the same answer). Caddy adds its own per-IP
+  limit (see below).
+- **Account deletion** (the account page, reached by clicking one's name): deletes the account and
+  everything about it at once. Passengers who were told about the user's upcoming drives get a
+  "drive cancelled" notification; drivers' notifications about the user's requests disappear.
+- **Bans**: `users.banned_at`, set with `docker compose exec app python backend/admin.py ban
+  <email>` (or `unban`). It ends the account's sessions; no link is sent and earlier links are
+  refused.
+- **Users from before sign-in** (a typed name, no email) can't sign in. Their drives, searches and
+  requests expire under the 30-day retention above, then their names are deleted. Nothing is
+  migrated to accounts.
+
+Email ([backend/mailer.py](backend/mailer.py)) goes through a backend chosen by `EMAIL_BACKEND`:
+`console` (the default) logs the email, link included, instead of sending it, so in development
+you copy the link from the server's output; `ses` sends through Amazon SES in `SES_REGION`
+(default `eu-north-1`) from `EMAIL_FROM`. `PUBLIC_BASE_URL` (default `http://localhost:8000`) is the
+site's address for the links; it's never taken from the request. The email is in the language the
+page was in, from the `email.*` keys of the dictionaries.
 
 To run it by hand:
 
@@ -113,7 +166,8 @@ in `eu-north-1` (Stockholm, the AWS project's only allowed Region), running Dock
 
 - **proxy**: Caddy ([deploy/caddy/Caddyfile](deploy/caddy/Caddyfile)), which handles HTTPS via
   Let's Encrypt once a domain is set, plus per-IP rate limits. `POST /api/match` is limited to
-  10/min, since each match calls the free OSRM and transport.opendata.ch APIs. Other writes are
+  10/min, since each match calls the free OSRM and transport.opendata.ch APIs. `POST
+  /api/auth/link` (each one emails a sign-in link) is limited to 10 per 10 min. Other writes are
   limited to 30/min and all of `/api/*` to 300/min. Over-limit requests get a 429 response.
 - **app**: the FastAPI image built from the root [Dockerfile](Dockerfile).
 
@@ -167,15 +221,29 @@ Requires Terraform >= 1.10, the AWS CLI logged in to the target account (`aws lo
 **Domain + HTTPS**: the site runs at <https://rideandrail.ch>. The domain is registered at Hostpoint,
 and its DNS is a Route 53 hosted zone managed by Terraform ($0.50/month). To set up a domain:
 1. Set `domain_name` in `infra/terraform.tfvars` and run `terraform apply`. This creates the hosted
-   zone, plus A records for the apex and `www` pointing at the server. It also adds SPF/DMARC records
-   saying the domain sends no mail.
+   zone, plus A records for the apex and `www` pointing at the server, and what sign-in emails need
+   (below).
 2. At the registrar (Hostpoint control panel → the domain → nameservers), replace the nameservers
    with `terraform output name_servers`.
-3. Set the GitHub variable `SITE_ADDRESS` from `terraform output github_actions_variables` and re-run
-   the workflow.
+3. Set the GitHub variables `SITE_ADDRESS`, `EMAIL_FROM` and `PUBLIC_BASE_URL` from
+   `terraform output github_actions_variables` and re-run the workflow.
 
 Caddy then obtains Let's Encrypt certificates, redirects HTTP to HTTPS, and redirects `www` to the
 apex.
+
+**Sign-in emails** ([infra/email.tf](infra/email.tf)): with a domain, Terraform creates an Amazon SES
+domain identity with Easy DKIM (three CNAME records), a custom MAIL FROM domain `mail.<domain>`
+(MX and SPF records), SPF (`include:amazonses.com -all`) and DMARC (`p=reject`) records for the
+domain, and lets the server's instance role send from `<email_from_local_part>@<domain>` (default
+`no-reply`) and nothing else. The app container reaches the instance role through the metadata
+service (hop limit 2, [infra/server.tf](infra/server.tf)). SES costs $0.10 per 1,000 emails.
+
+SES starts in **sandbox mode**: it only delivers to verified addresses, at most 200 a day. To test
+before then, list testers' addresses in `ses_sandbox_test_recipients`; AWS emails each a
+confirmation link. For real users, request production access once in the SES console (*Account
+dashboard* → *Request production access*), describing the use (transactional sign-in emails only,
+low volume); AWS usually answers within a day. Without `EMAIL_FROM` and `PUBLIC_BASE_URL`, the app
+sends no links (the API answers 503); viewing as a demo driver still works.
 
 Notes:
 - **Downtime per deploy:** the app container is replaced in a few seconds of downtime. The proxy only
@@ -198,8 +266,11 @@ Notes:
 
 ```
 backend/
-  main.py         FastAPI app + routes, mounts frontend/ as static files
-  database.py     SQLite schema + access layer
+  main.py         FastAPI app + routes, sessions and CSRF check, mounts frontend/ as static files
+  auth.py         sign-in by email link, sessions, profile (18+, code of conduct), demo-driver view
+  mailer.py       email: console backend (development, tests) or Amazon SES
+  admin.py        command line: ban / unban an account
+  database.py     SQLite schema (created and migrated at startup) + access layer
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
   search.py       upcoming drives that fit a trip (used by searches and ride requests)
   notify.py       ride requests: which drivers are told, limits, the inbox
@@ -208,13 +279,16 @@ backend/
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
 frontend/
-  index.html      pages: #/ride (Passenger, the default), #/browse (public), #/drive (Driver), #/inbox
+  index.html      pages: #/ride (Passenger, the default), #/browse (public), #/drive (Driver), #/inbox,
+                  #/account; sign-in, #/signin/<token> (opening a link) and first-sign-in profile
   privacy.html    privacy notice, linked from the demo banner
+  conduct.html    code of conduct (draft for legal review), accepted at first sign-in
   app.js          Leaflet map, point picking, address autocomplete, API calls
   i18n.js         language choice and translation of the page (see Translations)
   i18n/           en/de/fr/it dictionaries
   style.css       teal/white theme, text wordmark (no logo yet)
-infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user)
+infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user,
+                  DNS, SES for sign-in emails)
   bootstrap/      one-time S3 bucket for Terraform state
 deploy/           what runs on the server: compose.yaml, deploy.sh, caddy/ (proxy image)
 docs/             design documents for planned features (ride-predictions.md)
@@ -224,27 +298,54 @@ Dockerfile        app image (uvicorn, non-root, DB on /data)
 
 ## API
 
+Who is asking comes only from the session cookie; no endpoint takes a user's name. Marked below:
+**public**; **signed in** (a session, profile complete; a demo-driver view counts); **may change**
+(signed in, not a demo-driver view). Without a session: 401 `not_signed_in`; profile not complete:
+403 `profile_incomplete`; demo-driver view: 403 `demo_read_only`. POST/PUT/DELETE requests from
+another site: 403 `cross_site_request`.
+
+Sign-in and account:
+
+- `POST /api/auth/link` `{email, language}` — public; emails a sign-in link. Always `{"ok": true}`
+  (429 `too_many_requests` over the per-IP limit, 503 `email_unavailable` if sending fails)
+- `POST /api/auth/verify` `{token}` — public; uses the link's token, sets the session cookie,
+  returns `{user}` (400 `invalid_link`, 403 `account_banned`)
+- `GET  /api/auth/me` — public; `{user}` or `{user: null}`: name, email, `is_demo`,
+  `profile_complete`, `needs_conduct`
+- `POST /api/auth/profile` `{first_name, last_name, adult, accept_conduct}` — a session, profile
+  complete or not; the name only counts the first time
+- `POST /api/auth/sign_out` — ends the session, clears the cookie
+- `GET  /api/auth/demo_drivers`, `POST /api/auth/demo` `{driver_name}` — public; the demo drivers
+  offered, and a read-only session as one of them
+- `DELETE /api/account` — a session (not a demo-driver view); deletes the account and its data
+
+Rides:
+
 - `GET  /api/health`
-- `POST /api/drives` — driver posts a drive
-- `GET  /api/drives?upcoming_only=true[&driver_name=…]` — browse drives, or one driver's own
-- `GET  /api/drives/{id}` — one drive with full route geometry
-- `DELETE /api/drives/{id}?driver_name=…` — driver cancels their own drive
-- `GET  /api/ride_requests?passenger_name=…` — a passenger's recent searches (deduplicated)
-- `POST /api/requests` — passenger asks for a ride nobody has posted (same body as `/api/match`);
+- `POST /api/drives` — may change; posts a drive as the signed-in driver
+- `GET  /api/drives?upcoming_only=true[&limit=…]` — public; browse drives.
+  `?mine=true` — signed in; the driver's own
+- `GET  /api/drives/{id}` — public; one drive with full route geometry
+- `DELETE /api/drives/{id}` — may change; cancels one's own drive (403 `not_your_drive`), telling
+  passengers who were told about it
+- `GET  /api/ride_requests` — signed in; one's recent searches (deduplicated)
+- `POST /api/match` — public; finds rides (optional pickup/drop-off radii and time tolerance); a
+  signed-in user's search is kept. Returns ranked driver matches, a last-mile transit suggestion for
+  the best ones, up to 5 rides just outside the selection (`outside_matches`, each saying what it's
+  outside of), and a pure public-transport alternative
+- `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`);
   returns the request and how many drivers were told (`drivers_told`: real drivers only, for a real
   passenger), and `demo_request`; a demo request (under a demo driver's name) also gets
   `demo_drivers_told`, the demo drivers' names
-- `GET  /api/requests?passenger_name=…`, `DELETE /api/requests/{id}?passenger_name=…` — a
-  passenger's open ride requests; cancel one
-- `GET  /api/notifications?name=…` — a user's inbox and settings; `POST /api/notifications/read?name=…`,
-  `POST /api/notifications/{id}/action` (`offer` / `decline` / `mute` / `view`),
-  `PUT /api/notification_settings`
-- `POST /api/match` — passenger requests a ride (optional pickup/drop-off radii and time tolerance);
-  returns ranked driver matches, a last-mile transit suggestion for the best ones, up to 5 rides just
-  outside the selection (`outside_matches`, each saying what it's outside of), and a pure
-  public-transport alternative
+- `GET  /api/requests` — signed in; one's open ride requests. `DELETE /api/requests/{id}` — may
+  change; cancels one's own (403 `not_your_request`)
+- `GET  /api/notifications` — signed in; one's inbox and settings (a demo-driver view leaves out
+  real passengers' requests). `POST /api/notifications/read` — signed in.
+  `POST /api/notifications/{id}/action` (`offer` / `decline` / `mute` / `view`) and
+  `PUT /api/notification_settings` — may change
 
 Every drive and match carries `is_demo` and `bookable` (`false` for demo drives, which are
 fictional). Among matches that fit equally well, real drives come first.
 
-Full request/response shapes are documented in the implementation brief.
+Full request/response shapes of the ride endpoints are documented in the implementation brief (it
+predates sign-in: ignore the names in its request bodies).

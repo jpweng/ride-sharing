@@ -182,14 +182,14 @@ def test_real_requests_reach_real_drivers_only(isolated_db, monkeypatch):
     assert _inbox("Demo Driver") == []
 
 
-def test_posting_a_drive_tells_waiting_passengers_once_a_day(isolated_db, force_haversine, fake_transit):
+def test_posting_a_drive_tells_waiting_passengers_once_a_day(user_named, force_haversine, fake_transit):
     request = _request(day=IN_TWO_DAYS)
 
     def post(driver, at):
         # A straight line (force_haversine), from Vevey to Fribourg.
         return main.post_drive(main.DriveCreate(
-            driver_name=driver, origin=VEVEY, destination=FRIBOURG, departure_time=f"{IN_TWO_DAYS}T{at}",
-        ))
+            origin=VEVEY, destination=FRIBOURG, departure_time=f"{IN_TWO_DAYS}T{at}",
+        ), user_named(driver))
 
     post("First", "18:00")
     post("Second", "18:15")
@@ -216,37 +216,62 @@ def test_extra_round_once_after_twelve_hours_without_an_offer(isolated_db):
     assert notify.run_extra_rounds() == 0  # only once
 
 
-def test_api_request_flow(isolated_db, force_haversine, fake_transit):
+def test_api_request_flow(user_named, force_haversine, fake_transit):
     _past_drive("Driver", 7)
-    payload = dict(
-        passenger_name="Marie",
-        origin=VEVEY, destination=FRIBOURG,
-        requested_time=f"{TOMORROW}T18:30",
-    )
-    result = main.create_ride_request(main.RideRequestCreate(**payload))
+    marie, driver = user_named("Marie"), user_named("Driver")
+    payload = dict(origin=VEVEY, destination=FRIBOURG, requested_time=f"{TOMORROW}T18:30")
+    result = main.create_ride_request(main.RideRequestCreate(**payload), marie)
     assert result["drivers_told"] == 1
-    assert [r["id"] for r in main.get_ride_requests_open("Marie")] == [result["request"]["id"]]
+    assert result["request"]["passenger_name"] == "Marie"
+    assert [r["id"] for r in main.get_ride_requests_open(marie)] == [result["request"]["id"]]
 
-    inbox = main.get_notifications("Driver")
+    inbox = main.get_notifications(driver)
     assert inbox["unread"] == 1
     n = inbox["notifications"][0]
-    main.act_on_notification(n["id"], main.NotificationAction(name="Driver", action="mute"))
+    main.act_on_notification(n["id"], main.NotificationAction(action="mute"), driver)
     assert db.list_route_mutes("Driver")
-    main.read_notifications("Driver")
-    assert main.get_notifications("Driver")["unread"] == 0
+    main.read_notifications(driver)
+    assert main.get_notifications(driver)["unread"] == 0
 
-    main.cancel_ride_request(result["request"]["id"], "Marie")
-    assert main.get_ride_requests_open("Marie") == []
+    main.cancel_ride_request(result["request"]["id"], marie)
+    assert main.get_ride_requests_open(marie) == []
+
+
+def test_cancelling_a_drive_tells_the_passengers_who_were_told(user_named, force_haversine, fake_transit):
+    _request(day=IN_TWO_DAYS)
+    driver = user_named("Driver")
+    drive = main.post_drive(main.DriveCreate(
+        origin=VEVEY, destination=FRIBOURG, departure_time=f"{IN_TWO_DAYS}T18:00",
+    ), driver)
+    assert [n["kind"] for n in _inbox("Marie")] == ["drive_for_passenger"]
+
+    main.cancel_drive(drive["id"], driver)
+
+    cancelled = _inbox("Marie")[0]
+    assert cancelled["kind"] == "drive_cancelled"
+    assert cancelled["details"]["drive"]["origin_name"] == "Vevey"
+    assert cancelled["details"]["drive"]["driver_name"] == "Driver"
+    # The drive itself is gone from the earlier notification.
+    assert _inbox("Marie")[1]["drives"] == []
+
+
+def test_demo_view_hides_real_passengers_requests(isolated_db):
+    _past_drive("Driver", 7)
+    db.get_or_create_user("Driver", is_demo=True)
+    notify.notify_drivers(_request(passenger="Real Passenger"))
+    assert len(notify.inbox("Driver")["notifications"]) == 1
+    demo_view = notify.inbox("Driver", demo_view=True)
+    assert (demo_view["notifications"], demo_view["unread"]) == ([], 0)
 
 
 @pytest.mark.parametrize("when, code", [
     (timedelta(minutes=30), "request_too_soon"),
     (timedelta(days=15), "request_too_far"),
 ])
-def test_api_request_time_limits(isolated_db, when, code):
+def test_api_request_time_limits(user_named, when, code):
     asked = (notify.local_now() + when).isoformat(timespec="minutes")
     with pytest.raises(main.HTTPException) as e:
         main.create_ride_request(main.RideRequestCreate(
-            passenger_name="Marie", origin=VEVEY, destination=FRIBOURG, requested_time=asked,
-        ))
+            origin=VEVEY, destination=FRIBOURG, requested_time=asked,
+        ), user_named("Marie"))
     assert e.value.detail["code"] == code

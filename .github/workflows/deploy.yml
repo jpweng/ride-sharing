@@ -73,9 +73,9 @@ jobs:
           if [ -z "$INSTANCE_ID" ]; then echo "::error::No running server tagged Name=${{ vars.SERVER_NAME }}"; exit 1; fi
 
           # DEMO_DRIVES: optional repo variable, "on" (or unset) or "off".
-          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\nDEMO_DRIVES=%s\n' \
+          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\nEMAIL_FROM=%s\nPUBLIC_BASE_URL=%s\nDEMO_DRIVES=%s\n' \
             "$APP_IMAGE" "$PROXY_IMAGE" "${{ vars.SITE_ADDRESS }}" "${{ vars.AWS_REGION }}" "${{ vars.LOG_GROUP }}" \
-            "${{ vars.DEMO_DRIVES }}")
+            "${{ vars.EMAIL_FROM }}" "${{ vars.PUBLIC_BASE_URL }}" "${{ vars.DEMO_DRIVES }}")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \
