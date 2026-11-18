@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS drives (
     route_source TEXT,          -- 'osrm' or 'haversine' (fallback)
     created_at TEXT NOT NULL,
     is_demo INTEGER NOT NULL DEFAULT 0,  -- 1: fictional, managed by demo_drives.py
+    driver_price_chf REAL,      -- the driver's price per passenger, one passenger, whole drive
+                                -- (see pricing.py); NULL: the default suggestion
     FOREIGN KEY (driver_id) REFERENCES users(id)
 );
 
@@ -213,6 +215,10 @@ def init_db():
         columns = {r["name"] for r in conn.execute("PRAGMA table_info(drives)")}
         if "is_demo" not in columns:
             conn.execute("ALTER TABLE drives ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0")
+        # Databases created before drivers set their price: those drives
+        # keep NULL, priced at the default suggestion (see pricing.py).
+        if "driver_price_chf" not in columns:
+            conn.execute("ALTER TABLE drives ADD COLUMN driver_price_chf REAL")
         # Databases created before ride requests and sign-in.
         user_columns = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
         for column, ddl in _USER_COLUMNS.items():
@@ -298,6 +304,7 @@ def create_drive(
     route_duration_s: float | None,
     route_source: str,
     is_demo: bool = False,
+    driver_price_chf: float | None = None,
 ) -> int:
     fields = dict(locals())
     with get_conn() as conn:
@@ -313,7 +320,8 @@ def create_drives(drives: list[dict]) -> int:
     return len(drives)
 
 
-def _insert_drive(conn: sqlite3.Connection, *, driver_name, route_geometry, is_demo=False, **fields) -> int:
+def _insert_drive(conn: sqlite3.Connection, *, driver_name, route_geometry, is_demo=False,
+                  driver_price_chf=None, **fields) -> int:
     driver_id = _get_or_create_user(conn, driver_name, is_demo)
     cur = conn.execute(
         """
@@ -322,13 +330,13 @@ def _insert_drive(conn: sqlite3.Connection, *, driver_name, route_geometry, is_d
             destination_name, destination_lat, destination_lon,
             departure_time, seats_available, route_geometry,
             route_distance_m, route_duration_s, route_source, created_at,
-            is_demo
+            is_demo, driver_price_chf
         ) VALUES (
             :driver_id, :driver_name, :origin_name, :origin_lat, :origin_lon,
             :destination_name, :destination_lat, :destination_lon,
             :departure_time, :seats_available, :route_geometry,
             :route_distance_m, :route_duration_s, :route_source, :created_at,
-            :is_demo
+            :is_demo, :driver_price_chf
         )
         """,
         {
@@ -338,6 +346,7 @@ def _insert_drive(conn: sqlite3.Connection, *, driver_name, route_geometry, is_d
             "route_geometry": json.dumps(route_geometry) if route_geometry is not None else None,
             "created_at": now_iso(),
             "is_demo": int(is_demo),
+            "driver_price_chf": driver_price_chf,
         },
     )
     return cur.lastrowid
@@ -348,7 +357,7 @@ _DRIVE_COLUMNS_WITHOUT_GEOMETRY = ", ".join(f"d.{c}" for c in (
     "id", "driver_id", "driver_name", "origin_name", "origin_lat", "origin_lon",
     "destination_name", "destination_lat", "destination_lon", "departure_time",
     "seats_available", "route_distance_m", "route_duration_s", "route_source",
-    "created_at", "is_demo",
+    "created_at", "is_demo", "driver_price_chf",
 ))
 # Demo drives get their trip's shared route from demo_routes.
 _DRIVE_COLUMNS = _DRIVE_COLUMNS_WITHOUT_GEOMETRY + ", COALESCE(d.route_geometry, r.geometry) AS route_geometry"

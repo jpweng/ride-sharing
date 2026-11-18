@@ -12,6 +12,16 @@ See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for t
 trip before are told in their inbox, with strict limits so drivers don't get too many
 notifications, and the passenger is told when a drive that fits is posted.
 
+**Prices:** drivers only share their costs, as Swiss law requires of carpooling. The driver sets a
+price per passenger inside a band: at least about the fuel, at most the car's real cost
+(CHF 0.75/km) shared with one passenger, and never more than the train's 2nd class full fare. Each
+passenger pays the lowest of the driver's price, the car's cost shared by everyone in the car, and
+the train fare, so the price per passenger falls when more people join. Searches show the train
+fare next to each ride and on the public-transport option. Nothing is charged in the demo. See
+[backend/pricing.py](backend/pricing.py) for the rules and [backend/fares.py](backend/fares.py) for
+the train fares: the official national distance tariff (T601), or the real fare from
+opentransportdata.swiss when `OJP_API_KEY` is set (see [Train fares](#train-fares)).
+
 **Planned next: ride predictions.** The app spots people's recurring trips and offers to publish
 their next drives, or request their next rides, after they confirm. Designed, not built yet.
 
@@ -145,6 +155,26 @@ To run it by hand:
 ```bash
 uv run --directory backend python maintenance.py
 ```
+
+### Train fares
+
+[backend/fares.py](backend/fares.py) gives the 2nd class full and half fare for a trip:
+
+- **Always:** the national distance tariff, T601 (Alliance SwissPass, edition of 1 June 2026),
+  whose price table it reproduces exactly (tested km by km up to 1000 km). The result is labelled
+  `approximate: true` because the tariff distance is estimated: the road distance of the drive
+  (rail and road distances between Swiss towns are usually close), or between two stations the
+  straight line × 1.25. Fare networks' zone tickets, route prices and saver tickets differ. When
+  the T601 changes (usually each December), update `T601_RATES_RP_PER_KM` and `T601_EDITION`.
+- **With `OJP_API_KEY` set** (a key from the [opentransportdata.swiss](https://opentransportdata.swiss)
+  API manager): the public-transport option of a search gets the real fare between its two
+  stations, from an OJP 2.0 trip request and the (beta) OJPFare service, cached per station pair
+  for a day. `OJP_FARE_API_KEY` overrides the key for the fare service, `OJP_TRIP_URL` and
+  `OJP_FARE_URL` the endpoints. Any error or timeout falls back to the distance tariff. The
+  deployed app doesn't pass this variable yet ([deploy/compose.yaml](deploy/compose.yaml)).
+
+Ride prices are capped with the distance tariff of the distance ridden, so every listed drive and
+match is priced without a network call.
 
 ### Translations
 
@@ -396,7 +426,8 @@ backend/
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
   search.py       upcoming drives that fit a trip (used by searches and ride requests)
   notify.py       ride requests: which drivers are told, limits, the inbox
-  pricing.py      demo prices (a placeholder until pricing is designed)
+  pricing.py      ride prices: the driver's price band, what each passenger pays
+  fares.py        train fares: T601 distance tariff, optional OJP fare lookup
   transit.py      transport.opendata.ch integration
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
@@ -451,7 +482,12 @@ Sign-in and account:
 Rides:
 
 - `GET  /api/health`
-- `POST /api/drives` — may change; posts a drive as the signed-in driver
+- `GET  /api/price_band?origin_lat=…&origin_lon=…&destination_lat=…&destination_lon=…` — public; the
+  band for the driver's price on that trip: `min_chf`, `max_chf`, `default_chf`, `warn_above_chf`,
+  `train_fare`, and `ceilings_chf` (each passenger's ceiling with 1…8 passengers)
+- `POST /api/drives` — may change; posts a drive as the signed-in driver, with `price_chf`: their
+  price per passenger, for one passenger and the whole drive (optional: the default suggestion).
+  Outside the band: 400 with code `price_too_high` / `price_too_low`
 - `GET  /api/drives?upcoming_only=true[&limit=…]` — public; browse drives.
   `?mine=true` — signed in; the driver's own
 - `GET  /api/drives/{id}` — public; one drive with full route geometry
@@ -475,6 +511,12 @@ Rides:
 
 Every drive and match carries `is_demo` and `bookable` (`false` for demo drives, which are
 fictional). Among matches that fit equally well, real drives come first.
+
+Drives (`/api/drives`) and matches (`/api/match`) carry their prices: `price_chf` is what the next
+passenger pays (for a match, for the part they ride), `price_by_passengers` what each pays with 1, 2,
+… passengers up to the seats, `driver_price_chf` the driver's price, and `train_fare`
+(`full_chf`, `half_chf`, `approximate`, `source`: `t601` or `ojp`) the train for the same distance.
+The match's `transit_option` has a `fare` of the same shape, between its two stations.
 
 Installable app:
 

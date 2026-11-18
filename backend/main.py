@@ -2,7 +2,9 @@
 FastAPI backend for the ride-sharing prototype.
 
 Two core use cases:
-  1. POST /api/drives      -- a driver proposes a drive.
+  1. POST /api/drives      -- a driver proposes a drive, at a price per
+                               passenger inside the band (see pricing.py).
+  GET /api/price_band      -- that band for a trip, before posting.
   2. POST /api/match       -- a passenger asks for a ride; the app finds
                                the drives whose route passes within their
                                pickup and drop-off radii, around their time
@@ -244,6 +246,9 @@ class DriveCreate(BaseModel):
     destination: LatLon
     departure_time: str  # ISO 8601
     seats_available: int = Field(default=1, ge=1, le=8)
+    # The driver's price per passenger, for one passenger and the whole
+    # drive, inside pricing.band(); the default suggestion if omitted.
+    price_chf: float | None = Field(default=None, ge=0, le=1000)
 
 
 class MatchRequest(BaseModel):
@@ -385,6 +390,20 @@ def post_drive(payload: DriveCreate, user: Writer):
         (payload.destination.lat, payload.destination.lon),
     ])
 
+    price_band = pricing.band(route["distance_m"] / 1000.0)
+    driver_price = None
+    if price_band:
+        driver_price = price_band["default_chf"]
+        if payload.price_chf is not None:
+            driver_price = round(payload.price_chf, 2)
+            problem = pricing.check_driver_price(driver_price, price_band)
+            if problem == "price_too_high":
+                raise api_error(400, "price_too_high",
+                                f"The price per passenger can be at most CHF {price_band['max_chf']:.2f}")
+            if problem == "price_too_low":
+                raise api_error(400, "price_too_low",
+                                f"The price per passenger must be at least CHF {price_band['min_chf']:.2f}")
+
     drive_id = db.create_drive(
         driver_name=user["name"],
         origin_name=payload.origin.name,
@@ -399,11 +418,34 @@ def post_drive(payload: DriveCreate, user: Writer):
         route_distance_m=route["distance_m"],
         route_duration_s=route["duration_s"],
         route_source=route["source"],
+        driver_price_chf=driver_price,
     )
     drive = db.get_drive(drive_id)
     # Passengers waiting for a ride like this one are told.
     notify.tell_passengers(drive)
-    return search.with_bookable(pricing.with_demo_price(drive))
+    return search.with_bookable(pricing.with_prices(drive))
+
+
+@app.get("/api/price_band")
+def get_price_band(
+    origin_lat: Annotated[float, Query(ge=-90, le=90)],
+    origin_lon: Annotated[float, Query(ge=-180, le=180)],
+    destination_lat: Annotated[float, Query(ge=-90, le=90)],
+    destination_lon: Annotated[float, Query(ge=-180, le=180)],
+):
+    # The driver's form asks before posting: the same road route as
+    # POST /api/drives computes, so the same band.
+    route = matching.route_with_fallback([(origin_lat, origin_lon), (destination_lat, destination_lon)])
+    km = route["distance_m"] / 1000.0
+    price_band = pricing.band(km)
+    if not price_band:
+        raise api_error(400, "no_distance", "Start and destination are the same place")
+    return {
+        **price_band,
+        # Each passenger's ceiling with 1, 2, ... 8 passengers: why the
+        # price per passenger falls when more people join.
+        "ceilings_chf": [pricing.ceiling_chf(km, n) for n in range(1, 9)],
+    }
 
 
 @app.get("/api/drives")
@@ -421,7 +463,7 @@ def get_drives(
         upcoming_only=upcoming_only, driver_name=driver_name, with_geometry=False, limit=limit,
         include_demo=demo_drives.enabled(),
     )
-    return [search.with_bookable(pricing.with_demo_price(d)) for d in drives]
+    return [search.with_bookable(pricing.with_prices(d)) for d in drives]
 
 
 @app.get("/api/drives/{drive_id}")
@@ -429,7 +471,7 @@ def get_drive(drive_id: int):
     drive = db.get_drive(drive_id)
     if not drive or (drive["is_demo"] and not demo_drives.enabled()):
         raise api_error(404, "drive_not_found", "Drive not found")
-    return search.with_bookable(pricing.with_demo_price(drive))
+    return search.with_bookable(pricing.with_prices(drive))
 
 
 @app.delete("/api/drives/{drive_id}")
@@ -486,9 +528,10 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
         time_tolerance_min=payload.time_tolerance_min,
     )
 
-    # Their share of the ride: a demo price for now (see pricing.py).
-    for m in driver_matches + outside_matches:
-        m["price_chf"] = pricing.demo_price_chf(m["ride_km"])
+    # What the passenger pays for their part of the drive, and the train
+    # fare for it (see pricing.py).
+    driver_matches = [pricing.with_ride_prices(m) for m in driver_matches]
+    outside_matches = [pricing.with_ride_prices(m) for m in outside_matches]
 
     # A public transport connection from the drop-off to the passenger's
     # actual destination, when it's too far to walk.

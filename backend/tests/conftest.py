@@ -24,9 +24,21 @@ import database as db  # noqa: E402
 # tables in (let alone write to) the real rideshare.db in the repo root.
 db.DB_PATH = os.path.join(tempfile.mkdtemp(prefix="rideshare-tests-"), "_unused.db")
 
+import fares  # noqa: E402
 import matching  # noqa: E402
 import pytest  # noqa: E402
 import transit  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def no_ojp(monkeypatch):
+    """Never call opentransportdata.swiss from tests, even with an API key
+    in the developer's environment; tests that need OJP fake it."""
+    monkeypatch.delenv("OJP_API_KEY", raising=False)
+    monkeypatch.delenv("OJP_FARE_API_KEY", raising=False)
+    fares.clear_cache()
+    yield
+    fares.clear_cache()
 
 
 @pytest.fixture(autouse=True)

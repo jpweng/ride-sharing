@@ -260,6 +260,14 @@
         </div>
       </div>
 
+      <label for="drive-price" data-i18n="drive.price">Price per passenger (CHF)</label>
+      <input type="number" id="drive-price" class="price-input" min="0" step="0.10" inputmode="decimal" disabled />
+      <!-- Filled in by app.js (renderPriceBand) from /api/price_band. -->
+      <div class="hint" id="drive-price-band"></div>
+      <div class="hint price-warn" id="drive-price-warn" hidden></div>
+      <div class="hint" id="drive-price-shared" hidden></div>
+      <div class="hint" data-i18n="drive.priceExplain">Drivers share their costs, they don't earn from the drive: the price stays below the car's cost shared with your passengers, and below the train fare.</div>
+
       <button class="submit-btn" id="drive-submit" data-i18n="drive.submit">Offer drive</button>
       <div class="status-msg" id="drive-status"></div>
     </section>
