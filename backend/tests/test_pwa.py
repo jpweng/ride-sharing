@@ -80,7 +80,18 @@ def test_apple_touch_icon():
     assert (width, height) == (180, 180)
 
 
-@pytest.mark.parametrize("page", ["index.html", "privacy.html", "conduct.html"])
+# Every page links the manifest and pwa.js, a new one included, except the
+# offline page: the service worker shows it in place of another page.
+NOT_INSTALLABLE = {"offline.html"}
+INSTALLABLE_PAGES = sorted(path.name for path in FRONTEND.glob("*.html") if path.name not in NOT_INSTALLABLE)
+
+
+def test_installable_pages_found():
+    assert {"index.html", "privacy.html", "conduct.html"} <= set(INSTALLABLE_PAGES)
+    assert NOT_INSTALLABLE <= {path.name for path in FRONTEND.glob("*.html")}
+
+
+@pytest.mark.parametrize("page", INSTALLABLE_PAGES)
 def test_pages_are_installable(page):
     html = (FRONTEND / page).read_text()
     for tag in [

@@ -22,10 +22,24 @@ LANGS = ["en", "de", "fr", "it"]
 # Each language's keys, merged from its files as the browser gets them.
 DICTS = {lang: translations.dictionary(lang) for lang in LANGS}
 EN = DICTS["en"]
-PAGES = ["index.html", "privacy.html", "conduct.html", "offline.html"]
+# Every page and script is checked, a new one included, except those listed
+# here with the reason.
+UNCHECKED_SCRIPTS = {
+    "i18n.js",  # the translation code itself; its only t("…") is in a comment
+    "sw.js",  # the service worker shows no text (its error code is checked below)
+}
+PAGES = sorted(path.name for path in FRONTEND.glob("*.html"))
 # Pages translated as whole texts, one <article lang="xx" data-i18n-block> per language.
-DOC_PAGES = ["privacy.html", "conduct.html", "offline.html"]
-SCRIPTS = ["app.js", "pwa.js"]
+DOC_PAGES = [page for page in PAGES if "data-i18n-block" in (FRONTEND / page).read_text()]
+SCRIPTS = sorted(path.name for path in FRONTEND.glob("*.js") if path.name not in UNCHECKED_SCRIPTS)
+
+
+def test_pages_and_scripts_found():
+    # The globs above find at least the pages and scripts there were when they replaced fixed lists.
+    assert {"index.html", "privacy.html", "conduct.html", "offline.html"} <= set(PAGES)
+    assert {"privacy.html", "conduct.html", "offline.html"} <= set(DOC_PAGES)
+    assert {"app.js", "pwa.js"} <= set(SCRIPTS)
+    assert UNCHECKED_SCRIPTS <= {path.name for path in FRONTEND.glob("*.js")}
 
 
 def _placeholders(text):
