@@ -20,6 +20,37 @@ resource "aws_ecr_repository" "proxy" {
   }
 }
 
+# Routing (OSRM + Switzerland data), built monthly from routing/ by the
+# "Routing data" workflow. A few hundred MB per image: keep only the last 3.
+resource "aws_ecr_repository" "routing" {
+  name = "${var.project}-routing"
+
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "routing" {
+  repository = aws_ecr_repository.routing.name
+
+  policy = jsonencode({
+    rules = [{
+      rulePriority = 1
+      description  = "Keep the 3 most recent routing images"
+      selection = {
+        tagStatus   = "any"
+        countType   = "imageCountMoreThan"
+        countNumber = 3
+      }
+      action = {
+        type = "expire"
+      }
+    }]
+  })
+}
+
 resource "aws_ecr_lifecycle_policy" "keep_recent" {
   for_each = {
     app   = aws_ecr_repository.app.name

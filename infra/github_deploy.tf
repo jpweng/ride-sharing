@@ -29,7 +29,7 @@ data "aws_iam_policy_document" "github_deploy" {
       "ecr:CompleteLayerUpload",
       "ecr:PutImage",
     ]
-    resources = [aws_ecr_repository.app.arn, aws_ecr_repository.proxy.arn]
+    resources = [aws_ecr_repository.app.arn, aws_ecr_repository.proxy.arn, aws_ecr_repository.routing.arn]
   }
 
   statement {
