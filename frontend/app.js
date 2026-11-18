@@ -1163,9 +1163,13 @@ document.getElementById("ride-ask").addEventListener("click", async () => {
   btn.disabled = true;
   try {
     const data = await postJson("/api/requests", payload);
-    const message = data.drivers_told
-      ? t("ride.askSent", { count: data.drivers_told })
-      : t("ride.askSentNone");
+    // Only real drivers are counted. A demo driver's request is a demo one:
+    // it only reaches demo drivers, who are named.
+    const message = !data.drivers_told
+      ? t("ride.askSentNone")
+      : data.demo_request
+        ? t("ride.askSentDemo", { count: data.drivers_told, names: data.demo_drivers_told.join(", ") })
+        : t("ride.askSent", { count: data.drivers_told });
     showStatus("ride-ask-status", message, true);
     loadMyRequests();
   } catch (err) {

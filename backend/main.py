@@ -13,6 +13,8 @@ Two core use cases:
                                (see transit.py).
   GET /api/drives          -- browse all upcoming posted drives
                                (?mine=true: the signed-in driver's own).
+                               Drives and matches say whether they're
+                               "bookable": demo drives aren't.
   GET /api/drives/{id}     -- a single drive with full route geometry.
   DELETE /api/drives/{id}  -- a driver cancels one of their drives.
   GET /api/ride_requests   -- the signed-in passenger's recent searches.
@@ -41,7 +43,8 @@ that, every such request to /api/ must come from this site's own pages
 
 An hourly background task keeps a rolling week of fictional demo drives in
 the database and deletes visitors' data a month after it's last useful (see
-maintenance.py).
+maintenance.py). DEMO_DRIVES=off in the environment removes the demo
+drives and hides them everywhere (see demo_drives.py).
 """
 import asyncio
 import hashlib
@@ -63,6 +66,7 @@ from pydantic import BaseModel, Field
 
 import auth
 import database as db
+import demo_drives
 import mailer
 import maintenance
 import matching
@@ -399,7 +403,7 @@ def post_drive(payload: DriveCreate, user: Writer):
     drive = db.get_drive(drive_id)
     # Passengers waiting for a ride like this one are told.
     notify.tell_passengers(drive)
-    return pricing.with_demo_price(drive)
+    return search.with_bookable(pricing.with_demo_price(drive))
 
 
 @app.get("/api/drives")
@@ -414,17 +418,18 @@ def get_drives(
     # Without route geometry, which can be ~60 KB per drive: the map gets it
     # from /api/drives/{id} for the drive it shows.
     drives = db.list_drives(
-        upcoming_only=upcoming_only, driver_name=driver_name, with_geometry=False, limit=limit
+        upcoming_only=upcoming_only, driver_name=driver_name, with_geometry=False, limit=limit,
+        include_demo=demo_drives.enabled(),
     )
-    return [pricing.with_demo_price(d) for d in drives]
+    return [search.with_bookable(pricing.with_demo_price(d)) for d in drives]
 
 
 @app.get("/api/drives/{drive_id}")
 def get_drive(drive_id: int):
     drive = db.get_drive(drive_id)
-    if not drive:
+    if not drive or (drive["is_demo"] and not demo_drives.enabled()):
         raise api_error(404, "drive_not_found", "Drive not found")
-    return pricing.with_demo_price(drive)
+    return search.with_bookable(pricing.with_demo_price(drive))
 
 
 @app.delete("/api/drives/{drive_id}")
@@ -543,7 +548,14 @@ def create_ride_request(payload: RideRequestCreate, user: Writer):
         payload.pickup_radius_km, payload.dropoff_radius_km, payload.time_tolerance_min,
     )
     told = notify.notify_drivers(request)
-    return {"request": request, "drivers_told": len(told)}
+    # A real passenger's request only reaches real drivers, so the count is
+    # of real drivers. A demo request (made under a demo driver's name) only
+    # reaches demo drivers, and gets their (fictional) names, so the demo
+    # can go on with signing in as one of them.
+    result = {"request": request, "drivers_told": len(told), "demo_request": notify.is_demo_request(request)}
+    if result["demo_request"]:
+        result["demo_drivers_told"] = told
+    return result
 
 
 @app.get("/api/requests")

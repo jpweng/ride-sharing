@@ -86,11 +86,12 @@ jobs:
             --query 'Reservations[].Instances[].InstanceId' --output text)
           if [ -z "$INSTANCE_ID" ]; then echo "::error::No running server tagged Name=${{ vars.SERVER_NAME }}"; exit 1; fi
 
+          # DEMO_DRIVES: optional repo variable, "on" (or unset) or "off".
           # ANDROID_CERT_SHA256 (optional) feeds /.well-known/assetlinks.json;
           # see mobile/android/README.md.
-          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nROUTING_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\nEMAIL_FROM=%s\nPUBLIC_BASE_URL=%s\nANDROID_CERT_SHA256=%s\n' \
+          ENV_FILE=$(printf 'APP_IMAGE=%s\nPROXY_IMAGE=%s\nROUTING_IMAGE=%s\nSITE_ADDRESS=%s\nAWS_REGION=%s\nLOG_GROUP=%s\nEMAIL_FROM=%s\nPUBLIC_BASE_URL=%s\nDEMO_DRIVES=%s\nANDROID_CERT_SHA256=%s\n' \
             "$APP_IMAGE" "$PROXY_IMAGE" "$ROUTING_IMAGE" "${{ vars.SITE_ADDRESS }}" "${{ vars.AWS_REGION }}" "${{ vars.LOG_GROUP }}" \
-            "${{ vars.EMAIL_FROM }}" "${{ vars.PUBLIC_BASE_URL }}" "${{ vars.ANDROID_CERT_SHA256 }}")
+            "${{ vars.EMAIL_FROM }}" "${{ vars.PUBLIC_BASE_URL }}" "${{ vars.DEMO_DRIVES }}" "${{ vars.ANDROID_CERT_SHA256 }}")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \

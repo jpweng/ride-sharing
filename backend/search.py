@@ -7,12 +7,17 @@ can pass near both ends, then matches them (see matching.py). Used by
 A search also proposes a few rides just outside what the passenger
 selected (with_outside): within wider circles and a wider time window,
 each marked with what it's outside of. The passenger may like them anyway.
+
+Every drive returned says whether it can be booked ("bookable"): demo
+drives can't, they're fictional. With demo drives off (demo_drives.enabled),
+they're left out altogether.
 """
 import os
 import threading
 from datetime import datetime, timedelta
 
 import database as db
+import demo_drives
 import matching
 
 # Searches running at once. A search is Python work (one CPU at a time, the
@@ -23,6 +28,13 @@ import matching
 # each, and the server does the most searches per second.
 SEARCH_CONCURRENCY = int(os.environ.get("SEARCH_CONCURRENCY", "1"))
 _search_slots = threading.BoundedSemaphore(SEARCH_CONCURRENCY)
+
+
+def with_bookable(drive: dict) -> dict:
+    """The drive, marked as bookable unless it's a fictional demo drive."""
+    drive["bookable"] = not drive.get("is_demo")
+    return drive
+
 
 # The wider limits for rides outside the passenger's selection: twice their
 # circles and time flexibility, and at least 5 km / 1 h more.
@@ -62,6 +74,7 @@ def _upcoming_matches(
         with_geometry=False,
         departing_from=(asked - tolerance - timedelta(hours=matching.MAX_DRIVE_HOURS)).isoformat(timespec="minutes"),
         departing_until=(asked + tolerance).isoformat(timespec="minutes"),
+        include_demo=demo_drives.enabled(),
     )
     # Routes (large) only for the drives that can pass near both ends.
     candidates = [
@@ -73,13 +86,13 @@ def _upcoming_matches(
     geometries = db.route_geometries([d["id"] for d in candidates])
     for d in candidates:
         d["route_geometry"] = geometries.get(d["id"])
-    return matching.find_matches(
+    return [with_bookable(m) for m in matching.find_matches(
         candidates, origin, destination, requested_time,
         pickup_radius_km=pickup_radius_km,
         dropoff_radius_km=dropoff_radius_km,
         time_tolerance_min=time_tolerance_min,
         max_results=max_results,
-    )
+    )]
 
 
 def with_outside(

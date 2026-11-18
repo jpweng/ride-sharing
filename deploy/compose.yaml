@@ -6,6 +6,8 @@
 #   AWS_REGION, LOG_GROUP   CloudWatch Logs destination (and the SES Region)
 #   EMAIL_FROM              sender of sign-in emails, e.g. no-reply@rideandrail.ch
 #   PUBLIC_BASE_URL         the site's address, for links in emails
+#   DEMO_DRIVES             "on" (default when empty) or "off": fictional demo
+#                           drives, see backend/demo_drives.py
 #   ANDROID_CERT_SHA256     signing-certificate fingerprint(s) of the Android
 #                           app, comma-separated, for /.well-known/assetlinks.json
 #                           (optional; see mobile/android/README.md)
@@ -66,6 +68,7 @@ services:
     mem_limit: 512m
     environment:
       DB_PATH: /data/rideshare.db
+      DEMO_DRIVES: ${DEMO_DRIVES:-on}
       ANDROID_CERT_SHA256: ${ANDROID_CERT_SHA256:-}
       OSRM_URL: http://osrm:5000
       # Sign-in emails (backend/mailer.py): Amazon SES, with the instance
