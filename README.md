@@ -104,6 +104,7 @@ backend/
   pricing.py      ride prices: the driver's price band, what each passenger pays
   fares.py        train fares: T601 distance tariff, optional OJP fare lookup
   transit.py      transport.opendata.ch integration
+  operators.py    Swiss public transport operators and their logos, for each transit leg
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
 frontend/
