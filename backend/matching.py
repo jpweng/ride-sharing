@@ -407,5 +407,6 @@ def find_matches(
         )
         if m is not None:
             matches.append(m)
-    matches.sort(key=lambda m: (m["score"], m["pickup"]["time"]))
+    # Equally good: a real drive before a demo one, then the earliest pickup.
+    matches.sort(key=lambda m: (m["score"], bool(m.get("is_demo")), m["pickup"]["time"]))
     return matches[:max_results]

@@ -2,6 +2,8 @@
 Hourly upkeep of the database, run by main.py at startup and then every hour:
 
   1. Refresh the rolling week of fictional demo drives (demo_drives.py).
+     With DEMO_DRIVES=off, delete them all instead, then the trips' routes
+     no demo drive uses any more.
   2. Give unanswered ride requests their one extra round of drivers
      (notify.run_extra_rounds).
   3. Delete visitors' data once it's RETENTION old: drives and ride
@@ -57,8 +59,14 @@ def run(now: datetime | None = None) -> dict:
     visitor data; returns what changed."""
     now = now or datetime.now(demo_drives.LOCAL_TZ).replace(tzinfo=None)
     deleted, created = demo_drives.refresh(now)
+    # Off: their routes too. On, they're kept, so the routing server isn't
+    # asked again for a trip that comes back.
+    routes_deleted = 0 if demo_drives.enabled() else db.delete_unused_demo_routes()
     told = notify.run_extra_rounds(now)
-    return {"demo_deleted": deleted, "demo_created": created, "extra_round_told": told, **purge_old_data(now)}
+    return {
+        "demo_deleted": deleted, "demo_created": created, "demo_routes_deleted": routes_deleted,
+        "extra_round_told": told, **purge_old_data(now),
+    }
 
 
 if __name__ == "__main__":
