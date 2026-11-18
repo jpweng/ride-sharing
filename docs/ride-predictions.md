@@ -1,7 +1,8 @@
 # Ride predictions and ride requests — design
 
 **Status: ride requests and notifications are built (2026-11-01, `backend/notify.py`), with demo
-and real requests kept apart since 2026-11-18; ride predictions are designed, not built yet.** Keep this document in step with the code: if a threshold or
+and real requests kept apart, and drivers also chosen by their [areas](driver-areas.md), since
+2026-11-18; ride predictions are designed, not built yet.** Keep this document in step with the code: if a threshold or
 limit changes, update it in the same commit.
 
 ## What it does
@@ -13,7 +14,8 @@ match leaves with nothing. This feature uses each person's own history to fill b
    and suggests the next ones. A driver sees "Publish your next drives?", a passenger "Request your
    next rides?", each with the upcoming dates ticked and one button to confirm.
 2. **Ride requests.** A passenger can ask for a ride that nobody has posted. Drivers who made a
-   suitable drive in the past are told about it. Only a few drivers are told, and rarely, because
+   suitable drive in the past are told about it, and so are drivers who saved an
+   [area](driver-areas.md) it starts or ends in. Only a few drivers are told, and rarely, because
    drivers who get too many notifications leave.
 
 ## Decisions
@@ -67,7 +69,13 @@ Rules (in `backend/notify.py`):
    - leaves within **±60 min** of the requested time of day;
    - has a route passing within the passenger's pickup and drop-off radii, in that order
      (`matching.match_drive`, the same rule as a search).
-2. **Real or demo, never both** (`notify.is_demo_request`):
+2. **Candidates by area**, after those: drivers who saved an area (`backend/areas.py`) the
+   request starts or ends in, whether or not they ever made the trip. A new driver has no history,
+   and a driver living at one end may well go that way. Drivers whose areas cover both ends (home
+   at one, work at the other) come first, then the nearest to their area's centre; drivers who fit
+   equally well (several who picked the same town) take turns, the one told longest ago first. A
+   driver found both ways is told once, as one who made the trip.
+3. **Real or demo, never both** (`notify.is_demo_request`):
    - a real passenger's request only considers visitors' drives, and not those posted under a demo
      driver's name. Demo drivers are never told, and the "N drivers were told" the passenger sees
      counts real drivers only. If none fits, the passenger is told that no driver using the app has
@@ -75,12 +83,13 @@ Rules (in `backend/notify.py`):
    - a request made under a demo driver's name (someone viewing the demo as, e.g., Jean Dupont) is
      a **demo request**: it only considers the demo drivers' history. See [Demo data](#demo-data).
    - With `DEMO_DRIVES=off` there are no demo drivers and no demo requests.
-3. **Excluded:**
+   - Demo drivers have no areas, so a demo request reaches nobody by area.
+4. **Excluded:**
    - the passenger themself;
    - drivers who already posted a matching drive, because the passenger sees that drive already;
    - drivers who muted this route (a request whose start and end are each within `MUTE_RADIUS_KM`,
      5 km, of the muted request's) or turned request notifications off.
-4. **Ranking:** drivers who made the drive most often come first, then a bonus for the same weekday
+5. **Ranking of those who made the trip:** drivers who made the drive most often come first, then a bonus for the same weekday
    (`SAME_WEEKDAY_BONUS`, worth 4 occurrences) and a closer time, minus the distance to the pickup
    and from the drop-off (the match's score, in minutes, over `RANK_MINUTES_PER_POINT` = 10). A
    habitual driver is the most likely to say yes.
@@ -89,16 +98,17 @@ Rules (in `backend/notify.py`):
 
 | Limit | Value | Why |
 |---|---|---|
-| Drivers per request | **3** (`DRIVERS_PER_REQUEST`) | Enough for a good chance of an offer, without pinging everyone on a busy corridor. |
+| Drivers per request | **3** who made the trip (`DRIVERS_PER_REQUEST`), plus **3** by area (`AREA_DRIVERS_PER_REQUEST`) | Enough for a good chance of an offer, without pinging everyone on a busy corridor or in a town. The two don't share a limit: a corridor with regulars still reaches drivers who live there. |
 | Demo drivers per real request | **0**, in the first round and the extra round | A real passenger must never wait for a driver who doesn't exist. Demo requests reach up to the same 3 (then 2) demo drivers, with the same limits. |
-| Per driver | **1 per day, 3 per rolling 7 days** | Nobody hears from us every day. If a driver is over budget, the next candidate is tried; nothing waits in a queue. |
+| Per driver | **1 per day, 3 per rolling 7 days**, however they were chosen | Nobody hears from us every day. If a driver is over budget, the next candidate is tried; nothing waits in a queue. |
 | Merging | An unread notification for the same route and date becomes "2 passengers…" and doesn't count against the budget | Several passengers on one trip is better news, not more noise. |
 | Back-off | After **3** notifications in a row without a reaction, the budget drops to 1 per week. After **5**, notifications pause for **30 days**, and the inbox says so with a "turn back on" button. | Silence is the clearest sign that we're bothering someone. Any reaction resets the count. |
-| Extra round | Once only: after **12 h** without an offer, if the trip is still more than 12 h away, up to **2** more drivers | Gives the request a second chance without turning into a broadcast. |
+| Extra round | Once only: after **12 h** without an offer, if the trip is still more than 12 h away, up to **2** more drivers, of either kind | Gives the request a second chance without turning into a broadcast. |
 
 Each driver notification offers three choices:
 - **Offer this drive** fills in the Driver form with the driver's usual start and end and the
-  requested time. The driver still confirms.
+  requested time; for a driver chosen by area, with the passenger's own trip and time, to adjust.
+  The driver still confirms.
 - **Not this time.**
 - **Not interested in this route**, which mutes it.
 
@@ -183,8 +193,11 @@ fetches every trip's route from OSRM again: ~1,500 trips, a minute or so from ou
 
 The privacy notice says (ride requests) and must say (predictions), in all four languages:
 - that past drives and searches are used to suggest the next ones and to tell drivers about requests
-  on routes they often drive, and that both can be turned off;
-- that notified drivers see the passenger's name, trip and time.
+  on routes they often drive, that drivers' areas are used the same way, and that both can be
+  turned off;
+- that notified drivers see the passenger's name, trip and time, and that drivers with an area
+  around the start or destination see the same in the list of requests in their areas
+  ([Driver areas](driver-areas.md)).
 
 ## Open questions
 

@@ -203,7 +203,7 @@
         <div id="ride-matches"></div>
 
         <div class="ask-box">
-          <div class="hint" data-i18n="ride.askHint">Nothing that suits you? Ask the drivers who often make this trip. A few of them are told, and your inbox tells you when a drive that fits is posted.</div>
+          <div class="hint" data-i18n="ride.askHint">Nothing that suits you? Ask the drivers who often make this trip or drive around there. A few of them are told, drivers with an area there see your request in their list, and your inbox tells you when a drive that fits is posted.</div>
           <button class="submit-btn secondary" id="ride-ask" data-i18n="ride.ask">Ask drivers for this ride</button>
           <div class="status-msg" id="ride-ask-status"></div>
         </div>
@@ -229,7 +229,7 @@
       <div id="inbox-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
       <label class="checkbox-row">
         <input type="checkbox" id="inbox-notify-requests" />
-        <span data-i18n="inbox.notifyRequests">Tell me when a passenger asks for a ride on a route I've driven</span>
+        <span data-i18n="inbox.notifyRequests">Tell me when a passenger asks for a ride on a route I've driven or in one of my areas</span>
       </label>
     </section>
 
@@ -237,6 +237,15 @@
     <section id="page-drive" class="page">
       <div class="page-title" data-i18n="drive.title">Your drives</div>
       <div class="drive-list" id="drive-mine"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
+
+      <!-- Open ride requests in the driver's areas (areas.js) -->
+      <div class="section-title" data-i18n="areas.requestsTitle">Ride requests in your areas</div>
+      <div class="hint" data-i18n="areas.requestsHint">Passengers looking for a ride that starts or ends in one of your areas. Going that way? Offer a drive.</div>
+      <div class="area-request-filters" id="areas-requests-filters" hidden>
+        <select id="areas-requests-area" class="auto-width" aria-label="Area" data-i18n-aria-label="areas.requestsFilterArea"></select>
+        <select id="areas-requests-day" class="auto-width" aria-label="Day" data-i18n-aria-label="areas.requestsFilterDay"></select>
+      </div>
+      <div id="areas-requests"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
 
       <div class="section-title" data-i18n="drive.offerTitle">Offer a drive</div>
 
@@ -289,7 +298,7 @@
 
       <!-- Driver areas (areas.js): the places the driver usually drives from or to -->
       <div class="section-title" data-i18n="areas.title">Your areas</div>
-      <div class="hint" data-i18n="areas.hint">The places you usually drive from or to, such as home or work, each with a radius. They will be used to show you the ride requests that start or end there. Only you see your areas.</div>
+      <div class="hint" data-i18n="areas.hint">The places you usually drive from or to, such as home or work, each with a radius. The ride requests that start or end there are listed above, and you're told about some of them in your inbox, a few times a week at most. Only you see your areas.</div>
       <div id="areas-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
       <div class="hint" id="areas-full" hidden></div>
       <div id="areas-form">

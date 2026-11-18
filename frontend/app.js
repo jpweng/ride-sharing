@@ -1457,7 +1457,10 @@ function notificationCard(n) {
   const open = r && r.status === "open" && new Date(r.requested_time) > new Date();
 
   if (n.kind === "request_for_driver") {
+    // The driver was chosen for a trip they usually make, or for an area
+    // of theirs the request starts or ends in (see notify.py).
     const usual = n.details?.trip;
+    const area = n.details?.area;
     const title = n.passengers > 1
       ? t("inbox.requestTitleMany", { count: n.passengers })
       : t("inbox.requestTitle", { name: r?.passenger_name || "?" });
@@ -1465,6 +1468,7 @@ function notificationCard(n) {
       <div class="route">${esc(title)}</div>
       ${trip}
       ${usual ? `<div class="meta">${esc(t("inbox.requestWhy", { from: usual.origin.name, to: usual.destination.name, time: usual.time, count: usual.times }))}</div>` : ""}
+      ${area ? `<div class="meta">${esc(requestInAreaText(area, n.details.ends || []))}</div>` : ""}
       <div class="notification-actions"></div>
     `;
     const actions = card.querySelector(".notification-actions");
@@ -1531,20 +1535,48 @@ async function actOn(n, action, reload = true) {
   }
 }
 
+function requestInAreaText(area, ends) {
+  if (ends.length > 1) return t("inbox.requestInAreas");
+  return ends[0] === "destination"
+    ? t("inbox.requestEndsInArea", { area: area.name })
+    : t("inbox.requestStartsInArea", { area: area.name });
+}
+
 // "Offer this drive": the Driver form, filled with the driver's usual trip
-// and a departure that reaches the passenger at their time. The driver
-// still checks it and clicks "Offer drive".
+// and a departure that reaches the passenger at their time; for a driver
+// chosen by area, with the passenger's own trip and time. The driver still
+// checks it and clicks "Offer drive".
 async function offerDrive(n) {
   await actOn(n, "offer", false);
-  const { trip } = n.details;
+  const name = n.request?.passenger_name || "";
+  if (n.details?.trip) {
+    fillDriveForm(n.details.trip.origin, n.details.trip.destination, n.details.suggested_departure);
+    showStatus("drive-status", t("inbox.offerFilled", { name }), true);
+  } else {
+    fillDriveFormForRequest(n.request);
+    showStatus("drive-status", t("inbox.offerFilledArea", { name }), true);
+  }
+}
+
+// The Driver form with a trip ({name, lat, lon} at each end) and a
+// departure time, in view.
+function fillDriveForm(origin, destination, departure) {
   goTo("drive");
-  [["drive-origin", trip.origin], ["drive-destination", trip.destination]].forEach(([role, place]) => {
+  [["drive-origin", origin], ["drive-destination", destination]].forEach(([role, place]) => {
     setPointCoords(role, place.lat, place.lon, place.name);
     document.getElementById(`name-${role}`).value = place.name;
   });
-  setDateTime("drive", new Date(n.details.suggested_departure));
-  showStatus("drive-status", t("inbox.offerFilled", { name: n.request?.passenger_name || "" }), true);
+  setDateTime("drive", new Date(departure));
   document.getElementById("drive-submit").scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+// The Driver form with a passenger's ride request: their trip and time.
+function fillDriveFormForRequest(r) {
+  fillDriveForm(
+    { name: r.origin_name, lat: r.origin_lat, lon: r.origin_lon },
+    { name: r.destination_name, lat: r.destination_lat, lon: r.destination_lon },
+    r.requested_time,
+  );
 }
 
 function fmtDate(iso) {

@@ -15,11 +15,21 @@ rules; in short:
   account; names without an account lose theirs when they're deleted
   ([data retention](demo-drives-and-data-retention.md)).
 
-For now areas are only stored and shown to their owner. They are the base for two things that come
-next, each in its own change: telling a driver about the ride requests that start or end in one of
-their areas (today only drivers who made the trip before are told, see
-[Ride predictions and ride requests](ride-predictions.md)), and a list where a driver browses
-those requests.
+**What they're for:** a driver is told, in their inbox, about the ride requests that start or end
+in one of their areas, on top of the drivers who made the trip before, and within the same limits
+(one notification a day, three a week). Who is chosen and in what order is in
+[Ride predictions and ride requests](ride-predictions.md#who-is-told); the matching itself is
+`areas.drivers_near()`. A request fits an area when its start or its destination is inside the
+circle; a driver whose areas cover both ends comes first. Turning request notifications off in the
+inbox turns these off too.
+
+**Browsing the requests:** the Driver page also lists every open ride request that starts or ends
+in one of the driver's areas, the soonest first, to filter by area and by day
+(`notify.requests_in_areas()`). Unlike notifications, the list has no budget: the driver comes to
+it. Each request shows the passenger's first name and initial, their trip, its time and
+flexibility, and which area it fits; *Offer this drive* fills the Driver form with the passenger's
+trip and time, and posting the drive tells the passenger. The list leaves out the driver's own
+requests and demo requests, and shows at most 200.
 
 In the browser, the section is [frontend/areas.js](../frontend/areas.js), a script of its own
 loaded after `app.js`, whose map, point picking and helpers it uses. `app.js` announces each point
@@ -37,3 +47,8 @@ Access levels and error codes as in [API](api.md).
 - `PUT  /api/areas/{id}` `{radius_km}` — may change; changes the radius (404 `area_not_found`,
   also for someone else's area)
 - `DELETE /api/areas/{id}` — may change; removes it (404 `area_not_found`)
+- `GET  /api/areas/requests` — signed in; the open ride requests that start or end in one of the
+  user's areas, the soonest first: each as in the inbox (`passenger_name`, both ends with their
+  coordinates, `requested_time`, the radii and `time_tolerance_min`), with `area` (the one of the
+  user's areas it fits best), `ends` (`origin`, `destination` or both: the ends the user's areas
+  cover) and `area_ids` (every area of the user's it touches)
