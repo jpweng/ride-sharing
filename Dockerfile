@@ -19,9 +19,13 @@ COPY frontend/ frontend/
 RUN useradd --uid 1000 --user-group --no-create-home app \
     && mkdir /data && chown app:app /data
 
+# MALLOC_ARENA_MAX: glibc otherwise gives each of the request threads its
+# own memory arena, which keeps the peak of every search it ever ran: 800 MB
+# vs 260 MB in the load test (loadtest/), at the same speed.
 ENV PATH="/app/.venv/bin:$PATH" \
     DB_PATH=/data/rideshare.db \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    MALLOC_ARENA_MAX=2
 
 USER app
 EXPOSE 8000
