@@ -80,6 +80,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   back, how to add an event
 - [Sign-in and accounts](docs/sign-in.md): email links, sessions, who may do what, limits, bans,
   account deletion, email sending
+- [Driver areas](docs/driver-areas.md): the places a driver usually drives from or to, each with a
+  radius they choose
 - [Train fares](docs/train-fares.md): the T601 distance tariff and the optional OJP fare lookup
 - [Translations](docs/translations.md): the four languages, the dictionaries and their checks
 - [Installable app (PWA) and Android app](docs/pwa.md): manifest, service worker, updates, the
@@ -108,6 +110,7 @@ backend/
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
   search.py       upcoming drives that fit a trip (used by searches and ride requests)
   notify.py       ride requests: which drivers are told, limits, the inbox
+  areas.py        driver areas: the places a driver usually drives from or to, with a radius
   pricing.py      ride prices: the driver's price band, what each passenger pays
   fares.py        train fares: T601 distance tariff, optional OJP fare lookup
   transit.py      transport.opendata.ch integration
@@ -123,6 +126,7 @@ frontend/
   conduct.html    code of conduct (draft for legal review), accepted at first sign-in
   offline.html    shown by the service worker for an uncached page while offline
   app.js          Leaflet map, point picking, address autocomplete, API calls
+  areas.js        the Driver page's "Your areas" section (see docs/driver-areas.md)
   i18n.js         language choice and translation of the page (see docs/translations.md)
   i18n/           en/de/fr/it dictionaries, one file per key prefix
   events.js       events: the event page #/event/<slug>, the list of events, the drive back

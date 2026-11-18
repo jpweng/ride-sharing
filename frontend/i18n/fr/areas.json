@@ -1,0 +1,14 @@
+{
+  "areas.add": "Ajouter une zone",
+  "areas.added": "Zone ajoutée : {name}, dans un rayon de {km} km.",
+  "areas.empty": "Vous n'avez pas encore de zone. Ajoutez-en une ci-dessous.",
+  "areas.full": "Vous avez {max} zones, le maximum possible. Supprimez-en une pour en ajouter une autre.",
+  "areas.hint": "Les lieux d'où vous partez ou vers lesquels vous roulez habituellement, par exemple votre domicile ou votre lieu de travail, chacun avec un rayon. Ils serviront à vous montrer les demandes de trajet qui commencent ou se terminent là. Vos zones ne sont visibles que par vous.",
+  "areas.loadFailed": "Impossible de charger vos zones : {error}",
+  "areas.needPlace": "Choisissez d'abord un lieu.",
+  "areas.place": "Lieu",
+  "areas.radius": "Rayon",
+  "areas.remove": "Supprimer",
+  "areas.removeConfirm": "Supprimer votre zone {name}?",
+  "areas.title": "Vos zones"
+}

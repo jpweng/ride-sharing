@@ -1,0 +1,14 @@
+{
+  "areas.add": "Aggiungere una zona",
+  "areas.added": "Zona aggiunta: {name}, entro {km} km.",
+  "areas.empty": "Non ha ancora nessuna zona. Ne aggiunga una qui sotto.",
+  "areas.full": "Ha {max} zone, il massimo possibile. Ne rimuova una per aggiungerne un'altra.",
+  "areas.hint": "I luoghi da cui parte o verso cui guida abitualmente, ad esempio casa o lavoro, ciascuno con un raggio. Serviranno a mostrarle le richieste di passaggio che iniziano o terminano lì. Solo lei vede le sue zone.",
+  "areas.loadFailed": "Impossibile caricare le sue zone: {error}",
+  "areas.needPlace": "Scelga prima un luogo.",
+  "areas.place": "Luogo",
+  "areas.radius": "Raggio",
+  "areas.remove": "Rimuovere",
+  "areas.removeConfirm": "Rimuovere la sua zona {name}?",
+  "areas.title": "Le sue zone"
+}

@@ -71,9 +71,19 @@ def test_modules_in_filename_order_each_with_apply():
         assert callable(module.apply), module.__name__
 
 
+# The last migration whose change is in the snapshot (schema_before_migrations.sql).
+# Later ones add to it; the tests below check them against a new database.
+SNAPSHOT_UNTIL = "202611181637"
+
+
 def test_new_database_matches_the_schema_before_migrations(tmp_path, monkeypatch):
-    # Exactly what the old init_db() created, statement text included.
-    _init(monkeypatch, tmp_path / "new.db")
+    # Exactly what the old init_db() created, statement text included: the
+    # migrations up to the snapshot, on a new database.
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "new.db"))
+    with db.get_conn() as conn:
+        for module in migrations.modules():
+            if module.__name__.rsplit(".", 1)[1][:12] <= SNAPSHOT_UNTIL:
+                module.apply(conn)
     _from_snapshot(tmp_path / "before.db")
     assert _schema(tmp_path / "new.db") == _schema(tmp_path / "before.db")
 

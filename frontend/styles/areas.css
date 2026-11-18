@@ -1,0 +1,13 @@
+/* Driver areas on the Driver page (see areas.js). Linked after style.css. */
+
+.area-card .area-radius {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.area-card .area-radius .meta { margin-top: 0; }
+.area-card .area-radius select { padding: 4px 8px; }
+.area-card .link-btn { display: block; }
+#areas-add { margin-top: 12px; }
+#areas-list { margin-top: 8px; }

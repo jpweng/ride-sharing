@@ -1,0 +1,14 @@
+{
+  "areas.add": "Add area",
+  "areas.added": "Area added: {name}, within {km} km.",
+  "areas.empty": "You have no areas yet. Add one below.",
+  "areas.full": "You have {max} areas, the most you can save. Remove one to add another.",
+  "areas.hint": "The places you usually drive from or to, such as home or work, each with a radius. They will be used to show you the ride requests that start or end there. Only you see your areas.",
+  "areas.loadFailed": "Failed to load your areas: {error}",
+  "areas.needPlace": "Choose a place first.",
+  "areas.place": "Place",
+  "areas.radius": "Radius",
+  "areas.remove": "Remove",
+  "areas.removeConfirm": "Remove your area {name}?",
+  "areas.title": "Your areas"
+}

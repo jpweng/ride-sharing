@@ -1,5 +1,6 @@
 {
   "errors.account_banned": "Ce compte est fermé.",
+  "errors.area_not_found": "Cette zone n'existe plus.",
   "errors.consent_required": "Confirmez que vous avez 18 ans ou plus et acceptez le code de conduite.",
   "errors.cross_site_request": "Cette requête a été refusée pour des raisons de sécurité. Rechargez la page et réessayez.",
   "errors.demo_driver_not_found": "Ce conducteur de démo n'existe pas.",
@@ -25,5 +26,6 @@
   "errors.request_not_found": "Cette demande de trajet n'existe plus.",
   "errors.request_too_far": "Une demande de trajet peut être faite au plus 14 jours à l'avance.",
   "errors.request_too_soon": "Une demande de trajet doit être faite au moins 1 heure à l'avance.",
+  "errors.too_many_areas": "Vous avez déjà le nombre maximal de zones. Supprimez-en une d'abord.",
   "errors.too_many_requests": "Trop de demandes depuis ici. Réessayez plus tard, s'il vous plaît."
 }

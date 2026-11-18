@@ -92,6 +92,8 @@ function setPointCoords(role, lat, lon, name, kind = "point") {
 
   zoomToTrip(role.split("-")[0]);
   if (role.startsWith("drive-")) updatePriceBand();
+  // For the scripts loaded after this one (areas.js).
+  window.dispatchEvent(new CustomEvent("point:set", { detail: { role } }));
 }
 
 // ---------------------------------------------------------------------

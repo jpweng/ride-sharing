@@ -1,5 +1,6 @@
 {
   "errors.account_banned": "Dieses Konto ist gesperrt.",
+  "errors.area_not_found": "Dieses Gebiet gibt es nicht mehr.",
   "errors.consent_required": "Bestätigen Sie, dass Sie 18 oder älter sind, und akzeptieren Sie den Verhaltenskodex.",
   "errors.cross_site_request": "Diese Anfrage wurde aus Sicherheitsgründen abgelehnt. Laden Sie die Seite neu und versuchen Sie es noch einmal.",
   "errors.demo_driver_not_found": "Diese fahrende Person gibt es in der Demo nicht.",
@@ -25,5 +26,6 @@
   "errors.request_not_found": "Diese Fahrtanfrage gibt es nicht mehr.",
   "errors.request_too_far": "Eine Fahrtanfrage ist höchstens 14 Tage im Voraus möglich.",
   "errors.request_too_soon": "Eine Fahrtanfrage muss mindestens 1 Stunde im Voraus erfolgen.",
+  "errors.too_many_areas": "Sie haben bereits die Höchstzahl an Gebieten gespeichert. Entfernen Sie zuerst eines.",
   "errors.too_many_requests": "Zu viele Anfragen von hier. Bitte versuchen Sie es später noch einmal."
 }

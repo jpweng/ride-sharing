@@ -1,5 +1,6 @@
 {
   "errors.account_banned": "This account is closed.",
+  "errors.area_not_found": "This area no longer exists.",
   "errors.consent_required": "Confirm that you are 18 or older and accept the code of conduct.",
   "errors.cross_site_request": "This request was refused for security reasons. Reload the page and try again.",
   "errors.demo_driver_not_found": "This demo driver doesn't exist.",
@@ -25,5 +26,6 @@
   "errors.request_not_found": "This ride request no longer exists.",
   "errors.request_too_far": "A ride request can be at most 14 days ahead.",
   "errors.request_too_soon": "A ride request must be at least 1 hour ahead.",
+  "errors.too_many_areas": "You already have the most areas you can save. Remove one first.",
   "errors.too_many_requests": "Too many requests from here. Please try again later."
 }
