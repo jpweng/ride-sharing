@@ -251,6 +251,13 @@ transport.opendata.ch with realistic response times (so no one else's server is 
 fresh database with the demo drives, starts the app on 2 CPUs (`APP_CPUS`), runs Locust, and
 prints the results with the app's memory and CPU use. Results are in `loadtest/.work/`.
 
+Results (November 2026, a laptop's Core Ultra 7 255H, stub transit delays 0.15 s / 0.5 s): a
+search costs ~0.2 s of CPU, and one app process (one CPU: Python's GIL) saturates at ~2.4
+searches/s plus ~4 other requests/s; beyond that everything queues. At 40 users (~1 search/s,
+3.3 requests/s) `/api/match` took 1.4 s median, 4.1 s at p95 (mostly the transit lookups), other
+endpoints under 150 ms at p95, with 0.5 CPU and 250 MB of memory. A t4g CPU is roughly half as
+fast, hence Caddy's server-wide limit of 60 searches/min.
+
 ## Project layout
 
 ```
