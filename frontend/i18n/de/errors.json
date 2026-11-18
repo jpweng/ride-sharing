@@ -11,7 +11,6 @@
   "errors.drive_departed": "Diese Fahrt ist bereits losgefahren.",
   "errors.drive_not_found": "Diese Fahrt gibt es nicht mehr.",
   "errors.email_unavailable": "Die E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es später noch einmal.",
-  "errors.event_not_found": "Dieser Anlass wurde nicht gefunden. Vielleicht ist er vorbei.",
   "errors.invalid_email": "Geben Sie eine gültige E-Mail-Adresse ein.",
   "errors.invalid_link": "Dieser Anmeldelink ist ungültig, abgelaufen oder wurde schon verwendet. Fordern Sie einen neuen an.",
   "errors.invalid_time": "Ungültiges Datum oder ungültige Zeit.",

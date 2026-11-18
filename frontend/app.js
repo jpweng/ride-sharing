@@ -653,8 +653,7 @@ document.getElementById("account-delete").addEventListener("click", async () => 
 
 // ---------------------------------------------------------------------
 // Pages: #/ride (passenger, the default), #/browse (public), #/drive
-// (driver), #/inbox, #/account; scripts loaded after this one add theirs
-// (events.js: #/event/<slug>). Until signed in, the sign-in page shows
+// (driver), #/inbox, #/account. Until signed in, the sign-in page shows
 // instead of those that need a user; until the profile is complete, the
 // profile page does (but the account page stays reachable, to delete it).
 // ---------------------------------------------------------------------
@@ -671,10 +670,8 @@ const LINKED_PAGES = ["ride", "browse", "drive", "inbox", "account"];
 const DEFAULT_PAGE = "ride";
 
 function route() {
-  const hash = location.hash.replace(/^#\/?/, "");
-  if (hash.startsWith("signin/")) return verifySignInLink(hash.slice("signin/".length));
-  // "#/event/montreux-noel-2026" -> page "event", param "montreux-noel-2026".
-  const [requested, param] = hash.split("/");
+  const requested = location.hash.replace(/^#\/?/, "");
+  if (requested.startsWith("signin/")) return verifySignInLink(requested.slice("signin/".length));
   const page = LINKED_PAGES.includes(requested) ? requested : DEFAULT_PAGE;
   let shown = page;
   if (PAGES[page].needsUser && !currentUser) shown = "signin";
@@ -695,7 +692,7 @@ function route() {
   });
   resultsLayer.clearLayers();
 
-  if (PAGES[shown]?.onShow) PAGES[shown].onShow(param);
+  if (PAGES[shown]?.onShow) PAGES[shown].onShow();
   refreshUnread();
 }
 
@@ -958,8 +955,6 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
     updatePriceBand();
     await loadMyDrives();
     showDriveOnMap(data);
-    // For the scripts loaded after this one (events.js: the drive back).
-    window.dispatchEvent(new CustomEvent("drive:posted", { detail: { drive: data } }));
   } catch (err) {
     showStatus("drive-status", err.message, false);
   } finally {

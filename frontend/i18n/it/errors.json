@@ -11,7 +11,6 @@
   "errors.drive_departed": "Questo viaggio è già partito.",
   "errors.drive_not_found": "Questo viaggio non esiste più.",
   "errors.email_unavailable": "Non è stato possibile inviare l'e-mail. Riprovi più tardi.",
-  "errors.event_not_found": "Evento non trovato. Forse è già finito.",
   "errors.invalid_email": "Inserisca un indirizzo e-mail valido.",
   "errors.invalid_link": "Questo link di accesso non è valido, è scaduto o è già stato usato. Ne chieda uno nuovo.",
   "errors.invalid_time": "Data o ora non valida.",
