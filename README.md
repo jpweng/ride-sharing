@@ -84,7 +84,14 @@ At startup and then every hour, the app runs [backend/maintenance.py](backend/ma
   drives: about 1,500 routes, a minute or so from our own OSRM server. Against the public OSRM
   server (`OSRM_URL=https://router.project-osrm.org`), there's a one-second pause after each,
   its usage limit (`OSRM_PAUSE_S` overrides the pause). Demo drives made while routing was down
-  get their road route at a later refresh.
+  get their road route at a later refresh. Demo drives are labelled "Demo", never bookable
+  (`"bookable": false` in the API), and real passengers' ride requests never reach demo drivers
+  (see [docs/ride-predictions.md](docs/ride-predictions.md#demo-data)).
+- **Switching demo drives off**: set `DEMO_DRIVES=off` in the app's environment (default `on`).
+  They're hidden everywhere at once, and the next maintenance run deletes them and their stored
+  routes, and creates none. Back `on`, they're recreated, fetching the ~1,500 routes again (a
+  minute or so from our own OSRM server, about half an hour from the public one). In production
+  it's the optional GitHub repo variable `DEMO_DRIVES`, see [Deploying to AWS](#deploying-to-aws).
 - **Users' data is kept for 30 days**: drives are deleted 30 days after their departure, searches
   30 days after they were made, ride requests 30 days after their time, notifications 30 days after
   they were sent. Nothing in the UI shows any of this by then. Accounts stay until their owner
@@ -253,6 +260,10 @@ Requires Terraform >= 1.10, the AWS CLI logged in to the target account (`aws lo
    subprocess.run(["gh", "secret", "set", "AWS_ACCESS_KEY_ID", "--body", k["AccessKeyId"]], check=True)
    subprocess.run(["gh", "secret", "set", "AWS_SECRET_ACCESS_KEY", "--body", k["SecretAccessKey"]], check=True)'
    ```
+   Optional repo variable, not from Terraform: `DEMO_DRIVES`, `on` (or unset) or `off`, the
+   [demo drives switch](#demo-drives-and-data-retention). Change it with
+   `gh variable set DEMO_DRIVES --body off`; it takes effect at the next deploy (push to `main` or
+   re-run the workflow).
 4. **Routing data**: run the *Routing data* workflow from the Actions tab (~10 minutes). It pushes
    the first routing image to ECR, then starts the first deploy. Deploys fail until there is one.
 5. **First deploy**: push to `main`, or run the *Test and deploy* workflow from the Actions tab. The
@@ -438,13 +449,18 @@ Rides:
   the best ones, up to 5 rides just outside the selection (`outside_matches`, each saying what it's
   outside of), and a pure public-transport alternative
 - `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`);
-  returns the request and how many drivers were told
+  returns the request and how many drivers were told (`drivers_told`: real drivers only, for a real
+  passenger), and `demo_request`; a demo request (under a demo driver's name) also gets
+  `demo_drivers_told`, the demo drivers' names
 - `GET  /api/requests` — signed in; one's open ride requests. `DELETE /api/requests/{id}` — may
   change; cancels one's own (403 `not_your_request`)
 - `GET  /api/notifications` — signed in; one's inbox and settings (a demo-driver view leaves out
   real passengers' requests). `POST /api/notifications/read` — signed in.
   `POST /api/notifications/{id}/action` (`offer` / `decline` / `mute` / `view`) and
   `PUT /api/notification_settings` — may change
+
+Every drive and match carries `is_demo` and `bookable` (`false` for demo drives, which are
+fictional). Among matches that fit equally well, real drives come first.
 
 Drives (`/api/drives`) and matches (`/api/match`) carry their prices: `price_chf` is what the next
 passenger pays (for a match, for the part they ride), `price_by_passengers` what each pays with 1, 2,

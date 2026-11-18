@@ -21,6 +21,12 @@ idempotent; maintenance.py runs it at startup and then hourly. It drops demo
 drives that have departed or no longer match DEMO_DRIVES, and adds the ones
 missing from the next DAYS_AHEAD days.
 
+The DEMO_DRIVES environment variable switches them (enabled()): "on" (the
+default) or "off". Off, refresh() deletes every demo drive and creates
+none, maintenance.py deletes their routes, and searches, the drive list
+and ride requests leave them out. Demo drives are never bookable, and
+requests from real passengers never reach demo drivers (see notify.py).
+
 Run it by hand with the backend on PYTHONPATH, e.g.:
     PYTHONPATH=backend uv run python backend/demo_drives.py
 """
@@ -40,6 +46,17 @@ DAYS_AHEAD = 7
 # Departure times are naive Swiss local time, like the ones the frontend's
 # datetime-local input sends.
 LOCAL_TZ = ZoneInfo("Europe/Zurich")
+
+# DEMO_DRIVES=off (or false, 0, no) turns demo drives off; unset or empty
+# means on.
+SWITCH_ENV = "DEMO_DRIVES"
+_OFF_VALUES = {"off", "false", "0", "no"}
+
+
+def enabled() -> bool:
+    """Whether demo drives are on (the DEMO_DRIVES environment variable)."""
+    return os.environ.get(SWITCH_ENV, "on").strip().lower() not in _OFF_VALUES
+
 
 # Pause after each route fetched: the public OSRM server asks for at most one
 # request per second, our own server (see routing/) needs no pause.
@@ -755,6 +772,24 @@ for _a, _b in _regional_pairs():
     DEMO_DRIVES += _generated_regional(_a, _b)
 
 
+_driver_names: tuple[list | None, int, frozenset[str]] = (None, 0, frozenset())
+
+
+def is_demo_user(name: str | None) -> bool:
+    """
+    Whether `name` is one of the demo drivers, which anyone can sign in as
+    to see the demo (identity is a typed name). Their ride requests are demo
+    requests: they only reach demo drivers (see notify.py). Never true while
+    demo drives are off.
+    """
+    global _driver_names
+    if not name or not enabled():
+        return False
+    if _driver_names[0] is not DEMO_DRIVES or _driver_names[1] != len(DEMO_DRIVES):  # tests swap the list
+        _driver_names = (DEMO_DRIVES, len(DEMO_DRIVES), frozenset(spec["driver_name"] for spec in DEMO_DRIVES))
+    return name.strip() in _driver_names[2]
+
+
 def _departure_iso(dt: datetime) -> str:
     return dt.isoformat(timespec="minutes")
 
@@ -801,8 +836,11 @@ BATCH_SIZE = 1000
 
 
 def refresh(now: datetime | None = None) -> tuple[int, int]:
-    """Bring demo drives up to date; returns (deleted, created)."""
+    """Bring demo drives up to date; returns (deleted, created). With demo
+    drives off, deletes them all and creates none."""
     db.init_db()
+    if not enabled():
+        return db.delete_all_demo_drives(), 0
     now = now or datetime.now(LOCAL_TZ).replace(tzinfo=None)
     deleted = db.delete_demo_drives_before(_departure_iso(now))
     expected = _expected(now)
