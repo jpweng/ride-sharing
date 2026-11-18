@@ -2,6 +2,7 @@
   "meta.title": "Ride and Rail — in auto fino al treno",
   "privacy.title": "Privacy — Ride and Rail",
   "conduct.title": "Codice di condotta — Ride and Rail",
+  "offline.title": "Offline — Ride and Rail",
   "header.subtitle": "In auto fino al treno",
   "banner.app": "<strong>Demo</strong> — un prototipo per fare test. I viaggi segnati <span class=\"badge demo\">Demo</span> sono fittizi. Gli altri vedono il suo nome e l'iniziale del suo cognome. <a href=\"privacy.html\">Privacy</a> · <a href=\"conduct.html\">Codice di condotta</a>",
   "banner.privacy": "<strong>Demo</strong> — un prototipo per fare test. <a href=\"./\">Tornare all'app</a>",
@@ -164,6 +165,7 @@
   "errors.request_not_found": "Questa richiesta di passaggio non esiste più.",
   "errors.not_your_request": "Solo il passeggero che ha fatto questa richiesta può annullarla.",
   "errors.notification_not_found": "Questo messaggio non esiste più.",
+  "errors.offline": "Lei è offline. Controlli la connessione e riprovi.",
   "errors.request_failed": "Richiesta non riuscita ({status}).",
   "errors.not_signed_in": "Acceda prima, per favore.",
   "errors.profile_incomplete": "Completi prima la configurazione del suo account.",
@@ -184,5 +186,8 @@
   "email.signIn.button": "Accedere a Ride and Rail",
   "email.signIn.linkHint": "Se il pulsante non funziona, copi questo indirizzo nel suo browser:",
   "email.signIn.ignore": "Se non ha chiesto questo link, può ignorare questa e-mail: nessuno può accedere senza di esso.",
-  "email.signIn.signature": "Ride and Rail"
+  "email.signIn.signature": "Ride and Rail",
+  "pwa.offline": "Lei è offline. Per trovare o offrire un passaggio serve una connessione a Internet.",
+  "pwa.updated": "È disponibile una nuova versione di Ride and Rail.",
+  "pwa.reload": "Ricaricare"
 }

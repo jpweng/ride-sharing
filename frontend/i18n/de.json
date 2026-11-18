@@ -2,6 +2,7 @@
   "meta.title": "Ride and Rail — mitfahren bis zum Zug",
   "privacy.title": "Datenschutz — Ride and Rail",
   "conduct.title": "Verhaltenskodex — Ride and Rail",
+  "offline.title": "Offline — Ride and Rail",
   "header.subtitle": "Mitfahren bis zum Zug",
   "banner.app": "<strong>Demo</strong> — ein Prototyp zum Testen. Fahrten mit <span class=\"badge demo\">Demo</span> sind erfunden. Andere sehen Ihren Vornamen und den ersten Buchstaben Ihres Nachnamens. <a href=\"privacy.html\">Datenschutz</a> · <a href=\"conduct.html\">Verhaltenskodex</a>",
   "banner.privacy": "<strong>Demo</strong> — ein Prototyp zum Testen. <a href=\"./\">Zurück zur App</a>",
@@ -164,6 +165,7 @@
   "errors.request_not_found": "Diese Fahrtanfrage gibt es nicht mehr.",
   "errors.not_your_request": "Nur die Person, die diese Anfrage gestellt hat, kann sie zurückziehen.",
   "errors.notification_not_found": "Diese Benachrichtigung gibt es nicht mehr.",
+  "errors.offline": "Sie sind offline. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "errors.request_failed": "Anfrage fehlgeschlagen ({status}).",
   "errors.not_signed_in": "Bitte melden Sie sich zuerst an.",
   "errors.profile_incomplete": "Bitte richten Sie zuerst Ihr Konto fertig ein.",
@@ -184,5 +186,8 @@
   "email.signIn.button": "Bei Ride and Rail anmelden",
   "email.signIn.linkHint": "Falls die Schaltfläche nicht funktioniert, kopieren Sie diese Adresse in Ihren Browser:",
   "email.signIn.ignore": "Falls Sie diesen Link nicht angefordert haben, können Sie diese E-Mail ignorieren: Ohne den Link kann sich niemand anmelden.",
-  "email.signIn.signature": "Ride and Rail"
+  "email.signIn.signature": "Ride and Rail",
+  "pwa.offline": "Sie sind offline. Um Fahrten zu finden oder anzubieten, braucht es eine Internetverbindung.",
+  "pwa.updated": "Eine neue Version von Ride and Rail ist verfügbar.",
+  "pwa.reload": "Neu laden"
 }
