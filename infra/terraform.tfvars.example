@@ -12,4 +12,4 @@
 # alert_email = "you@example.ch"
 
 # aws_region    = "eu-north-1"
-# instance_type = "t4g.micro"
+# instance_type = "t4g.small"

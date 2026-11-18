@@ -99,4 +99,21 @@ if [ -n "${DATA_DIR:-}" ]; then
 fi
 run "mmap" "$IMAGE" osrm-routed "${ARGS[@]}" "${MMAP[@]}"
 run "mmap, 256M" --memory 256m --memory-swap 256m "$IMAGE" osrm-routed "${ARGS[@]}" "${MMAP[@]}"
+
+# deploy/compose.yaml's healthcheck, against the image: the deploy waits on it.
+docker rm -f "$NAME" > /dev/null 2>&1 || true
+docker run -d --name "$NAME" "$IMAGE" osrm-routed "${ARGS[@]}" "${MMAP[@]}" > /dev/null
+HEALTH=failing
+for _ in $(seq 1 60); do
+  if docker exec "$NAME" bash -c "exec 3<>/dev/tcp/127.0.0.1/5000 &&
+      printf 'GET /route/v1/driving/7.4474,46.9480;7.4500,46.9500 HTTP/1.1\r\nHost: osrm\r\nConnection: close\r\n\r\n' >&3 &&
+      grep -q '\"code\":\"Ok\"' <&3" 2> /dev/null; then
+    HEALTH=passing
+    break
+  fi
+  sleep 1
+done
+docker rm -f "$NAME" > /dev/null
+printf '\nCompose healthcheck: %s\n' "$HEALTH" >> "$REPORT"
 cat "$REPORT"
+[ "$HEALTH" = passing ]

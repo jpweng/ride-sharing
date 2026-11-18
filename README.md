@@ -22,7 +22,9 @@ reasons behind them.
 
 - Backend: Python + FastAPI, plain `sqlite3` (no ORM)
 - Frontend: plain HTML/JS + Leaflet (OpenStreetMap tiles)
-- Routing: [OSRM demo server](https://router.project-osrm.org) (falls back to haversine if unreachable)
+- Routing: our own [OSRM](https://project-osrm.org) server with the Switzerland
+  [OpenStreetMap](https://www.openstreetmap.org/copyright) extract, refreshed monthly (see
+  [Routing](#routing)); falls back to straight lines (haversine) if unreachable
 - Public transport: [transport.opendata.ch](https://transport.opendata.ch) (all Swiss operators)
 - Address search: [geo.admin.ch Search API](https://api3.geo.admin.ch) (Swiss addresses/places)
 - Auth: none — you enter a first + last name once (remembered in the browser), which auto-registers a user
@@ -38,6 +40,13 @@ uv sync
 uv run uvicorn main:app --reload --app-dir backend --port 8000
 # open http://localhost:8000
 ```
+
+Road routes come from the OSRM server at `OSRM_URL` (default `http://osrm:5000`, the server's own,
+see [Routing](#routing)). Without one, drives get straight-line routes. For real routes locally,
+run the routing image (`docker run -p 5000:5000 <routing image>`, then
+`OSRM_URL=http://localhost:5000`), or for a few drives by hand use the public demo server,
+`OSRM_URL=https://router.project-osrm.org` (not for production use, by its usage policy). The
+first demo-drive fill against it takes ~26 minutes (1,500 routes, one per second).
 
 Run the tests:
 
@@ -60,8 +69,11 @@ At startup and then every hour, the app runs [backend/maintenance.py](backend/ma
   at most times finds something. Sign in as one of the drivers (e.g. Jean Dupont) to see their
   Driver page. Demo drives that have departed or no longer match the list are deleted, and missing
   ones for the next 7 days are added. They're flagged `is_demo` in the database. Each trip's road
-  route is fetched from OSRM once (one call per second, its usage limit) and stored once in
-  `demo_routes`, shared by all the trip's drives.
+  route is fetched from OSRM once and stored once in `demo_routes`, shared by all the trip's
+  drives: about 1,500 routes, a minute or so from our own OSRM server. Against the public OSRM
+  server (`OSRM_URL=https://router.project-osrm.org`), there's a one-second pause after each,
+  its usage limit (`OSRM_PAUSE_S` overrides the pause). Demo drives made while routing was down
+  get their road route at a later refresh.
 - **Visitors' data is kept for 30 days**: drives are deleted 30 days after their departure, searches
   30 days after they were made, and then names with no drive or search left. Nothing in the UI shows
   any of this by then. On the server, deleted data also remains in the daily disk snapshots for 7
@@ -99,28 +111,35 @@ the privacy notice above all, before showing the site widely.
 
 ## Deploying to AWS
 
-Infrastructure is Terraform in [infra/](infra/): one Graviton EC2 server (`t4g.micro`, Ubuntu 24.04)
-in `eu-north-1` (Stockholm, the AWS project's only allowed Region), running Docker Compose
-([deploy/compose.yaml](deploy/compose.yaml)):
+Infrastructure is Terraform in [infra/](infra/): one Graviton EC2 server (`t4g.small`: 2 vCPUs,
+2 GiB, Ubuntu 24.04) in `eu-north-1` (Stockholm, the AWS project's only allowed Region), running
+Docker Compose ([deploy/compose.yaml](deploy/compose.yaml)), each container with a memory limit:
 
 - **proxy**: Caddy ([deploy/caddy/Caddyfile](deploy/caddy/Caddyfile)), which handles HTTPS via
-  Let's Encrypt once a domain is set, plus per-IP rate limits. `POST /api/match` is limited to
-  10/min, since each match calls the free OSRM and transport.opendata.ch APIs. Other writes are
-  limited to 30/min and all of `/api/*` to 300/min. Over-limit requests get a 429 response.
+  Let's Encrypt once a domain is set, plus rate limits. Searches (`POST /api/match` and
+  `/api/requests`) are limited to 30/min per IP and 60/min for all clients together, about what the
+  server's one app process can serve (see [Load test](#load-test)); other writes to 120/min per IP,
+  and all of `/api/*` to 1200/min per IP. The per-IP limits are high because phones on mobile
+  networks share public IPv4 addresses (carrier-grade NAT): at an event, many people can come from
+  one address. Over-limit requests get a 429 response.
 - **app**: the FastAPI image built from the root [Dockerfile](Dockerfile).
+- **osrm**: the routing server, see [Routing](#routing).
 
 The SQLite database lives on a separate EBS volume mounted at `/data`, with daily snapshots kept for
 7 days, so it survives redeploys and even replacing the server. There's no load balancer and no SSH:
 the server has a fixed Elastic IP that accepts only ports 80/443, and you get a shell through SSM
-Session Manager. Expect roughly $11/month: the instance (~$6.30), the IPv4 address (~$3.65), the
-disks and snapshots (~$1), the DNS zone ($0.50), and the uptime alarm ($0.10). The domain itself is billed by Hostpoint.
+Session Manager. Expect roughly $18/month: the instance (~$12.60), the IPv4 address (~$3.65), the
+disks and snapshots (~$1), the DNS zone ($0.50), the routing images in ECR (~$0.15), and the
+uptime alarm ($0.10). The domain itself is billed by Hostpoint. The routing data is built on
+GitHub's free arm64 runners (public repository).
 
 Pushes to `main` are tested, built and deployed by
 [.github/workflows/deploy.yml](.github/workflows/deploy.yml):
 
 1. Build arm64 images natively.
 2. Push them to ECR.
-3. Run [deploy/deploy.sh](deploy/deploy.sh) on the server via SSM Run Command.
+3. Run [deploy/deploy.sh](deploy/deploy.sh) on the server via SSM Run Command, with the newest
+   routing image in ECR (built separately, see [Routing](#routing)).
 
 CI signs in to AWS as the `ride-sharing-github-deploy` IAM user, whose access key is stored in GitHub
 secrets. Keyless OIDC would be preferable, but the project's managed SCP denies `iam:*Provider*`.
@@ -149,7 +168,9 @@ Requires Terraform >= 1.10, the AWS CLI logged in to the target account (`aws lo
    subprocess.run(["gh", "secret", "set", "AWS_ACCESS_KEY_ID", "--body", k["AccessKeyId"]], check=True)
    subprocess.run(["gh", "secret", "set", "AWS_SECRET_ACCESS_KEY", "--body", k["SecretAccessKey"]], check=True)'
    ```
-4. **First deploy**: push to `main`, or run the *Test and deploy* workflow from the Actions tab. The
+4. **Routing data**: run the *Routing data* workflow from the Actions tab (~10 minutes). It pushes
+   the first routing image to ECR, then starts the first deploy. Deploys fail until there is one.
+5. **First deploy**: push to `main`, or run the *Test and deploy* workflow from the Actions tab. The
    app is then at `terraform output app_url`, with the demo drives created at startup.
 
 **Domain + HTTPS**: the site runs at <https://rideandrail.ch>. The domain is registered at Hostpoint,
@@ -182,6 +203,54 @@ Notes:
   data volume is kept.
 - **Restoring data:** create a volume from one of the daily snapshots, under EC2 → *Snapshots*.
 
+## Routing
+
+Road routes (when a drive is posted, and once per demo trip) come from our own
+[OSRM](https://project-osrm.org) server, the `osrm` service in [deploy/compose.yaml](deploy/compose.yaml),
+reachable only by the app. Its image holds car routes for Switzerland, built from Geofabrik's
+[Switzerland extract](https://download.geofabrik.de/europe/switzerland.html) of OpenStreetMap
+(© OpenStreetMap contributors, ODbL) with OSRM's multi-level Dijkstra (MLD) algorithm:
+
+- [routing/build.sh](routing/build.sh) downloads the extract (checking its MD5), preprocesses it
+  in the pinned OSRM image (`osrm-extract` with the car profile, `osrm-partition`,
+  `osrm-customize`) and builds the image from [routing/Dockerfile](routing/Dockerfile), tagged with
+  the extract's date, e.g. `261117-mld`. Preprocessing needs ~4 GB of RAM (`osrm-extract`: ~3 min,
+  3.5 GB peak on a 4-CPU arm64 runner), far more than the server has, so it never runs there.
+- [routing/measure.sh](routing/measure.sh) starts the image three ways (data loaded in RAM,
+  memory-mapped, memory-mapped in 256 MB) and reports start-up time, memory and latency of the
+  app's queries.
+- [.github/workflows/routing-data.yml](.github/workflows/routing-data.yml) runs both on a native
+  arm64 runner on the 2nd of each month, when `routing/` changes on `main`, or by hand (*Routing
+  data* → *Run workflow*). On `main` it pushes the image to ECR (`ride-sharing-routing`, the last
+  3 kept) and starts a deploy, which runs the newest routing image. Pull requests build and
+  measure both MLD and CH, without pushing.
+
+The data is ~1 GB (image ~1.1 GB, ~475 MB compressed). The server maps it (`--mmap`) instead of
+loading it into memory: the kernel keeps the parts in use in its page cache and drops them under
+memory pressure. To refresh the data now, run the *Routing data* workflow on `main`. To move to a
+new OSRM release, change the pinned image in `routing/build.sh` (tag and digest; the data must be
+built by the release that serves it); the pull request's workflow run shows the new measurements.
+
+If OSRM is down, the app retries twice, then uses straight lines for a minute (a warning in the
+`app` log) before asking again; demo drives made meanwhile get their road route at a later hourly
+refresh.
+
+## Load test
+
+[loadtest/](loadtest/) simulates an event evening with [Locust](https://locust.io) (pinned): many
+passengers searching for a ride to and from an event in Bern, browsing drives and their inbox,
+some asking for rides, and a few drivers posting drives. Run it against a local instance only,
+never against the live site (the locustfile refuses any other host):
+
+```bash
+loadtest/run.sh 300 5m 10   # users, duration, users started per second
+```
+
+It starts [loadtest/stub_upstreams.py](loadtest/stub_upstreams.py), a stand-in for OSRM and
+transport.opendata.ch with realistic response times (so no one else's server is loaded), fills a
+fresh database with the demo drives, starts the app on 2 CPUs (`APP_CPUS`), runs Locust, and
+prints the results with the app's memory and CPU use. Results are in `loadtest/.work/`.
+
 ## Project layout
 
 ```
@@ -205,9 +274,12 @@ frontend/
 infra/            Terraform for AWS (VPC, EC2 server, EBS data volume + snapshots, ECR, CI deploy user)
   bootstrap/      one-time S3 bucket for Terraform state
 deploy/           what runs on the server: compose.yaml, deploy.sh, caddy/ (proxy image)
+routing/          OSRM image with Switzerland's car routes: build.sh, measure.sh, Dockerfile
+loadtest/         event-evening load test (Locust) against a local instance, upstream stand-ins
 docs/             design documents for planned features (ride-predictions.md)
 Dockerfile        app image (uvicorn, non-root, DB on /data)
 .github/workflows/deploy.yml   test → build arm64 images → push → deploy via SSM on push to main
+.github/workflows/routing-data.yml   monthly: build + measure the routing image → ECR → deploy
 ```
 
 ## API
