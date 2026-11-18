@@ -87,9 +87,16 @@ run() {
 } >> "$REPORT"
 
 ALGO=$(docker image inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$IMAGE" | sed -n 's/^OSRM_ALGORITHM=//p')
-ARGS=(--algorithm "$ALGO" --port 5000 --threads 2)
-run "in RAM" "$IMAGE" osrm-routed "${ARGS[@]}" /data/switzerland.osrm
-run "mmap" "$IMAGE" osrm-routed "${ARGS[@]}" --mmap --disable-feature-dataset ROUTE_STEPS /data/switzerland.osrm
-run "mmap, 256M" --memory 256m --memory-swap 256m "$IMAGE" \
-  osrm-routed "${ARGS[@]}" --mmap --disable-feature-dataset ROUTE_STEPS /data/switzerland.osrm
+# The data path first: --disable-feature-dataset takes several values.
+ARGS=(/data/switzerland.osrm --algorithm "$ALGO" --port 5000 --threads 2)
+MMAP=(--mmap --disable-feature-dataset ROUTE_STEPS)
+echo "Data in the image:" >&2
+docker run --rm "$IMAGE" ls -l /data >&2
+run "in RAM" "$IMAGE" osrm-routed "${ARGS[@]}"
+# DATA_DIR (optional): the same files from the host, not from the image.
+if [ -n "${DATA_DIR:-}" ]; then
+  run "in RAM, data bind-mounted" -v "$(cd "$DATA_DIR" && pwd):/data:ro" "$IMAGE" osrm-routed "${ARGS[@]}"
+fi
+run "mmap" "$IMAGE" osrm-routed "${ARGS[@]}" "${MMAP[@]}"
+run "mmap, 256M" --memory 256m --memory-swap 256m "$IMAGE" osrm-routed "${ARGS[@]}" "${MMAP[@]}"
 cat "$REPORT"

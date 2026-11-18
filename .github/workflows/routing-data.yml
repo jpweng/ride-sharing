@@ -44,6 +44,8 @@ jobs:
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Measure it
+        env:
+          DATA_DIR: routing/.work/data
         run: |
           routing/measure.sh "${{ steps.build.outputs.image }}"
           cat routing/.work/report.md >> "$GITHUB_STEP_SUMMARY"

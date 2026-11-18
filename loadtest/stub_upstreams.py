@@ -141,6 +141,14 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class Server(ThreadingHTTPServer):
+    # The default listen backlog of 5 drops connections under load: the
+    # app then waits out TCP retries, and the stub, not the app, would set
+    # the response times.
+    request_queue_size = 1024
+    daemon_threads = True
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--port", type=int, default=8081)
@@ -149,8 +157,8 @@ def main():
     args = parser.parse_args()
     Handler.locations_delay = args.locations_delay
     Handler.connections_delay = args.connections_delay
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    server.daemon_threads = True
+    server = Server(("127.0.0.1", args.port), Handler)
+
     print(f"Stub OSRM + transport API on http://127.0.0.1:{args.port}", flush=True)
     server.serve_forever()
 

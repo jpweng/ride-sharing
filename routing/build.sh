@@ -99,6 +99,10 @@ docker build --quiet -t "$IMAGE" -f "$HERE/Dockerfile" \
 {
   echo
   echo "Data files: $(du -sm "$DATA" | cut -f1) MB. Image: $(docker image inspect -f '{{.Size}}' "$IMAGE" | awk '{printf "%d", $1 / 1048576}') MB uncompressed."
+  echo
+  echo '```'
+  ls -l "$DATA"
+  echo '```'
 } >> "$REPORT"
 cat "$REPORT" >&2
 echo "$IMAGE"
