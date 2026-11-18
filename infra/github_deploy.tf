@@ -4,7 +4,7 @@
 # isn't available; a narrowly scoped user with an access key is the fallback.
 # The access key is deliberately NOT created here, so the secret never lands
 # in Terraform state. Create it with the AWS CLI and pipe it straight into
-# GitHub secrets (see README, "Deploying to AWS").
+# GitHub secrets (see docs/deploying-to-aws.md).
 
 resource "aws_iam_user" "github_deploy" {
   name = "${var.project}-github-deploy"

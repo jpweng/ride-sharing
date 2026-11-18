@@ -1,0 +1,12 @@
+{
+  "form.from": "Da",
+  "form.hour": "Ora",
+  "form.minute": "Minuti",
+  "form.needDestination": "Scelga dove vuole andare.",
+  "form.needOrigin": "Scelga da dove parte.",
+  "form.notSet": "non scelto",
+  "form.pickOnMap": "Scegliere sulla mappa",
+  "form.pickerHint": "Digiti un indirizzo, oppure clicchi su «Scegliere sulla mappa» e poi su un punto della mappa.",
+  "form.placePlaceholder": "inserire un indirizzo o un luogo…",
+  "form.to": "A"
+}

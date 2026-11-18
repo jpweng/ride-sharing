@@ -1,0 +1,6 @@
+{
+  "common.driver": "Alla guida: {name}",
+  "common.loading": "Caricamento…",
+  "common.seats.one": "{count} posto",
+  "common.seats.other": "{count} posti"
+}

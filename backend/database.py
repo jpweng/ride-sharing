@@ -4,7 +4,7 @@ SQLite data access layer for the ride-sharing prototype.
 Kept deliberately simple: plain `sqlite3` (no ORM), one module-level
 connection helper, and a handful of small functions used by the API layer.
 The schema is created and migrated at startup (init_db), so it works on an
-existing database.
+existing database: each schema change is a file in backend/migrations/.
 
 Users: `users.name` is unique and is what other users see (drives,
 requests and notifications store it as driver_name, passenger_name,
@@ -22,167 +22,14 @@ import os
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
+import migrations
+
 # Overridable so the container can keep the database on a persistent volume
 # (EFS in AWS); defaults to the repo root for local development.
 DB_PATH = os.environ.get(
     "DB_PATH",
     os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rideshare.db"),
 )
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE IF NOT EXISTS drives (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    driver_id INTEGER NOT NULL,
-    driver_name TEXT NOT NULL,
-    origin_name TEXT NOT NULL,
-    origin_lat REAL NOT NULL,
-    origin_lon REAL NOT NULL,
-    destination_name TEXT NOT NULL,
-    destination_lat REAL NOT NULL,
-    destination_lon REAL NOT NULL,
-    departure_time TEXT NOT NULL,
-    seats_available INTEGER NOT NULL DEFAULT 1,
-    route_geometry TEXT,        -- JSON list of [lon, lat] pairs, or NULL
-    route_distance_m REAL,      -- driving distance, meters
-    route_duration_s REAL,      -- driving duration, seconds
-    route_source TEXT,          -- 'osrm' or 'haversine' (fallback)
-    created_at TEXT NOT NULL,
-    is_demo INTEGER NOT NULL DEFAULT 0,  -- 1: fictional, managed by demo_drives.py
-    driver_price_chf REAL,      -- the driver's price per passenger, one passenger, whole drive
-                                -- (see pricing.py); NULL: the default suggestion
-    FOREIGN KEY (driver_id) REFERENCES users(id)
-);
-
--- One road route per demo trip, shared by all its demo drives (which store
--- no geometry of their own): thousands of copies would fill the disk.
-CREATE TABLE IF NOT EXISTS demo_routes (
-    origin_name TEXT NOT NULL,
-    destination_name TEXT NOT NULL,
-    geometry TEXT NOT NULL,     -- JSON list of [lon, lat] pairs
-    distance_m REAL NOT NULL,
-    duration_s REAL NOT NULL,
-    PRIMARY KEY (origin_name, destination_name)
-);
-
-CREATE TABLE IF NOT EXISTS ride_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    passenger_id INTEGER NOT NULL,
-    passenger_name TEXT NOT NULL,
-    origin_name TEXT NOT NULL,
-    origin_lat REAL NOT NULL,
-    origin_lon REAL NOT NULL,
-    destination_name TEXT NOT NULL,
-    destination_lat REAL NOT NULL,
-    destination_lon REAL NOT NULL,
-    requested_time TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (passenger_id) REFERENCES users(id)
-);
-
--- A passenger's explicit ask for a ride nobody has posted (see notify.py);
--- unlike ride_requests above, which logs every search.
-CREATE TABLE IF NOT EXISTS open_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    passenger_id INTEGER NOT NULL,
-    passenger_name TEXT NOT NULL,
-    origin_name TEXT NOT NULL,
-    origin_lat REAL NOT NULL,
-    origin_lon REAL NOT NULL,
-    destination_name TEXT NOT NULL,
-    destination_lat REAL NOT NULL,
-    destination_lon REAL NOT NULL,
-    requested_time TEXT NOT NULL,       -- naive Swiss local time
-    pickup_radius_km REAL NOT NULL,
-    dropoff_radius_km REAL NOT NULL,
-    time_tolerance_min INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'open',  -- 'open' or 'cancelled'; past ones have expired
-    extra_round_done INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (passenger_id) REFERENCES users(id)
-);
-
--- What the inbox shows. request_for_driver: a passenger's request, sent to
--- a driver who made the trip before; drive_for_passenger: a newly posted
--- drive that fits a passenger's request.
-CREATE TABLE IF NOT EXISTS notifications (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    recipient_id INTEGER NOT NULL,
-    recipient_name TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    request_id INTEGER NOT NULL,        -- the (latest) request it's about
-    drive_ids TEXT,                     -- JSON list, drive_for_passenger only
-    request_ids TEXT NOT NULL,          -- JSON list: merged requests
-    details TEXT,                       -- JSON: the driver's usual trip, suggested departure
-    created_at TEXT NOT NULL,
-    read_at TEXT,
-    acted_at TEXT,
-    action TEXT,                        -- 'offer', 'decline', 'mute', 'view'
-    FOREIGN KEY (recipient_id) REFERENCES users(id)
-);
-
--- "Not interested in this route": requests starting and ending near these
--- points aren't sent to this driver.
-CREATE TABLE IF NOT EXISTS route_mutes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    origin_lat REAL NOT NULL,
-    origin_lon REAL NOT NULL,
-    destination_lat REAL NOT NULL,
-    destination_lon REAL NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
--- Sign-in links asked for (see auth.py), also the log the per-email and
--- per-IP limits count. token_hash is NULL when no email was sent (over the
--- per-email limit, or a banned account). Deleted after a day.
-CREATE TABLE IF NOT EXISTS sign_in_links (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    token_hash TEXT UNIQUE,             -- SHA-256 of the token in the link
-    email TEXT NOT NULL,
-    ip TEXT,
-    language TEXT NOT NULL,
-    created_at TEXT NOT NULL,           -- UTC
-    expires_at TEXT NOT NULL,           -- UTC
-    used_at TEXT
-);
-
-CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    token_hash TEXT NOT NULL UNIQUE,    -- SHA-256 of the cookie's value
-    user_id INTEGER NOT NULL,
-    is_demo INTEGER NOT NULL DEFAULT 0, -- "view as a demo driver": read-only
-    created_at TEXT NOT NULL,           -- UTC
-    last_seen_at TEXT NOT NULL,         -- UTC, updated at most once a day
-    expires_at TEXT NOT NULL,           -- UTC; sliding, see auth.py
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-"""
-
-# Columns added to users after it was first created, for existing databases.
-_USER_COLUMNS = {
-    # Ride requests (notify.py).
-    "notify_requests": "INTEGER NOT NULL DEFAULT 1",
-    # Unanswered notifications before this don't count (see notify.py).
-    "backoff_reset_at": "TEXT",
-    # Sign-in (auth.py).
-    "email": "TEXT",                    # lower-case; NULL for demo and legacy users
-    "first_name": "TEXT",
-    "last_name": "TEXT",
-    "language": "TEXT",                 # de/fr/it/en, for emails
-    "is_demo": "INTEGER NOT NULL DEFAULT 0",
-    "created_at": "TEXT",
-    "adult_confirmed_at": "TEXT",       # "I am 18 or older", UTC
-    "conduct_version": "TEXT",          # code of conduct accepted (conduct.html)
-    "conduct_accepted_at": "TEXT",
-    "banned_at": "TEXT",                # set by an admin (admin.py): no sign-in
-}
-
 
 # How long a write waits for another one to finish before "database is
 # locked". With WAL (see init_db) reads never block writes, so this only
@@ -205,61 +52,16 @@ def get_conn():
 
 
 def init_db():
+    """Create the schema, or bring an existing database up to date: every
+    migration in backend/migrations/, in filename order (each one is
+    idempotent, see migrations/__init__.py)."""
     with get_conn() as conn:
         # Write-ahead log, a setting of the file: searches reading many
         # routes no longer hold up the writes (each search saves itself),
         # which a load test showed failing with "database is locked".
         conn.execute("PRAGMA journal_mode = WAL")
-        conn.executescript(SCHEMA)
-        # Databases created before is_demo existed.
-        columns = {r["name"] for r in conn.execute("PRAGMA table_info(drives)")}
-        if "is_demo" not in columns:
-            conn.execute("ALTER TABLE drives ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0")
-        # Databases created before drivers set their price: those drives
-        # keep NULL, priced at the default suggestion (see pricing.py).
-        if "driver_price_chf" not in columns:
-            conn.execute("ALTER TABLE drives ADD COLUMN driver_price_chf REAL")
-        # Databases created before ride requests and sign-in.
-        user_columns = {r["name"] for r in conn.execute("PRAGMA table_info(users)")}
-        for column, ddl in _USER_COLUMNS.items():
-            if column not in user_columns:
-                conn.execute(f"ALTER TABLE users ADD COLUMN {column} {ddl}")
-        if "is_demo" not in user_columns:
-            # Demo drivers from before users.is_demo: those with demo drives.
-            conn.execute(
-                "UPDATE users SET is_demo = 1 WHERE id IN (SELECT driver_id FROM drives WHERE is_demo = 1)"
-            )
-        conn.executescript("""
-            CREATE INDEX IF NOT EXISTS drives_departure_time ON drives (departure_time);
-            CREATE INDEX IF NOT EXISTS drives_driver_name ON drives (driver_name);
-            CREATE INDEX IF NOT EXISTS notifications_recipient ON notifications (recipient_name, created_at);
-            CREATE INDEX IF NOT EXISTS open_requests_time ON open_requests (requested_time);
-            CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email IS NOT NULL;
-            CREATE INDEX IF NOT EXISTS sign_in_links_email ON sign_in_links (email, created_at);
-            CREATE INDEX IF NOT EXISTS sign_in_links_ip ON sign_in_links (ip, created_at);
-            CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
-        """)
-        moved = _move_demo_geometry_to_demo_routes(conn)
-    if moved:
-        # Give the space of the removed copies back to the disk.
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute("VACUUM")
-
-
-def _move_demo_geometry_to_demo_routes(conn: sqlite3.Connection) -> int:
-    """Databases from before demo_routes: keep one copy of each demo trip's
-    road route there and drop the copies on the drives. Returns how many
-    drives were changed."""
-    conn.execute("""
-        INSERT OR IGNORE INTO demo_routes (origin_name, destination_name, geometry, distance_m, duration_s)
-        SELECT origin_name, destination_name, route_geometry, route_distance_m, route_duration_s
-        FROM drives
-        WHERE is_demo = 1 AND route_source = 'osrm' AND route_geometry IS NOT NULL
-    """)
-    return conn.execute("""
-        UPDATE drives SET route_geometry = NULL
-        WHERE is_demo = 1 AND route_source = 'osrm' AND route_geometry IS NOT NULL
-    """).rowcount
+        for migration in migrations.modules():
+            migration.apply(conn)
 
 
 def now_iso():

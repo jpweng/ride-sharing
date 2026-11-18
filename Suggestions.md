@@ -30,7 +30,7 @@
 
 Not needed for the demo, but these shape decisions made now:
 
-- **Accounts:** sign-in by an emailed link replaces the typed name (built, see README). Still to do
+- **Accounts:** sign-in by an emailed link replaces the typed name (built, see docs/sign-in.md). Still to do
   by a human: SES production access, a lawyer's review of the code of conduct.
 - **Contact and booking:** how a passenger reaches a driver and reserves a seat.
 - **Legal:** terms of use and a full privacy policy. In Switzerland, carpooling is fine as long as

@@ -11,7 +11,7 @@ further along, within the drop-off radius of their destination:
     dropoff = the point of the route after the pickup closest to their destination
 
 The driver stays on their own route; the passenger gets to the pickup and
-from the drop-off on foot, by bike or by public transport (main.py looks up
+from the drop-off on foot, by bike or by public transport (routes/match.py looks up
 a last-mile connection from the drop-off). Departure times are compared at
 the pickup, not at the driver's start: a Lausanne -> Zurich drive leaving at
 7:00 reaches Bern around 8:00, which is what a passenger in Bern cares about.
@@ -65,7 +65,7 @@ OSRM_RETRIES = int(os.environ.get("OSRM_RETRIES", "2"))
 OSRM_MAX_FAILURES = 3
 OSRM_COOLDOWN_S = 60.0
 
-# Search defaults; a passenger can change each one (see main.MatchRequest).
+# Search defaults; a passenger can change each one (see routes/match.py, MatchRequest).
 DEFAULT_PICKUP_RADIUS_KM = 5.0
 DEFAULT_DROPOFF_RADIUS_KM = 5.0
 DEFAULT_TIME_TOLERANCE_MIN = 120

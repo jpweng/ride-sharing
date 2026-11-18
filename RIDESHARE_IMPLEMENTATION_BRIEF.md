@@ -33,7 +33,7 @@ not a production system — no need to plan for scale, migrations, etc.).
 | Location input | Interactive map (Leaflet + OpenStreetMap tiles) | Users click points on a map rather than typing addresses |
 | Matching algorithm | **Route corridor matching** with passenger-chosen pickup/drop-off radii (see below) | User asked for corridor/trajectory-based matching, not simple point proximity |
 | Public transport | Real integration with **transport.opendata.ch** | Free, no API key, covers all Swiss operators including SBB (the official SBB API requires a business partnership and is overkill for a demo) |
-| Auth | None — a name field auto-registers a user row. **Replaced in 2026-11** by sign-in with an emailed one-time link and server-side sessions (see README, "Sign-in and accounts"); the API no longer takes names | Prototype; no login flow needed |
+| Auth | None — a name field auto-registers a user row. **Replaced in 2026-11** by sign-in with an emailed one-time link and server-side sessions (see docs/sign-in.md); the API no longer takes names | Prototype; no login flow needed |
 
 ## What's already built (in the zip)
 

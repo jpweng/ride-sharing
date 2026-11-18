@@ -1,0 +1,9 @@
+{
+  "email.signIn.button": "Bei Ride and Rail anmelden",
+  "email.signIn.greeting": "Guten Tag",
+  "email.signIn.ignore": "Falls Sie diesen Link nicht angefordert haben, können Sie diese E-Mail ignorieren: Ohne den Link kann sich niemand anmelden.",
+  "email.signIn.intro": "Um sich bei Ride and Rail anzumelden, öffnen Sie den folgenden Link innerhalb von {minutes} Minuten. Er funktioniert nur einmal.",
+  "email.signIn.linkHint": "Falls die Schaltfläche nicht funktioniert, kopieren Sie diese Adresse in Ihren Browser:",
+  "email.signIn.signature": "Ride and Rail",
+  "email.signIn.subject": "Ihr Anmeldelink für Ride and Rail"
+}

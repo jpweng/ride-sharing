@@ -446,7 +446,7 @@ function fitToResults() {
   if (group.getBounds().isValid()) map.fitBounds(group.getBounds(), { padding: [30, 30] });
 }
 
-// API errors carry a code (see main.py) that maps to "errors.<code>".
+// API errors carry a code (see backend/api.py) that maps to "errors.<code>".
 // The session cookie goes with every request (same origin). A 401 means
 // the session ended (signed out elsewhere, expired, account closed): back
 // to the sign-in page.

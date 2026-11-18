@@ -1,0 +1,7 @@
+{
+  "browse.empty": "Ancora nessun viaggio in programma.",
+  "browse.limited": "Ecco i prossimi {count} viaggi. Per il suo viaggio, usi la ricerca nella pagina «Passeggero».",
+  "browse.loadFailed": "Impossibile caricare i viaggi: {error}",
+  "browse.refresh": "Aggiornare",
+  "browse.title": "Prossimi viaggi"
+}

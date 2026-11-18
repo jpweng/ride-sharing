@@ -1,0 +1,15 @@
+{
+  "profile.adult": "Ich bin 18 Jahre alt oder älter.",
+  "profile.conduct": "Ich habe den <a href=\"conduct.html\" target=\"_blank\">Verhaltenskodex</a> gelesen und akzeptiere ihn.",
+  "profile.conductChanged": "Der Verhaltenskodex hat sich geändert. Bitte lesen und akzeptieren Sie ihn, um weiterzumachen.",
+  "profile.firstName": "Vorname",
+  "profile.firstNamePlaceholder": "z. B. Marie",
+  "profile.hint": "Noch ein Schritt. Andere sehen Ihren Vornamen und den ersten Buchstaben Ihres Nachnamens, zum Beispiel «Marie M.». Der Name lässt sich später nicht ändern.",
+  "profile.lastName": "Nachname",
+  "profile.lastNamePlaceholder": "z. B. Muster",
+  "profile.needConsent": "Um Ride and Rail zu nutzen, bestätigen Sie, dass Sie 18 oder älter sind, und akzeptieren Sie den Verhaltenskodex.",
+  "profile.needFirstName": "Geben Sie Ihren Vornamen ein.",
+  "profile.needLastName": "Geben Sie Ihren Nachnamen ein.",
+  "profile.submit": "Weiter",
+  "profile.title": "Willkommen bei Ride and Rail"
+}

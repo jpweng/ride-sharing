@@ -15,8 +15,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
+from routes import pwa
 
-FRONTEND = Path(main.FRONTEND_DIR)
+FRONTEND = Path(pwa.FRONTEND_DIR)
 FINGERPRINT_A = ":".join(["AB"] * 32)
 FINGERPRINT_B = ":".join(["0f"] * 32)
 
@@ -31,8 +32,10 @@ def _png_size(data):
     return struct.unpack(">II", data[16:24])
 
 
-def _sw_list(name):
-    source = (FRONTEND / "sw.js").read_text()
+def _sw_list(name, source=None):
+    """A list from sw.js as the server serves it (the shell is filled in then)."""
+    if source is None:
+        source = TestClient(main.app).get("/sw.js").text
     block = re.search(rf"const {name} = \[(.*?)\];", source, re.S).group(1)
     return re.findall(r'"([^"]+)"', block)
 
@@ -77,7 +80,18 @@ def test_apple_touch_icon():
     assert (width, height) == (180, 180)
 
 
-@pytest.mark.parametrize("page", ["index.html", "privacy.html", "conduct.html"])
+# Every page links the manifest and pwa.js, a new one included, except the
+# offline page: the service worker shows it in place of another page.
+NOT_INSTALLABLE = {"offline.html"}
+INSTALLABLE_PAGES = sorted(path.name for path in FRONTEND.glob("*.html") if path.name not in NOT_INSTALLABLE)
+
+
+def test_installable_pages_found():
+    assert {"index.html", "privacy.html", "conduct.html"} <= set(INSTALLABLE_PAGES)
+    assert NOT_INSTALLABLE <= {path.name for path in FRONTEND.glob("*.html")}
+
+
+@pytest.mark.parametrize("page", INSTALLABLE_PAGES)
 def test_pages_are_installable(page):
     html = (FRONTEND / page).read_text()
     for tag in [
@@ -101,27 +115,64 @@ def test_service_worker_headers(client):
 
 def test_service_worker_is_versioned(client):
     source = client.get("/sw.js").text
-    assert main.SW_VERSION_LINE not in source
-    assert f'const VERSION = "{main.frontend_version()}";' in source
+    assert pwa.SW_VERSION_LINE not in source
+    assert f'const VERSION = "{pwa.frontend_version()}";' in source
+
+
+def test_source_has_the_lines_the_server_fills_in():
+    # The source stays valid JavaScript on its own (an empty shell).
+    source = (FRONTEND / "sw.js").read_text()
+    assert pwa.SW_VERSION_LINE in source
+    assert pwa.SW_SHELL_LINE in source
+    assert _sw_list("SHELL", source) == []
+    served = TestClient(main.app).get("/sw.js").text
+    assert pwa.SW_SHELL_LINE not in served
 
 
 def test_version_changes_with_any_frontend_file(tmp_path, monkeypatch):
     copy = tmp_path / "frontend"
     shutil.copytree(FRONTEND, copy)
-    monkeypatch.setattr(main, "FRONTEND_DIR", str(copy))
-    before = main.frontend_version()
-    assert main.frontend_version() == before
+    monkeypatch.setattr(pwa, "FRONTEND_DIR", str(copy))
+    before = pwa.frontend_version()
+    assert pwa.frontend_version() == before
     (copy / "style.css").write_text((copy / "style.css").read_text() + "\n/* changed */\n")
-    assert main.frontend_version() != before
+    assert pwa.frontend_version() != before
 
 
 def test_shell_files_exist(client):
-    for path in _sw_shell():
+    shell = _sw_shell()
+    assert len(shell) == len(set(shell))
+    for path in shell:
         # Only our own files: a third-party file in the shell would make
         # every update depend on that site being reachable.
         assert not path.startswith(("https://", "http://", "//")), path
-        assert (FRONTEND / path).is_file(), path
         assert client.get(f"/{path}").status_code == 200, path
+
+
+def test_shell_is_every_frontend_file_the_browser_uses():
+    shell = set(_sw_shell())
+    # Every page, script, stylesheet and icon...
+    for pattern in ("*.html", "*.js", "*.css", "styles/*.css", "icons/*.png", "*.webmanifest"):
+        for path in FRONTEND.glob(pattern):
+            if path.name != "sw.js":
+                assert path.relative_to(FRONTEND).as_posix() in shell, path
+    # ...the merged translations rather than the files they come from...
+    assert {f"i18n/{lang}.json" for lang in ("en", "de", "fr", "it")} <= shell
+    assert not [path for path in shell if path.startswith(tuple(f"i18n/{lang}/" for lang in ("en", "de", "fr", "it")))]
+    # ...and nothing browsers don't use.
+    assert "sw.js" not in shell
+    assert not [path for path in shell if path.endswith((".py", ".md"))]
+
+
+def test_new_frontend_file_joins_the_shell(tmp_path, monkeypatch):
+    copy = tmp_path / "frontend"
+    shutil.copytree(FRONTEND, copy)
+    monkeypatch.setattr(pwa, "FRONTEND_DIR", str(copy))
+    (copy / "styles" / "new-feature.css").write_text("/* new */\n")
+    (copy / "README.md").write_text("notes\n")
+    shell = pwa.shell_files()
+    assert "styles/new-feature.css" in shell
+    assert "README.md" not in shell
 
 
 def test_libs_are_the_leaflet_index_html_loads():
@@ -184,7 +235,7 @@ def test_assetlinks_ignores_malformed_fingerprints(client, monkeypatch):
 def test_twa_manifest_matches_web_manifest():
     twa = json.loads((FRONTEND.parent / "mobile" / "android" / "twa-manifest.json").read_text())
     web = json.loads((FRONTEND / "manifest.webmanifest").read_text())
-    assert twa["packageId"] == main.ANDROID_PACKAGE_NAME
+    assert twa["packageId"] == pwa.ANDROID_PACKAGE_NAME
     assert twa["host"] == "rideandrail.ch"
     assert twa["name"] == web["name"]
     assert twa["themeColor"].lower() == web["theme_color"]

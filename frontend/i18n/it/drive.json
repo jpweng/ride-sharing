@@ -1,0 +1,22 @@
+{
+  "drive.cancel": "Annullare il viaggio",
+  "drive.cancelConfirm": "Annullare il suo viaggio {from} → {to}?",
+  "drive.departure": "Partenza",
+  "drive.empty": "Non ha viaggi in programma. Ne offra uno qui sotto.",
+  "drive.loadFailed": "Impossibile caricare i suoi viaggi: {error}",
+  "drive.needDeparture": "Scelga un orario di partenza.",
+  "drive.offerTitle": "Offrire un passaggio",
+  "drive.offered": "Passaggio offerto: {from} → {to}.",
+  "drive.posting": "Pubblicazione…",
+  "drive.price": "Prezzo per passeggero (CHF)",
+  "drive.priceBand": "Da CHF {min} a CHF {max} per {km} km. Treno, 2a classe: CHF {full} (metà prezzo CHF {half}).",
+  "drive.priceExplain": "Chi guida divide le spese, non guadagna dal viaggio: il prezzo resta sotto il costo dell'auto diviso con i suoi passeggeri, e sotto il prezzo del treno.",
+  "drive.priceLoading": "Calcolo della fascia di prezzo…",
+  "drive.priceNeedPoints": "Scelga la partenza e la destinazione per vedere la fascia di prezzo.",
+  "drive.priceOutOfBand": "Scelga un prezzo tra CHF {min} e CHF {max}.",
+  "drive.priceShared": "Più passeggeri ci sono, meno paga ciascuno: {list}.",
+  "drive.priceWarn": "Sopra il biglietto del treno a metà prezzo (CHF {half}). I passeggeri con l'abbonamento metà-prezzo potrebbero preferire il treno.",
+  "drive.seats": "Posti",
+  "drive.submit": "Offrire il passaggio",
+  "drive.title": "I suoi viaggi"
+}

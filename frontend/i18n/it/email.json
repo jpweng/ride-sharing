@@ -1,0 +1,9 @@
+{
+  "email.signIn.button": "Accedere a Ride and Rail",
+  "email.signIn.greeting": "Buongiorno,",
+  "email.signIn.ignore": "Se non ha chiesto questo link, può ignorare questa e-mail: nessuno può accedere senza di esso.",
+  "email.signIn.intro": "Per accedere a Ride and Rail, apra il link qui sotto entro {minutes} minuti. Funziona una sola volta.",
+  "email.signIn.linkHint": "Se il pulsante non funziona, copi questo indirizzo nel suo browser:",
+  "email.signIn.signature": "Ride and Rail",
+  "email.signIn.subject": "Il suo link di accesso a Ride and Rail"
+}

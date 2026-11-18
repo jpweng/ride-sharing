@@ -15,8 +15,8 @@ Rules for anyone changing this repository, people and Claude alike. The app itse
 - **English** for all code, comments, docs, commit messages and pull requests, whatever language
   the conversation is in.
 - Run `uv run pytest` before pushing. New behaviour comes with tests.
-- Every UI text goes into all four dictionaries (`frontend/i18n/{en,de,fr,it}.json`), with formal
-  address ("Sie", "vous", "Lei"). `backend/tests/test_i18n.py` enforces it.
+- Every UI text goes into all four languages (`frontend/i18n/{en,de,fr,it}/<prefix>.json`), with
+  formal address ("Sie", "vous", "Lei"). `backend/tests/test_i18n.py` enforces it.
 - Never run `terraform apply` or AWS commands that change anything without the owner's explicit
   go-ahead for that command.
 
@@ -25,10 +25,36 @@ Rules for anyone changing this repository, people and Claude alike. The app itse
 Several branches editing the same files at the same time conflict every time one of them is
 merged. These rules keep that rare.
 
-- **Shared files.** These are edited by almost every feature, so they are where conflicts happen:
-  `frontend/i18n/*.json`, `backend/main.py`, `README.md`, `frontend/index.html`, `frontend/app.js`,
-  `frontend/style.css`, `backend/database.py`, `backend/tests/conftest.py`, `deploy/compose.yaml`,
-  `.github/workflows/deploy.yml`.
+### Where new code goes
+
+A feature adds its own files instead of editing shared ones:
+
+- **API routes:** a new module in `backend/routes/` with `router = APIRouter()`; `main.py` includes
+  every module there automatically. Shared helpers (errors, sessions, `Member`/`Writer`) are in
+  `backend/api.py`.
+- **Translations:** a new `frontend/i18n/<lang>/<prefix>.json` in each of the four languages, for
+  the feature's `<prefix>.*` keys (full flat keys, sorted). Keys with an existing prefix go in that
+  prefix's file, in alphabetical order. The browser gets the merged `i18n/<lang>.json`.
+- **Database:** a new file `backend/migrations/YYYYMMDDHHMM_short_name.py` with an idempotent
+  `def apply(conn)`; every migration runs at every start. A new table's queries can go in the
+  feature's own module (`with database.get_conn() as conn:`); the existing ones stay in
+  `backend/database.py`.
+- **Styles:** a new `frontend/styles/<feature>.css`, linked right after `style.css` by the pages
+  that use it. `style.css` is for the base, layout and shared components.
+- **Docs:** a new `docs/<topic>.md`, linked from the README's Documentation list. The feature's
+  endpoints are described there (access level, error codes), not in `docs/api.md`.
+- New frontend files are in the service worker's offline copy automatically (the server lists them
+  when serving `/sw.js`).
+
+Still shared, so conflicts happen there: `frontend/index.html`, `frontend/app.js`,
+`backend/tests/conftest.py`, `deploy/compose.yaml`, `.github/workflows/deploy.yml`, the README's
+Documentation list, and the cross-cutting translation files `frontend/i18n/<lang>/errors.json` (an
+API error code's text) and `nav.json` (a new tab). A new table also touches
+`backend/database.py` (`delete_account()` lists every user table) and `backend/maintenance.py`
+(data retention).
+
+### Branch rules
+
 - **Before starting a branch**, `git fetch`, branch from `origin/main`, and look at the open pull
   requests (`gh pr list`, `gh pr diff <n> --name-only`). If one of them changes the same shared
   files in the same area, wait for it to be merged or build on top of its branch, and say so in
@@ -48,9 +74,6 @@ merged. These rules keep that rare.
 - **After any pull request is merged, update the other open ones straight away**, while the
   conflicts are small. Resolving conflicts is Claude's job, not the owner's: in a session, or by
   commenting `@claude update this branch from main and fix the conflicts` on the pull request.
-- **Translation conflicts:** keep the keys from both sides and keep the JSON valid. Add new keys
-  next to the keys with the same prefix (`events.*` with the other `events.*` keys), never all at
-  the end of the file, where every branch appends.
 - **Don't touch what you don't need to.** No reformatting, reordering or renaming in passing; it
   turns a small change into conflicts for everyone else.
 - Merge method: merge commits only (squash and rebase merges are disabled), and merged branches
@@ -68,7 +91,7 @@ merged. These rules keep that rare.
   every request.
 - New environment variables: pass them through `deploy/compose.yaml` and the env file in
   `.github/workflows/deploy.yml`, with a safe default.
-- Database changes are additive and backward compatible (new tables or nullable columns), applied
-  by the migration code at startup in `backend/database.py`.
+- Database changes are additive and backward compatible (new tables or nullable columns), each in
+  its own idempotent migration file in `backend/migrations/`, applied at startup.
 - The pull request template's **Before merging** section lists every setup step, with who does
   it. If it isn't empty, the pull request is not ready to merge until the steps are done.

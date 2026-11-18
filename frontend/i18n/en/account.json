@@ -1,0 +1,11 @@
+{
+  "account.delete": "Delete my account",
+  "account.deleteConfirm": "Delete your account and all your data? This can't be undone.",
+  "account.deleteHint": "This deletes your account and all your data at once: drives, searches, ride requests and inbox. Passengers who were told about your upcoming drives hear that they're cancelled. It can't be undone.",
+  "account.deleteTitle": "Delete your account",
+  "account.demoBadge": "demo",
+  "account.email": "Email address: {email}",
+  "account.name": "Other users see you as {name}.",
+  "account.signOut": "Sign out",
+  "account.title": "Your account"
+}

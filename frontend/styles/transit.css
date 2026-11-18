@@ -1,0 +1,88 @@
+/* Public transport: the last-mile connection under a match, the public
+   transport option, and the connection list (app.js). Linked after style.css. */
+
+.last-mile, .transit-box {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: white;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.transit-box.alt {
+  border-style: solid;
+  border-color: var(--border);
+}
+
+.transit-box .conn {
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.transit-box .conn:first-of-type { border-top: none; }
+
+/* Public transport connections, flight-search style (see renderConnections) */
+.pt-conn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.pt-conn:first-of-type { border-top: none; }
+
+.pt-logos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 0 0 28px;
+  align-items: center;
+}
+.pt-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  text-decoration: none;
+}
+.pt-logo img { width: 20px; height: 20px; }
+.pt-code {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.pt-body { flex: 1; min-width: 0; }
+.pt-times { font-size: 14px; font-weight: 600; }
+.pt-meta { color: var(--muted); }
+.pt-legs { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 3px; }
+.pt-leg {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #eef0f3;
+  color: var(--text);
+}
+.pt-ops { margin-top: 3px; color: var(--muted); }
+.pt-ops a { color: var(--muted); }
+
+.pt-book {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+}
+.pt-book:hover { background: var(--accent-dark); }

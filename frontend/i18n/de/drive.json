@@ -1,0 +1,22 @@
+{
+  "drive.cancel": "Fahrt absagen",
+  "drive.cancelConfirm": "Ihre Fahrt {from} → {to} absagen?",
+  "drive.departure": "Abfahrt",
+  "drive.empty": "Sie haben keine kommenden Fahrten. Bieten Sie unten eine an.",
+  "drive.loadFailed": "Ihre Fahrten konnten nicht geladen werden: {error}",
+  "drive.needDeparture": "Wählen Sie eine Abfahrtszeit.",
+  "drive.offerTitle": "Fahrt anbieten",
+  "drive.offered": "Fahrt angeboten: {from} → {to}.",
+  "drive.posting": "Wird veröffentlicht…",
+  "drive.price": "Preis pro Person (CHF)",
+  "drive.priceBand": "Von CHF {min} bis CHF {max} für {km} km. Bahn, 2. Klasse: CHF {full} (Halbtax CHF {half}).",
+  "drive.priceExplain": "Fahrerinnen und Fahrer teilen ihre Kosten, sie verdienen nicht an der Fahrt: Der Preis bleibt unter den Autokosten, geteilt mit Ihren Mitfahrenden, und unter dem Bahnpreis.",
+  "drive.priceLoading": "Preisspanne wird berechnet…",
+  "drive.priceNeedPoints": "Wählen Sie Start und Ziel, um die Preisspanne zu sehen.",
+  "drive.priceOutOfBand": "Wählen Sie einen Preis zwischen CHF {min} und CHF {max}.",
+  "drive.priceShared": "Je mehr Mitfahrende, desto weniger zahlt jede Person: {list}.",
+  "drive.priceWarn": "Über dem Bahnbillett mit Halbtax (CHF {half}). Mitfahrende mit Halbtax nehmen vielleicht lieber den Zug.",
+  "drive.seats": "Plätze",
+  "drive.submit": "Fahrt anbieten",
+  "drive.title": "Ihre Fahrten"
+}

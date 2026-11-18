@@ -1,0 +1,13 @@
+{
+  "match.dropoff": "Dépose ~{time}, à {km} km de votre destination",
+  "match.earlier": "{duration} plus tôt",
+  "match.lastMile": "Dernier tronçon :",
+  "match.later": "{duration} plus tard",
+  "match.onTime": "à l'heure",
+  "match.outside": "Hors de votre sélection :",
+  "match.outsideDropoff": "dépose hors de votre cercle de {km} km",
+  "match.outsidePickup": "prise en charge hors de votre cercle de {km} km",
+  "match.outsideTime": "heure hors de votre flexibilité de {tolerance}",
+  "match.pickup": "Prise en charge ~{time}, à {km} km de votre départ",
+  "match.rideKm": "{km} km ensemble"
+}

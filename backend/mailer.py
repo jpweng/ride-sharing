@@ -9,20 +9,20 @@ The backend is chosen by the EMAIL_BACKEND environment variable:
     Rail <no-reply@rideandrail.ch>"). Credentials come from the server's
     instance role (infra/email.tf), which may only send from that address.
 
-Texts are translated like the rest of the UI, in frontend/i18n/<lang>.json
-under "email.*", so backend/tests/test_i18n.py checks them too (all four
-languages, same placeholders, formal address).
+Texts are translated like the rest of the UI, in
+frontend/i18n/<lang>/email.json ("email.*" keys, see translations.py), so
+backend/tests/test_i18n.py checks them too (all four languages, same
+placeholders, formal address).
 """
-import json
 import logging
 import os
 from functools import cache
 from html import escape
-from pathlib import Path
+
+import translations
 
 logger = logging.getLogger("uvicorn.error")
 
-I18N_DIR = Path(__file__).resolve().parent.parent / "frontend" / "i18n"
 LANGUAGES = ("de", "fr", "it", "en")
 DEFAULT_SES_REGION = "eu-north-1"
 SENDER_NAME = "Ride and Rail"
@@ -95,7 +95,7 @@ def backend():
 
 @cache
 def _dictionary(language: str) -> dict:
-    return json.loads((I18N_DIR / f"{language}.json").read_text(encoding="utf-8"))
+    return translations.dictionary(language)
 
 
 def text(language: str, key: str, **params) -> str:

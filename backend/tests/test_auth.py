@@ -1,5 +1,5 @@
 """
-Sign-in by email link, sessions and who may do what (auth.py, main.py),
+Sign-in by email link, sessions and who may do what (auth.py, api.py, routes/auth.py),
 through HTTP like the browser: the session cookie, the checks in front of
 every route, cross-site requests, rate limits, bans, the demo-driver view
 and account deletion. Isolated database, emails kept in memory (the console
@@ -17,6 +17,7 @@ import auth
 import database as db
 import mailer
 import main
+from routes import auth as auth_routes
 
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()
 IN_TWO_DAYS = (date.today() + timedelta(days=2)).isoformat()
@@ -88,7 +89,7 @@ def test_sign_in_flow(client, outbox):
     email = outbox[-1]
     assert email["to"] == "marie.muster@example.ch"
     assert email["subject"] == mailer.text("fr", "email.signIn.subject")
-    assert f"{main.PUBLIC_BASE_URL}/?lang=fr#/signin/" in email["text"]
+    assert f"{auth_routes.PUBLIC_BASE_URL}/?lang=fr#/signin/" in email["text"]
 
     r = client.post("/api/auth/verify", json={"token": _token(email)})
     user = r.json()["user"]

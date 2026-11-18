@@ -1,0 +1,11 @@
+{
+  "account.delete": "Mein Konto löschen",
+  "account.deleteConfirm": "Ihr Konto und alle Ihre Daten löschen? Dies lässt sich nicht rückgängig machen.",
+  "account.deleteHint": "Damit werden Ihr Konto und alle Ihre Daten sofort gelöscht: Fahrten, Suchen, Fahrtanfragen und Posteingang. Mitfahrende, die über Ihre kommenden Fahrten informiert wurden, erfahren, dass sie abgesagt sind. Dies lässt sich nicht rückgängig machen.",
+  "account.deleteTitle": "Konto löschen",
+  "account.demoBadge": "Demo",
+  "account.email": "E-Mail-Adresse: {email}",
+  "account.name": "Andere sehen Sie als {name}.",
+  "account.signOut": "Abmelden",
+  "account.title": "Ihr Konto"
+}

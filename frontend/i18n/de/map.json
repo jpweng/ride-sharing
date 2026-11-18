@@ -1,0 +1,8 @@
+{
+  "map.destinationPopup": "Ziel: {name}",
+  "map.destinationTitle": "Ihr Ziel",
+  "map.dropoffPoint": "Aussteigen ~{time}",
+  "map.pickupPoint": "Einsteigen ~{time}",
+  "map.pickupPopup": "Start: {name}",
+  "map.pickupTitle": "Ihr Start"
+}

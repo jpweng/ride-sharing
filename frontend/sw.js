@@ -25,7 +25,7 @@
 // - A page that isn't cached and can't be loaded shows offline.html.
 //
 // Updates: the server replaces VERSION with a hash of all the frontend
-// files when it serves this file (backend/main.py, GET /sw.js), so any
+// files when it serves this file (backend/routes/pwa.py, GET /sw.js), so any
 // deploy that changes a frontend file changes sw.js. The browser checks
 // sw.js on every page load (and pwa.js asks again when the app comes back
 // to the foreground); a changed one downloads the offline copy of the
@@ -40,28 +40,12 @@ const VERSION = "dev";
 const CACHE_PREFIX = "rideandrail-shell-";
 const CACHE = CACHE_PREFIX + VERSION;
 
-// Relative to this file, which is served at the site root. Keep in sync
-// with the frontend (backend/tests/test_pwa.py checks every file exists and
-// that the Leaflet URLs are the ones index.html loads).
-const SHELL = [
-  "index.html",
-  "privacy.html",
-  "conduct.html",
-  "offline.html",
-  "style.css",
-  "app.js",
-  "i18n.js",
-  "pwa.js",
-  "i18n/en.json",
-  "i18n/de.json",
-  "i18n/fr.json",
-  "i18n/it.json",
-  "manifest.webmanifest",
-  "icons/icon-192.png",
-  "icons/icon-512.png",
-  "icons/maskable-512.png",
-  "icons/apple-touch-icon.png",
-];
+// The app's own files, relative to this file, which is served at the site
+// root. The server fills the list in when it serves this file
+// (backend/routes/pwa.py): every file under frontend/ the browser uses,
+// with the merged translations i18n/<lang>.json. So a new file is in the
+// shell without editing this one.
+const SHELL = [];
 // Pinned third-party libraries the app can't start without. Keep in sync
 // with index.html (backend/tests/test_pwa.py checks it).
 const LIBS = [
