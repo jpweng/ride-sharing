@@ -36,17 +36,22 @@ A feature adds its own files instead of editing shared ones:
   the feature's `<prefix>.*` keys (full flat keys, sorted). Keys with an existing prefix go in that
   prefix's file, in alphabetical order. The browser gets the merged `i18n/<lang>.json`.
 - **Database:** a new file `backend/migrations/YYYYMMDDHHMM_short_name.py` with an idempotent
-  `def apply(conn)`; every migration runs at every start. Data-access functions stay in
+  `def apply(conn)`; every migration runs at every start. A new table's queries can go in the
+  feature's own module (`with database.get_conn() as conn:`); the existing ones stay in
   `backend/database.py`.
 - **Styles:** a new `frontend/styles/<feature>.css`, linked right after `style.css` by the pages
   that use it. `style.css` is for the base, layout and shared components.
-- **Docs:** a new `docs/<topic>.md`, linked from the README's Documentation list.
+- **Docs:** a new `docs/<topic>.md`, linked from the README's Documentation list. The feature's
+  endpoints are described there (access level, error codes), not in `docs/api.md`.
 - New frontend files are in the service worker's offline copy automatically (the server lists them
   when serving `/sw.js`).
 
 Still shared, so conflicts happen there: `frontend/index.html`, `frontend/app.js`,
-`backend/tests/conftest.py`, `deploy/compose.yaml`, `.github/workflows/deploy.yml`, and the
-README's Documentation list.
+`backend/tests/conftest.py`, `deploy/compose.yaml`, `.github/workflows/deploy.yml`, the README's
+Documentation list, and the cross-cutting translation files `frontend/i18n/<lang>/errors.json` (an
+API error code's text) and `nav.json` (a new tab). A new table also touches
+`backend/database.py` (`delete_account()` lists every user table) and `backend/maintenance.py`
+(data retention).
 
 ### Branch rules
 
