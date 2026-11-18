@@ -1,6 +1,7 @@
 # Sign-in and accounts
 
-[backend/auth.py](../backend/auth.py) has the details; in short:
+[backend/auth.py](../backend/auth.py) has the details; in short (signing in with Google or Apple
+instead of the link is in [Sign-in with Google or Apple](social-login.md)):
 
 - **Sign-in link**: the user enters their email address; the server emails a link with a random
   token, stored only as its SHA-256, valid once for 15 minutes. The link opens `#/signin/<token>`;

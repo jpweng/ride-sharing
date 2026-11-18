@@ -43,7 +43,7 @@ reasons behind them.
   [Routing](docs/routing.md)); falls back to straight lines (haversine) if unreachable
 - Public transport: [transport.opendata.ch](https://transport.opendata.ch) (all Swiss operators)
 - Address search: [geo.admin.ch Search API](https://api3.geo.admin.ch) (Swiss addresses/places)
-- Sign-in: a one-time link sent by email (Amazon SES), server-side sessions in an HttpOnly cookie; see [Sign-in and accounts](docs/sign-in.md)
+- Sign-in: a one-time link sent by email (Amazon SES), server-side sessions in an HttpOnly cookie; see [Sign-in and accounts](docs/sign-in.md). Optionally also Google and Apple, see [Sign-in with Google or Apple](docs/social-login.md)
 - Languages: German, French, Italian and English, see [Translations](docs/translations.md)
 
 ## Run it
@@ -81,6 +81,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   account deletion, email sending
 - [Driver areas](docs/driver-areas.md): the places a driver usually drives from or to, each with a
   radius they choose
+- [Sign-in with Google or Apple](docs/social-login.md): the optional buttons next to the email
+  link, how accounts are matched, how to set the providers up
 - [Train fares](docs/train-fares.md): the T601 distance tariff and the optional OJP fare lookup
 - [Translations](docs/translations.md): the four languages, the dictionaries and their checks
 - [Installable app (PWA) and Android app](docs/pwa.md): manifest, service worker, updates, the
@@ -103,6 +105,7 @@ backend/
   routes/         the API's routes, one module per feature area, each with its own `router`
   translations.py the UI's dictionaries, merged from frontend/i18n/<lang>/<prefix>.json
   auth.py         sign-in by email link, sessions, profile (18+, code of conduct), demo-driver view
+  social.py       sign-in with Google or Apple (OpenID Connect), off until their keys are set
   mailer.py       email: console backend (development, tests) or Amazon SES
   admin.py        command line: ban / unban an account
   database.py     SQLite access layer; init_db() applies migrations/ at startup
@@ -131,6 +134,7 @@ frontend/
   i18n/           en/de/fr/it dictionaries, one file per key prefix
   style.css       teal/white theme, logo and text wordmark: base, layout, shared components
   styles/         one stylesheet per feature, linked right after style.css by the pages using it
+  social.js       the sign-in page's Google and Apple buttons (see docs/social-login.md)
   manifest.webmanifest, sw.js, pwa.js   installable app (see docs/pwa.md)
   icons/          the logo and the app icons + make_icons.py that generates them
 mobile/android/   Android app (Trusted Web Activity): Bubblewrap config + publishing guide

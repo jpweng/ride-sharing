@@ -820,10 +820,11 @@ def delete_account(user_id: int) -> dict:
     """Delete a user and everything about them, in one transaction: their
     drives (with the bookings on them), searches, ride requests (and
     drivers' notifications about them), bookings (their seats are free
-    again), notifications, route mutes, areas, sessions and sign-in links.
-    Returns how many rows of each. Passengers must be told about cancelled
-    drives first (notify.tell_drive_cancelled, bookings.tell_drive_cancelled),
-    and drivers about the user's bookings (bookings.tell_account_deleted)."""
+    again), notifications, route mutes, areas, sign-in identities
+    (social.py), sessions and sign-in links. Returns how many rows of each.
+    Passengers must be told about cancelled drives first
+    (notify.tell_drive_cancelled, bookings.tell_drive_cancelled), and drivers
+    about the user's bookings (bookings.tell_account_deleted)."""
     with get_conn() as conn:
         user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         if user is None:
@@ -869,6 +870,7 @@ def delete_account(user_id: int) -> dict:
             "searches": conn.execute("DELETE FROM ride_requests WHERE passenger_id = ?", (user_id,)).rowcount,
             "ride_requests": conn.execute("DELETE FROM open_requests WHERE passenger_id = ?", (user_id,)).rowcount,
             "route_mutes": conn.execute("DELETE FROM route_mutes WHERE user_id = ?", (user_id,)).rowcount,
+            "identities": conn.execute("DELETE FROM user_identities WHERE user_id = ?", (user_id,)).rowcount,
             "areas": conn.execute("DELETE FROM driver_areas WHERE user_id = ?", (user_id,)).rowcount,
             "sessions": conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,)).rowcount,
             "sign_in_links": conn.execute(

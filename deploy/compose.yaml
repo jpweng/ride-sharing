@@ -11,6 +11,11 @@
 #   ANDROID_CERT_SHA256     signing-certificate fingerprint(s) of the Android
 #                           app, comma-separated, for /.well-known/assetlinks.json
 #                           (optional; see mobile/android/README.md)
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_ID, APPLE_TEAM_ID,
+#   APPLE_KEY_ID, APPLE_PRIVATE_KEY
+#                           sign-in with Google and Apple (optional: each is
+#                           offered only once all of its settings are there;
+#                           see docs/social-login.md)
 #
 # Memory limits (the server has 2 GiB, see infra/variables.tf; the OS and
 # Docker take ~350 MB): the app peaked at ~260 MB in the load test
@@ -79,6 +84,13 @@ services:
       SES_REGION: ${AWS_REGION}
       # For the links in emails, e.g. https://rideandrail.ch.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # Sign-in with Google and Apple (backend/social.py). Empty: not offered.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+      APPLE_KEY_ID: ${APPLE_KEY_ID:-}
+      APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY:-}
     volumes:
       - type: bind
         source: /data/app

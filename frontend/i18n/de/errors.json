@@ -29,10 +29,14 @@
   "errors.price_too_high": "Dieser Preis liegt über dem Maximum für diese Fahrt.",
   "errors.price_too_low": "Dieser Preis liegt unter dem Minimum für diese Fahrt.",
   "errors.profile_incomplete": "Bitte richten Sie zuerst Ihr Konto fertig ein.",
+  "errors.provider_not_found": "Diese Anmeldeart ist nicht verfügbar.",
   "errors.request_failed": "Anfrage fehlgeschlagen ({status}).",
   "errors.request_not_found": "Diese Fahrtanfrage gibt es nicht mehr.",
   "errors.request_too_far": "Eine Fahrtanfrage ist höchstens 14 Tage im Voraus möglich.",
   "errors.request_too_soon": "Eine Fahrtanfrage muss mindestens 1 Stunde im Voraus erfolgen.",
+  "errors.social_cancelled": "Die Anmeldung wurde nicht abgeschlossen. Versuchen Sie es noch einmal oder verwenden Sie den Link per E-Mail.",
+  "errors.social_email_unverified": "Dieses Konto hat keine bestätigte E-Mail-Adresse und kann hier nicht zur Anmeldung dienen. Verwenden Sie stattdessen den Link per E-Mail.",
+  "errors.social_failed": "Die Anmeldung hat nicht funktioniert. Bitte versuchen Sie es noch einmal oder verwenden Sie den Link per E-Mail.",
   "errors.too_many_areas": "Sie haben bereits die Höchstzahl an Gebieten gespeichert. Entfernen Sie zuerst eines.",
   "errors.too_many_requests": "Zu viele Anfragen von hier. Bitte versuchen Sie es später noch einmal."
 }

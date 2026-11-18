@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="styles/pricing.css" />
 <link rel="stylesheet" href="styles/bookings.css" />
 <link rel="stylesheet" href="styles/account.css" />
+<link rel="stylesheet" href="styles/social.css" />
 <link rel="stylesheet" href="styles/pwa.css" />
 <link rel="stylesheet" href="styles/inbox.css" />
 <link rel="stylesheet" href="styles/areas.css" />
@@ -68,6 +69,13 @@
         <button type="submit" class="submit-btn" id="signin-submit" data-i18n="signin.submit">Send me a sign-in link</button>
       </form>
       <div class="status-msg" id="signin-status"></div>
+
+      <!-- Sign-in with Google or Apple (social.js): shown for the providers the server has keys for -->
+      <div class="social-signin" id="signin-social" hidden>
+        <div class="social-or" data-i18n="social.or">or</div>
+        <a class="submit-btn secondary social-btn" data-provider="google" hidden data-i18n="social.google">Continue with Google</a>
+        <a class="submit-btn secondary social-btn" data-provider="apple" hidden data-i18n="social.apple">Continue with Apple</a>
+      </div>
 
       <div class="demo-box">
         <div class="section-title" data-i18n="signin.demoTitle">Just looking?</div>
@@ -322,5 +330,6 @@
 <script src="areas.js"></script>
 <script src="bookings.js"></script>
 <script src="pwa.js"></script>
+<script src="social.js"></script>
 </body>
 </html>
