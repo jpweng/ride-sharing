@@ -7,9 +7,12 @@ from datetime import date, datetime, timedelta, timezone
 
 import database as db
 import demo_drives
-import main
 import notify
 import pytest
+from fastapi import HTTPException
+from routes import drives as drive_routes
+from routes import inbox as inbox_routes
+from routes import ride_requests as request_routes
 
 AIGLE_BERN = [
     [6.966930, 46.317162],  # Aigle
@@ -187,7 +190,7 @@ def test_posting_a_drive_tells_waiting_passengers_once_a_day(user_named, force_h
 
     def post(driver, at):
         # A straight line (force_haversine), from Vevey to Fribourg.
-        return main.post_drive(main.DriveCreate(
+        return drive_routes.post_drive(drive_routes.DriveCreate(
             origin=VEVEY, destination=FRIBOURG, departure_time=f"{IN_TWO_DAYS}T{at}",
         ), user_named(driver))
 
@@ -220,32 +223,32 @@ def test_api_request_flow(user_named, force_haversine, fake_transit):
     _past_drive("Driver", 7)
     marie, driver = user_named("Marie"), user_named("Driver")
     payload = dict(origin=VEVEY, destination=FRIBOURG, requested_time=f"{TOMORROW}T18:30")
-    result = main.create_ride_request(main.RideRequestCreate(**payload), marie)
+    result = request_routes.create_ride_request(request_routes.RideRequestCreate(**payload), marie)
     assert result["drivers_told"] == 1
     assert result["request"]["passenger_name"] == "Marie"
-    assert [r["id"] for r in main.get_ride_requests_open(marie)] == [result["request"]["id"]]
+    assert [r["id"] for r in request_routes.get_ride_requests_open(marie)] == [result["request"]["id"]]
 
-    inbox = main.get_notifications(driver)
+    inbox = inbox_routes.get_notifications(driver)
     assert inbox["unread"] == 1
     n = inbox["notifications"][0]
-    main.act_on_notification(n["id"], main.NotificationAction(action="mute"), driver)
+    inbox_routes.act_on_notification(n["id"], inbox_routes.NotificationAction(action="mute"), driver)
     assert db.list_route_mutes("Driver")
-    main.read_notifications(driver)
-    assert main.get_notifications(driver)["unread"] == 0
+    inbox_routes.read_notifications(driver)
+    assert inbox_routes.get_notifications(driver)["unread"] == 0
 
-    main.cancel_ride_request(result["request"]["id"], marie)
-    assert main.get_ride_requests_open(marie) == []
+    request_routes.cancel_ride_request(result["request"]["id"], marie)
+    assert request_routes.get_ride_requests_open(marie) == []
 
 
 def test_cancelling_a_drive_tells_the_passengers_who_were_told(user_named, force_haversine, fake_transit):
     _request(day=IN_TWO_DAYS)
     driver = user_named("Driver")
-    drive = main.post_drive(main.DriveCreate(
+    drive = drive_routes.post_drive(drive_routes.DriveCreate(
         origin=VEVEY, destination=FRIBOURG, departure_time=f"{IN_TWO_DAYS}T18:00",
     ), driver)
     assert [n["kind"] for n in _inbox("Marie")] == ["drive_for_passenger"]
 
-    main.cancel_drive(drive["id"], driver)
+    drive_routes.cancel_drive(drive["id"], driver)
 
     cancelled = _inbox("Marie")[0]
     assert cancelled["kind"] == "drive_cancelled"
@@ -270,8 +273,8 @@ def test_demo_view_hides_real_passengers_requests(isolated_db):
 ])
 def test_api_request_time_limits(user_named, when, code):
     asked = (notify.local_now() + when).isoformat(timespec="minutes")
-    with pytest.raises(main.HTTPException) as e:
-        main.create_ride_request(main.RideRequestCreate(
+    with pytest.raises(HTTPException) as e:
+        request_routes.create_ride_request(request_routes.RideRequestCreate(
             origin=VEVEY, destination=FRIBOURG, requested_time=asked,
         ), user_named("Marie"))
     assert e.value.detail["code"] == code

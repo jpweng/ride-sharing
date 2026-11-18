@@ -15,8 +15,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 import main
+from routes import pwa
 
-FRONTEND = Path(main.FRONTEND_DIR)
+FRONTEND = Path(pwa.FRONTEND_DIR)
 FINGERPRINT_A = ":".join(["AB"] * 32)
 FINGERPRINT_B = ":".join(["0f"] * 32)
 
@@ -101,18 +102,18 @@ def test_service_worker_headers(client):
 
 def test_service_worker_is_versioned(client):
     source = client.get("/sw.js").text
-    assert main.SW_VERSION_LINE not in source
-    assert f'const VERSION = "{main.frontend_version()}";' in source
+    assert pwa.SW_VERSION_LINE not in source
+    assert f'const VERSION = "{pwa.frontend_version()}";' in source
 
 
 def test_version_changes_with_any_frontend_file(tmp_path, monkeypatch):
     copy = tmp_path / "frontend"
     shutil.copytree(FRONTEND, copy)
-    monkeypatch.setattr(main, "FRONTEND_DIR", str(copy))
-    before = main.frontend_version()
-    assert main.frontend_version() == before
+    monkeypatch.setattr(pwa, "FRONTEND_DIR", str(copy))
+    before = pwa.frontend_version()
+    assert pwa.frontend_version() == before
     (copy / "style.css").write_text((copy / "style.css").read_text() + "\n/* changed */\n")
-    assert main.frontend_version() != before
+    assert pwa.frontend_version() != before
 
 
 def test_shell_files_exist(client):
@@ -185,7 +186,7 @@ def test_assetlinks_ignores_malformed_fingerprints(client, monkeypatch):
 def test_twa_manifest_matches_web_manifest():
     twa = json.loads((FRONTEND.parent / "mobile" / "android" / "twa-manifest.json").read_text())
     web = json.loads((FRONTEND / "manifest.webmanifest").read_text())
-    assert twa["packageId"] == main.ANDROID_PACKAGE_NAME
+    assert twa["packageId"] == pwa.ANDROID_PACKAGE_NAME
     assert twa["host"] == "rideandrail.ch"
     assert twa["name"] == web["name"]
     assert twa["themeColor"].lower() == web["theme_color"]

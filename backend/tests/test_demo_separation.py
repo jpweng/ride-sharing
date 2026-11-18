@@ -9,10 +9,14 @@ from datetime import date, datetime, timedelta
 
 import database as db
 import demo_drives
-import main
 import maintenance
 import notify
 import pytest
+from fastapi import HTTPException
+from routes import drives as drive_routes
+from routes import inbox as inbox_routes
+from routes import match as match_routes
+from routes import ride_requests as request_routes
 
 AIGLE_BERN = [
     [6.966930, 46.317162],  # Aigle
@@ -68,7 +72,7 @@ def ask(user_named):
     a demo-driver view is read-only and can't ask (see test_auth.py)."""
     def ask(passenger):
         user = user_named(passenger) if isinstance(passenger, str) else passenger
-        return main.create_ride_request(main.RideRequestCreate(
+        return request_routes.create_ride_request(request_routes.RideRequestCreate(
             origin=VEVEY, destination=FRIBOURG, requested_time=f"{TOMORROW}T18:30",
         ), user)
     return ask
@@ -95,7 +99,7 @@ def _upcoming_drive(driver, is_demo, day=TOMORROW, at="18:00"):
 
 
 def _match():
-    return main.match_ride(main.MatchRequest(
+    return match_routes.match_ride(match_routes.MatchRequest(
         origin=VEVEY, destination=FRIBOURG, requested_time=f"{TOMORROW}T18:00",
     ))
 
@@ -111,7 +115,7 @@ def test_a_real_request_reaches_real_drivers_and_counts_only_them(isolated_db, d
     assert result["drivers_told"] == 1
     assert result["demo_request"] is False
     assert "demo_drivers_told" not in result  # real drivers' names stay private
-    assert main.get_notifications(user_named("Real Driver"))["unread"] == 1
+    assert inbox_routes.get_notifications(user_named("Real Driver"))["unread"] == 1
     assert _sent_to(DEMO_DRIVER) == []
 
 
@@ -152,7 +156,7 @@ def test_a_request_under_a_demo_name_reaches_demo_drivers_only(isolated_db, demo
     assert result["demo_drivers_told"] == [DEMO_DRIVER]
     # Viewing as the demo driver shows it, through the usual rules: that
     # view leaves out real passengers' requests, not demo ones.
-    n = main.get_notifications(_demo_user(DEMO_DRIVER))["notifications"][0]
+    n = inbox_routes.get_notifications(_demo_user(DEMO_DRIVER))["notifications"][0]
     assert n["kind"] == "request_for_driver"
     assert n["request"]["passenger_name"] == DEMO_VIEWER
     assert n["details"]["trip"]["times"] > 50
@@ -174,10 +178,10 @@ def test_demo_drives_are_labelled_and_not_bookable(isolated_db, force_haversine,
     ]
     assert matches[0]["score"] == matches[1]["score"]
 
-    listed = {d["id"]: d["bookable"] for d in main.get_drives(None)}
+    listed = {d["id"]: d["bookable"] for d in drive_routes.get_drives(None)}
     assert listed == {demo_id: False, real_id: True}
-    assert main.get_drive(demo_id)["bookable"] is False
-    assert main.get_drive(real_id)["bookable"] is True
+    assert drive_routes.get_drive(demo_id)["bookable"] is False
+    assert drive_routes.get_drive(real_id)["bookable"] is True
 
 
 def test_rides_just_outside_the_selection_say_whether_bookable(isolated_db, force_haversine, fake_transit):
@@ -214,9 +218,9 @@ def test_switched_off_demo_drives_are_hidden_everywhere(isolated_db, demo_networ
     demo_id = _upcoming_drive(DEMO_DRIVER, is_demo=True)
     real_id = _upcoming_drive("Real Driver", is_demo=False)
 
-    assert [d["id"] for d in main.get_drives(None)] == [real_id]
-    with pytest.raises(main.HTTPException) as e:
-        main.get_drive(demo_id)
+    assert [d["id"] for d in drive_routes.get_drives(None)] == [real_id]
+    with pytest.raises(HTTPException) as e:
+        drive_routes.get_drive(demo_id)
     assert e.value.status_code == 404
     result = _match()
     assert [m["id"] for m in result["driver_matches"] + result["outside_matches"]] == [real_id]
@@ -224,7 +228,7 @@ def test_switched_off_demo_drives_are_hidden_everywhere(isolated_db, demo_networ
     # A passenger told about it earlier no longer sees it in their inbox.
     request = db.create_open_request("Marie", VEVEY, FRIBOURG, f"{TOMORROW}T18:30", 5, 5, 60)
     db.create_notification("Marie", "drive_for_passenger", request["id"], drive_ids=[demo_id, real_id])
-    drives = main.get_notifications(user_named("Marie"))["notifications"][0]["drives"]
+    drives = inbox_routes.get_notifications(user_named("Marie"))["notifications"][0]["drives"]
     assert [(d["id"], d["bookable"]) for d in drives] == [(real_id, True)]
 
 
@@ -234,7 +238,7 @@ def test_switched_off_there_are_no_demo_requests_or_demo_drivers(isolated_db, de
     result = ask(DEMO_VIEWER)  # just a name now
     assert result["demo_request"] is False
     assert result["drivers_told"] == 1
-    assert main.get_notifications(user_named("Real Driver"))["unread"] == 1
+    assert inbox_routes.get_notifications(user_named("Real Driver"))["unread"] == 1
     assert _sent_to(DEMO_DRIVER) == []
 
 

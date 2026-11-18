@@ -133,7 +133,8 @@ def test_script_keys_exist(script):
 
 
 def test_api_error_codes_translated():
-    source = "".join(path.read_text() for path in (ROOT / "backend").glob("*.py"))
+    backend = ROOT / "backend"
+    source = "".join(path.read_text() for path in backend.rglob("*.py") if "tests" not in path.relative_to(backend).parts)
     codes = set(re.findall(r'(?:api_error|AuthError)\(\d+, "(\w+)"', source))
     # The service worker answers API calls with "offline" when there's no network.
     codes |= set(re.findall(r'code: "(\w+)"', (FRONTEND / "sw.js").read_text()))

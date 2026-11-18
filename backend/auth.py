@@ -1,6 +1,7 @@
 """
-Sign-in by a one-time link sent by email, and sessions. main.py turns this
-into HTTP: the endpoints, the session cookie and the checks on every route.
+Sign-in by a one-time link sent by email, and sessions. routes/auth.py and
+api.py turn this into HTTP: the endpoints, the session cookie and the checks
+on every route.
 
 1. request_link: the user enters their email; a link with a random token is
    emailed (mailer.py). Only the token's SHA-256 is stored; it works once,
@@ -57,7 +58,7 @@ DEMO_DRIVERS_OFFERED = 8
 
 
 class AuthError(Exception):
-    """An error with a code the API returns (see main.api_error)."""
+    """An error with a code the API returns (see api.api_error)."""
 
     def __init__(self, status: int, code: str, message: str):
         super().__init__(message)

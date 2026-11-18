@@ -231,7 +231,7 @@ The site is a Progressive Web App: on Android, Chrome offers to install it; on i
   - A page that isn't cached shows [offline.html](frontend/offline.html) when offline (whole texts
     per language, like the privacy notice).
 - **Updates:** the server serves `/sw.js` with `Cache-Control: no-cache` and its `VERSION` replaced
-  by a hash of all the frontend files ([backend/main.py](backend/main.py)), so every deploy that
+  by a hash of all the frontend files ([backend/routes/pwa.py](backend/routes/pwa.py)), so every deploy that
   changes a frontend file is a new service worker version, with no version number to bump by hand.
   Browsers check `/sw.js` on every page load (pwa.js also checks when the app comes back to the
   foreground, at most every 30 minutes). The new version downloads its offline copy into a new
@@ -422,7 +422,9 @@ fast, hence Caddy's server-wide limit of 60 searches/min.
 
 ```
 backend/
-  main.py         FastAPI app + routes, sessions and CSRF check, mounts frontend/ as static files
+  main.py         FastAPI app: startup, CSRF check, includes every routes/ module, mounts frontend/
+  api.py          what the routes share: errors, sessions (who is asking), common request bodies
+  routes/         the API's routes, one module per feature area, each with its own `router`
   auth.py         sign-in by email link, sessions, profile (18+, code of conduct), demo-driver view
   mailer.py       email: console backend (development, tests) or Amazon SES
   admin.py        command line: ban / unban an account

@@ -25,7 +25,7 @@
 // - A page that isn't cached and can't be loaded shows offline.html.
 //
 // Updates: the server replaces VERSION with a hash of all the frontend
-// files when it serves this file (backend/main.py, GET /sw.js), so any
+// files when it serves this file (backend/routes/pwa.py, GET /sw.js), so any
 // deploy that changes a frontend file changes sw.js. The browser checks
 // sw.js on every page load (and pwa.js asks again when the app comes back
 // to the foreground); a changed one downloads the offline copy of the
