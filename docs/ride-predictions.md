@@ -195,7 +195,9 @@ The privacy notice says (ride requests) and must say (predictions), in all four 
 - that past drives and searches are used to suggest the next ones and to tell drivers about requests
   on routes they often drive, that drivers' areas are used the same way, and that both can be
   turned off;
-- that notified drivers see the passenger's name, trip and time.
+- that notified drivers see the passenger's name, trip and time, and that drivers with an area
+  around the start or destination see the same in the list of requests in their areas
+  ([Driver areas](driver-areas.md)).
 
 ## Open questions
 

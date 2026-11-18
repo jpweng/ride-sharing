@@ -11,3 +11,15 @@
 .area-card .link-btn { display: block; }
 #areas-add { margin-top: 12px; }
 #areas-list { margin-top: 8px; }
+
+/* The open ride requests in the driver's areas. */
+.area-request-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.area-request-filters[hidden] { display: none; }
+.area-request-filters select { padding: 5px 8px; }
+#areas-requests { margin-top: 8px; }
+.area-request-card .submit-btn { width: auto; margin-top: 8px; padding: 7px 12px; }

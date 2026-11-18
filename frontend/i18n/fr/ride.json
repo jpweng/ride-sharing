@@ -1,6 +1,6 @@
 {
   "ride.ask": "Demander ce trajet aux conducteurs",
-  "ride.askHint": "Rien qui vous convienne ? Demandez aux conducteurs qui font souvent ce trajet ou qui roulent dans le secteur. Quelques-uns sont prévenus, et vos messages vous signalent quand un trajet qui convient est publié.",
+  "ride.askHint": "Rien qui vous convienne ? Demandez aux conducteurs qui font souvent ce trajet ou qui roulent dans le secteur. Quelques-uns sont prévenus, les conducteurs ayant une zone à cet endroit voient votre demande dans leur liste, et vos messages vous signalent quand un trajet qui convient est publié.",
   "ride.askSent.one": "Demande envoyée : {count} conducteur qui fait ce trajet ou roule dans le secteur a été prévenu. Vos messages vous signalent quand un trajet qui convient est publié.",
   "ride.askSent.other": "Demande envoyée : {count} conducteurs qui font ce trajet ou roulent dans le secteur ont été prévenus. Vos messages vous signalent quand un trajet qui convient est publié.",
   "ride.askSentDemo.one": "Demande de démo : elle ne parvient qu'à des conducteurs de démo fictifs. {count} conducteur a été prévenu : {names}. Déconnectez-vous et continuez sous ce nom pour voir la demande arriver.",

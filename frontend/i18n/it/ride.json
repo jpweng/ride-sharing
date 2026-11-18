@@ -1,6 +1,6 @@
 {
   "ride.ask": "Chiedere questo passaggio ai conducenti",
-  "ride.askHint": "Niente che le vada bene? Chieda ai conducenti che fanno spesso questo tragitto o che guidano nella zona. Alcuni vengono avvisati, e i suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
+  "ride.askHint": "Niente che le vada bene? Chieda ai conducenti che fanno spesso questo tragitto o che guidano nella zona. Alcuni vengono avvisati, i conducenti con una zona lì vedono la sua richiesta nel loro elenco, e i suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
   "ride.askSent.one": "Richiesta inviata: {count} conducente che fa questo tragitto o guida nella zona è stato avvisato. I suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
   "ride.askSent.other": "Richiesta inviata: {count} conducenti che fanno questo tragitto o guidano nella zona sono stati avvisati. I suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
   "ride.askSentDemo.one": "Richiesta demo: raggiunge solo conducenti demo fittizi. {count} conducente è stato avvisato: {names}. Si disconnetta e continui con questo nome per vedere arrivare la richiesta.",

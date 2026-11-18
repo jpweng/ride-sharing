@@ -504,15 +504,51 @@ def run_extra_rounds(now: datetime | None = None) -> int:
 # ---------------------------------------------------------------------
 # The inbox
 # ---------------------------------------------------------------------
+_REQUEST_SHOWN = (
+    "id", "passenger_name", "origin_name", "origin_lat", "origin_lon", "destination_name",
+    "destination_lat", "destination_lon", "requested_time", "pickup_radius_km", "dropoff_radius_km",
+    "time_tolerance_min", "status",
+)
+
+
 def _request_summary(request_id: int) -> dict | None:
     r = db.get_open_request(request_id)
     if r is None:
         return None
-    return {k: r[k] for k in (
-        "id", "passenger_name", "origin_name", "origin_lat", "origin_lon", "destination_name",
-        "destination_lat", "destination_lon", "requested_time", "pickup_radius_km", "dropoff_radius_km",
-        "time_tolerance_min", "status",
-    )}
+    return {k: r[k] for k in _REQUEST_SHOWN}
+
+
+# The most requests a driver's list shows, the soonest.
+MAX_REQUESTS_LISTED = 200
+
+
+def requests_in_areas(user: dict, now: datetime | None = None) -> list[dict]:
+    """
+    The open ride requests that start or end in one of the driver's areas
+    (areas.py), the soonest first: what a notified driver sees of a request,
+    with how it fits their areas ("area": the one to name, "ends": which
+    ends their areas cover, "area_ids": every area of theirs it touches, to
+    filter by). Every such request, not only those the driver
+    was told about: the list has no budget, the driver comes to it.
+    Not the driver's own requests, nor demo requests (fictional needs).
+    """
+    now = now or local_now()
+    user_areas = areas.list_for(user["id"])
+    if not user_areas:
+        return []
+    listed = []
+    for r in db.list_open_requests(_iso(now)):
+        if r["passenger_id"] == user["id"] or is_demo_request(r):
+            continue
+        fit = areas.best_fit(user_areas, r)
+        if fit:
+            listed.append({
+                **{k: r[k] for k in _REQUEST_SHOWN},
+                "area": fit["area"], "ends": fit["ends"], "area_ids": fit["area_ids"],
+            })
+        if len(listed) >= MAX_REQUESTS_LISTED:
+            break
+    return listed
 
 
 def inbox(name: str, demo_view: bool = False) -> dict:
