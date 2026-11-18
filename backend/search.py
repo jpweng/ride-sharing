@@ -8,10 +8,19 @@ A search also proposes a few rides just outside what the passenger
 selected (with_outside): within wider circles and a wider time window,
 each marked with what it's outside of. The passenger may like them anyway.
 """
+import os
+import threading
 from datetime import datetime, timedelta
 
 import database as db
 import matching
+
+# Searches running at once. Each is pure Python (one CPU at a time anyway,
+# the GIL) and holds ~30-50 MB of parsed routes while it runs: 40 at once
+# (uvicorn's thread pool) took the load test's app to 1.6 GB. More wait
+# here instead, a fraction of a second each.
+SEARCH_CONCURRENCY = int(os.environ.get("SEARCH_CONCURRENCY", "2"))
+_search_slots = threading.BoundedSemaphore(SEARCH_CONCURRENCY)
 
 # The wider limits for rides outside the passenger's selection: twice their
 # circles and time flexibility, and at least 5 km / 1 h more.
@@ -29,6 +38,17 @@ def upcoming_matches(
     dropoff_radius_km: float = matching.DEFAULT_DROPOFF_RADIUS_KM,
     time_tolerance_min: float = matching.DEFAULT_TIME_TOLERANCE_MIN,
     max_results: int = matching.MAX_RESULTS,
+) -> list[dict]:
+    with _search_slots:
+        return _upcoming_matches(
+            origin, destination, requested_time,
+            pickup_radius_km, dropoff_radius_km, time_tolerance_min, max_results,
+        )
+
+
+def _upcoming_matches(
+    origin, destination, requested_time,
+    pickup_radius_km, dropoff_radius_km, time_tolerance_min, max_results,
 ) -> list[dict]:
     # Only drives that can reach the pickup near the requested time
     # (matching filters on the pickup time exactly): there are tens of

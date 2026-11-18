@@ -127,11 +127,19 @@ CREATE TABLE IF NOT EXISTS route_mutes (
 """
 
 
+# How long a write waits for another one to finish before "database is
+# locked". With WAL (see init_db) reads never block writes, so this only
+# covers writes queueing behind each other.
+BUSY_TIMEOUT_S = 15
+
+
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=BUSY_TIMEOUT_S)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Safe with WAL: a power cut can lose the last commits, never corrupt.
+    conn.execute("PRAGMA synchronous = NORMAL")
     try:
         yield conn
         conn.commit()
@@ -141,6 +149,10 @@ def get_conn():
 
 def init_db():
     with get_conn() as conn:
+        # Write-ahead log, a setting of the file: searches reading many
+        # routes no longer hold up the writes (each search saves itself),
+        # which a load test showed failing with "database is locked".
+        conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(SCHEMA)
         # Databases created before is_demo existed.
         columns = {r["name"] for r in conn.execute("PRAGMA table_info(drives)")}
