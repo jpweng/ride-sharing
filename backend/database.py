@@ -394,9 +394,9 @@ def delete_ride_requests_before(created_at: str) -> int:
 
 def delete_inactive_users() -> int:
     """Delete names (legacy and demo users) with no drives, searches, ride
-    requests, notifications or sessions left, with their route mutes and
-    areas; returns how many. Accounts (with an email) stay until their owner
-    deletes them."""
+    requests, bookings, notifications or sessions left, with their route
+    mutes and areas; returns how many. Accounts (with an email) stay until
+    their owner deletes them."""
     inactive = """
         SELECT id FROM users
         WHERE email IS NULL
@@ -404,6 +404,7 @@ def delete_inactive_users() -> int:
           AND id NOT IN (SELECT passenger_id FROM ride_requests)
           AND id NOT IN (SELECT passenger_id FROM open_requests)
           AND id NOT IN (SELECT recipient_id FROM notifications)
+          AND id NOT IN (SELECT passenger_id FROM bookings)
           AND id NOT IN (SELECT user_id FROM sessions)
     """
     with get_conn() as conn:
@@ -817,10 +818,12 @@ def delete_expired_sessions(now: str) -> int:
 
 def delete_account(user_id: int) -> dict:
     """Delete a user and everything about them, in one transaction: their
-    drives, searches, ride requests (and drivers' notifications about them),
-    notifications, route mutes, areas, sessions and sign-in links. Returns how many
-    rows of each. Passengers must be told about cancelled drives first
-    (notify.tell_drive_cancelled)."""
+    drives (with the bookings on them), searches, ride requests (and
+    drivers' notifications about them), bookings (their seats are free
+    again), notifications, route mutes, areas, sessions and sign-in links.
+    Returns how many rows of each. Passengers must be told about cancelled
+    drives first (notify.tell_drive_cancelled, bookings.tell_drive_cancelled),
+    and drivers about the user's bookings (bookings.tell_account_deleted)."""
     with get_conn() as conn:
         user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         if user is None:
@@ -847,9 +850,21 @@ def delete_account(user_id: int) -> dict:
                 else:
                     conn.execute("DELETE FROM notifications WHERE id = ?", (row["id"],))
                 others += 1
+        # The seats the user had on other drivers' drives are free again.
+        conn.execute(
+            """
+            UPDATE drives SET seats_available = seats_available + (
+                SELECT SUM(b.seats) FROM bookings b
+                WHERE b.drive_id = drives.id AND b.passenger_id = ? AND b.status = 'accepted'
+            )
+            WHERE id IN (SELECT drive_id FROM bookings WHERE passenger_id = ? AND status = 'accepted')
+            """,
+            (user_id, user_id),
+        )
         deleted = {
             "others_notifications": others,
             "notifications": conn.execute("DELETE FROM notifications WHERE recipient_id = ?", (user_id,)).rowcount,
+            "bookings": conn.execute("DELETE FROM bookings WHERE passenger_id = ?", (user_id,)).rowcount,
             "drives": conn.execute("DELETE FROM drives WHERE driver_id = ?", (user_id,)).rowcount,
             "searches": conn.execute("DELETE FROM ride_requests WHERE passenger_id = ?", (user_id,)).rowcount,
             "ride_requests": conn.execute("DELETE FROM open_requests WHERE passenger_id = ?", (user_id,)).rowcount,

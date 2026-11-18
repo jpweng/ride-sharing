@@ -32,7 +32,9 @@ Not needed for the demo, but these shape decisions made now:
 
 - **Accounts:** sign-in by an emailed link replaces the typed name (built, see docs/sign-in.md). Still to do
   by a human: SES production access, a lawyer's review of the code of conduct.
-- **Contact and booking:** how a passenger reaches a driver and reserves a seat.
+- **Contact and booking:** booking is built (see docs/booking.md): a passenger asks for a seat,
+  the driver accepts or declines, and they agree on the meeting point with a short message each.
+  Still open: how they reach each other on the day (no phone number or chat yet).
 - **Legal:** terms of use and a full privacy policy. In Switzerland, carpooling is fine as long as
   drivers only share costs; earning money from rides needs a professional licence, so pricing rules
   matter.

@@ -32,6 +32,7 @@ shows the stored rows; email will plug in there with the same limits.
 
 Kinds: request_for_driver, drive_for_passenger, and drive_cancelled (a drive
 a passenger was told about was cancelled, see tell_drive_cancelled).
+bookings.py sends its own through send(): they aren't about a ride request.
 """
 import random
 from datetime import datetime, timedelta, timezone
@@ -86,6 +87,16 @@ def _send(recipient_name: str, kind: str, request_id: int, **fields) -> dict:
     for channel in CHANNELS:
         channel.deliver(notification)
     return notification
+
+
+# The request id of notifications that aren't about a ride request.
+NO_REQUEST = 0
+
+
+def send(recipient_name: str, kind: str, details: dict) -> dict:
+    """A notification that isn't about a ride request: the inbox shows its
+    kind and details (bookings.py's, about seats on a drive)."""
+    return _send(recipient_name, kind, NO_REQUEST, details=details)
 
 
 def local_now() -> datetime:
@@ -396,11 +407,12 @@ def tell_passengers(drive: dict, now: datetime | None = None) -> int:
     return fitted
 
 
-def tell_drive_cancelled(drive: dict, now: datetime | None = None) -> int:
+def tell_drive_cancelled(drive: dict, now: datetime | None = None, exclude: set[str] = frozenset()) -> int:
     """An upcoming drive is cancelled (by its driver, or because they deleted
-    their account): tell the passengers who were told about it. The drive's
-    details are kept in the notification, as the drive itself is deleted.
-    Returns how many passengers were told."""
+    their account): tell the passengers who were told about it, except those
+    in `exclude` (the ones with a seat on it, whom bookings.py tells). The
+    drive's details are kept in the notification, as the drive itself is
+    deleted. Returns how many passengers were told."""
     now = now or local_now()
     if datetime.fromisoformat(drive["departure_time"]).replace(tzinfo=None) <= now:
         return 0
@@ -409,7 +421,7 @@ def tell_drive_cancelled(drive: dict, now: datetime | None = None) -> int:
     )}}
     told = set()
     for n in db.notified_about_drive(drive["id"]):
-        if n["recipient_name"] in told:
+        if n["recipient_name"] in told or n["recipient_name"] in exclude:
             continue
         _send(n["recipient_name"], "drive_cancelled", n["request_id"], details=details)
         told.add(n["recipient_name"])

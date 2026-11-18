@@ -34,10 +34,12 @@ passengers and drivers settle between themselves):
 
    so the price per passenger falls by itself when more people join: on a
    30 km drive at the maximum, CHF 11.20 alone, 7.50 each for two, 5.60
-   each for three, 4.50 each for four. (There are no bookings yet: prices
-   are shown for the next passenger, and price_by_passengers lists them for
-   1, 2, ... passengers.) n counts every passenger on the drive, even those
-   who ride only part of it, which keeps the driver's total on the safe side.
+   each for three, 4.50 each for four. Seats are booked through
+   bookings.py: price_chf is what the next passenger pays, given the seats
+   already booked, and price_by_passengers lists the price for 1, 2, ...
+   passengers up to a full car. n counts every passenger on the drive, even
+   those who ride only part of it, which keeps the driver's total on the
+   safe side.
 
 4. Minimum price, growing with distance, around the driver's fuel:
    FUEL_CHF_PER_KM x km. Never above the maximum: on very short trips the
@@ -146,10 +148,38 @@ def _driver_price(drive: dict, drive_km: float) -> float:
     return band(drive_km)["default_chf"]
 
 
-def _prices(driver_price: float, km: float, seats: int) -> dict:
+def _seats(drive: dict) -> tuple[int, int]:
+    """(free seats, seats already booked): seats_booked is added to drives
+    by bookings.with_seats_booked(); without it, nobody has booked."""
+    free = drive.get("seats_available")
+    return (1 if free is None else free), drive.get("seats_booked") or 0
+
+
+def _prices(driver_price: float, km: float, seats: int, booked: int = 0) -> dict:
+    """With `seats` free seats and `booked` passengers already aboard: each
+    passenger's price with 1, 2, ... passengers up to a full car, and what
+    the next passenger pays (in a full car: what everyone pays)."""
     train = fares.fare_for_road_km(km)
-    by_passengers = [passenger_price_chf(driver_price, km, n, train["full_chf"]) for n in range(1, max(1, seats) + 1)]
-    return {"price_chf": by_passengers[0], "price_by_passengers": by_passengers, "train_fare": train}
+    by_passengers = [
+        passenger_price_chf(driver_price, km, n, train["full_chf"]) for n in range(1, max(1, booked + seats) + 1)
+    ]
+    return {
+        "price_chf": by_passengers[min(booked, len(by_passengers) - 1)],
+        "price_by_passengers": by_passengers,
+        "train_fare": train,
+    }
+
+
+def booking_price_chf(drive: dict, ride_km: float, passengers: int) -> float | None:
+    """What each passenger pays per seat for `ride_km` of `drive` with
+    `passengers` in the car (bookings.py): the driver's price in proportion
+    to the distance ridden, capped like every ride price. None if the
+    drive's distance is unknown."""
+    drive_km = drive["route_distance_m"] / 1000.0 if drive.get("route_distance_m") else None
+    if not drive_km or not ride_km or ride_km <= 0:
+        return None
+    share = _driver_price(drive, drive_km) * min(1.0, ride_km / drive_km)
+    return passenger_price_chf(share, ride_km, max(1, passengers))
 
 
 def _no_price() -> dict:
@@ -159,8 +189,8 @@ def _no_price() -> dict:
 def with_prices(drive: dict) -> dict:
     """
     A drive with what a passenger pays for the whole drive: price_chf (for
-    the next passenger, one passenger so far), price_by_passengers (each
-    passenger's price with 1, 2, ... passengers, up to the seats),
+    the next passenger, given the seats already booked), price_by_passengers
+    (each passenger's price with 1, 2, ... passengers, up to a full car),
     train_fare, and driver_price_chf (the driver's price, or the default
     when they set none).
     """
@@ -168,7 +198,7 @@ def with_prices(drive: dict) -> dict:
     if not km:
         return {**drive, **_no_price()}
     driver_price = _driver_price(drive, km)
-    return {**drive, "driver_price_chf": driver_price, **_prices(driver_price, km, drive.get("seats_available") or 1)}
+    return {**drive, "driver_price_chf": driver_price, **_prices(driver_price, km, *_seats(drive))}
 
 
 def with_ride_prices(match: dict) -> dict:
@@ -184,4 +214,4 @@ def with_ride_prices(match: dict) -> dict:
         return {**match, **_no_price()}
     driver_price = _driver_price(match, drive_km)
     share = driver_price * min(1.0, ride_km / drive_km)
-    return {**match, "driver_price_chf": driver_price, **_prices(share, ride_km, match.get("seats_available") or 1)}
+    return {**match, "driver_price_chf": driver_price, **_prices(share, ride_km, *_seats(match))}

@@ -1,0 +1,54 @@
+/* Bookings (see bookings.js): asking for a seat on a drive's card, the
+   passenger's bookings, the driver's passengers and requests. Linked after
+   style.css. */
+
+.booking-box { margin-top: 8px; }
+.booking-box .submit-btn { width: auto; margin: 0; padding: 7px 12px; }
+.booking-box .link-btn { margin: 0; color: var(--muted); }
+.booking-box input[type=text] { margin-top: 6px; font-size: 13px; }
+.booking-box .booking-mine { margin: 0 0 6px; }
+
+.booking-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.booking-form-row[hidden] { display: none; }
+.booking-form-row label { margin: 0; }
+.booking-form-row select { width: auto; padding: 5px 8px; }
+
+.booking-note {
+  margin-top: 4px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text);
+}
+
+.badge.booking-status { font-size: 11px; font-weight: 600; }
+.badge.booking-status.requested { background: #fff4e5; color: #995c00; }
+.badge.booking-status.accepted { background: #e6f4ea; color: var(--success); }
+.badge.booking-status.declined,
+.badge.booking-status.cancelled_by_driver { background: #fdecea; color: #b3261e; }
+
+/* On the driver's own drive: one row per passenger or request. */
+.booking-list-title {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+.booking-row {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.booking-row .booking-who { font-size: 13px; font-weight: 600; }
+
+.booking-card .link-btn { display: block; }

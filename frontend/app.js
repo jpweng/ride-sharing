@@ -772,6 +772,16 @@ function driveCardHtml(d) {
   `;
 }
 
+// Scripts loaded after this one (bookings.js) add to the cards of drives:
+// each function gets the kind of card ("mine": the driver's own, "match": a
+// search result, "browse": the public list), the drive or match, and the
+// card's element.
+const CARD_EXTRAS = [];
+
+function cardExtras(kind, item, card) {
+  CARD_EXTRAS.forEach((extra) => extra(kind, item, card));
+}
+
 // ---------------------------------------------------------------------
 // The driver's price: a band from /api/price_band once both ends are set,
 // prefilled with its default, a warning above the half-fare train ticket,
@@ -899,6 +909,7 @@ async function loadMyDrives() {
         cancelDrive(d);
       });
       list.appendChild(card);
+      cardExtras("mine", d, card);
     });
   } catch (err) {
     list.innerHTML = `<div class="empty-state">${esc(t("drive.loadFailed", { error: err.message }))}</div>`;
@@ -1147,6 +1158,7 @@ function renderMatches(matches, outside, passengerOrigin, passengerDestination, 
       ${renderLastMile(m.last_mile_transit)}
     `;
     container.appendChild(card);
+    cardExtras("match", m, card);
 
     const entry = { match: m, card, color, line: null };
     shown.push(entry);
@@ -1434,9 +1446,17 @@ function renderInbox(data) {
   data.notifications.forEach((n) => list.appendChild(notificationCard(n)));
 }
 
+// Kinds of notification added by scripts loaded after this one
+// (bookings.js): kind -> a function that fills the card.
+const NOTIFICATION_CARDS = {};
+
 function notificationCard(n) {
   const card = document.createElement("div");
   card.className = `drive-card notification${n.read_at ? "" : " unread"}`;
+  if (NOTIFICATION_CARDS[n.kind]) {
+    NOTIFICATION_CARDS[n.kind](n, card);
+    return card;
+  }
   const r = n.request;
   const trip = r ? `<div class="meta">${esc(r.origin_name)} → ${esc(r.destination_name)} · ${fmtTime(r.requested_time)}</div>` : "";
   const open = r && r.status === "open" && new Date(r.requested_time) > new Date();
@@ -1577,6 +1597,7 @@ async function loadBrowse() {
       card.innerHTML = `${driveCardHtml(d)}<div class="meta">${esc(t("common.driver", { name: d.driver_name }))}</div>`;
       card.addEventListener("click", () => showDriveOnMap(d));
       list.appendChild(card);
+      cardExtras("browse", d, card);
 
       L.circleMarker([d.origin_lat, d.origin_lon], { radius: 5, color: "#1a7f37" })
         .addTo(resultsLayer)
