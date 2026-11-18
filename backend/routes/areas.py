@@ -5,11 +5,13 @@ A driver's areas (see areas.py):
   POST /api/areas          -- save an area: a place and a radius
   PUT /api/areas/{id}      -- change an area's radius
   DELETE /api/areas/{id}   -- remove an area
+  GET /api/areas/requests  -- the open ride requests in the user's areas
 """
 from fastapi import APIRouter
 from pydantic import BaseModel, Field, field_validator
 
 import areas
+import notify
 from api import Member, Writer, api_error
 
 router = APIRouter()
@@ -76,3 +78,9 @@ def remove_area(area_id: int, user: Writer):
     if not areas.remove(area_id, user["id"]):
         raise _not_found()
     return {"deleted": area_id}
+
+
+@router.get("/api/areas/requests")
+def get_requests_in_areas(user: Member):
+    # Viewing as a demo driver: no areas, so no real passenger's request.
+    return notify.requests_in_areas(user)

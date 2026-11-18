@@ -219,3 +219,54 @@ def test_the_passenger_hears_how_many_were_told(driver, user_named, force_havers
     ), marie)
     assert result["drivers_told"] == 2
     assert result["demo_request"] is False
+
+
+# --- The list of requests in a driver's areas --------------------------------------
+
+def _listed(user):
+    from routes import areas as area_routes
+    return area_routes.get_requests_in_areas(user)
+
+
+def test_a_driver_browses_the_requests_in_their_areas(driver, user_named):
+    zoe = driver("Zoe Z.", (VEVEY, 5), (SION, 10))
+    later = _request("Paul P.", origin=FRIBOURG, destination=VEVEY, day=IN_TWO_DAYS, at="08:00")
+    sooner = _request("Marie M.", origin=VEVEY, destination=FRIBOURG, day=TOMORROW)
+    _request("Lea L.", origin=FRIBOURG, destination=BULLE)  # touches none of her areas
+
+    listed = _listed(zoe)
+    # The soonest first, with what a notified driver would see and how it fits.
+    assert [(r["id"], r["passenger_name"], r["ends"]) for r in listed] == [
+        (sooner["id"], "Marie M.", ["origin"]), (later["id"], "Paul P.", ["destination"]),
+    ]
+    assert listed[0]["area"]["name"] == "Vevey"
+    assert listed[0]["area_ids"] == [a["id"] for a in areas.list_for(zoe["id"]) if a["name"] == "Vevey"]
+    assert (listed[0]["origin_name"], listed[0]["destination_name"]) == ("Vevey", "Fribourg")
+    assert listed[0]["requested_time"] == f"{TOMORROW}T18:30"
+    # Every request there, whether or not she was notified about it.
+    assert notify.inbox("Zoe Z.")["notifications"] == []
+
+
+def test_the_list_leaves_out_ones_own_cancelled_past_and_demo_requests(driver, monkeypatch):
+    zoe = driver("Zoe Z.", (VEVEY, 5))
+    _request("Zoe Z.")                                            # her own
+    cancelled = _request("Paul P.")
+    db.set_request_status(cancelled["id"], "cancelled")
+    _request("Old O.", day=date.today() - timedelta(days=1))      # its time has passed
+    demo = _request("Demo D.")
+    shown = _request("Marie M.")
+    monkeypatch.setattr(notify, "is_demo_request", lambda r: r["id"] == demo["id"])
+    assert [r["id"] for r in _listed(zoe)] == [shown["id"]]
+
+
+def test_no_areas_no_list(user_named):
+    _request("Marie M.")
+    assert _listed(user_named("Zoe Z.")) == []
+
+
+def test_the_list_needs_a_session(isolated_db):
+    from fastapi.testclient import TestClient
+
+    import main
+    resp = TestClient(main.app, base_url="https://testserver").get("/api/areas/requests")
+    assert resp.status_code == 401

@@ -111,12 +111,17 @@ def _best(fits: list[dict]) -> dict:
     (home) and another at the destination (work) covers both."""
     best = min(fits, key=lambda fit: (-len(fit["ends"]), fit["distance_km"]))
     covered = {end for fit in fits for end in fit["ends"]}
-    return {**best, "ends": [end for end in ("origin", "destination") if end in covered]}
+    return {
+        **best,
+        "ends": [end for end in ("origin", "destination") if end in covered],
+        "area_ids": [fit["area"]["id"] for fit in fits],
+    }
 
 
 def best_fit(user_areas: list[dict], request: dict) -> dict | None:
-    """How a request fits a driver's areas ({area, ends, distance_km}, see
-    _best); None if it starts and ends outside them all."""
+    """How a request fits a driver's areas ({area, ends, distance_km,
+    area_ids: every area of theirs it touches}, see _best); None if it
+    starts and ends outside them all."""
     fits = [fit for fit in (_fit(area, request) for area in user_areas) if fit]
     return _best(fits) if fits else None
 

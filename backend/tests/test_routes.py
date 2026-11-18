@@ -29,6 +29,7 @@ API_ROUTES = {
     ("post", "/api/areas"),
     ("put", "/api/areas/{area_id}"),
     ("delete", "/api/areas/{area_id}"),
+    ("get", "/api/areas/requests"),
     ("post", "/api/drives"),
     ("get", "/api/drives"),
     ("get", "/api/drives/{drive_id}"),
