@@ -100,6 +100,8 @@ jobs:
           ENV_FILE=$(printf '%s\nGOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\nAPPLE_CLIENT_ID=%s\nAPPLE_TEAM_ID=%s\nAPPLE_KEY_ID=%s\nAPPLE_PRIVATE_KEY=%s\n' \
             "$ENV_FILE" "${{ vars.GOOGLE_CLIENT_ID }}" "$GOOGLE_CLIENT_SECRET" \
             "${{ vars.APPLE_CLIENT_ID }}" "${{ vars.APPLE_TEAM_ID }}" "${{ vars.APPLE_KEY_ID }}" "$APPLE_PRIVATE_KEY")
+          # EMAIL_NOTIFICATIONS: optional repo variable, "on" (or unset) or "off".
+          ENV_FILE=$(printf '%s\nEMAIL_NOTIFICATIONS=%s\n' "$ENV_FILE" "${{ vars.EMAIL_NOTIFICATIONS }}")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \

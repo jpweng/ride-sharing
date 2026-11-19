@@ -11,6 +11,7 @@
   "inbox.loadFailed": "Ihr Posteingang konnte nicht geladen werden: {error}",
   "inbox.mute": "Kein Interesse an dieser Strecke",
   "inbox.noLongerOpen": "Diese Anfrage ist nicht mehr offen.",
+  "inbox.notifyEmail": "Senden Sie mir meine Benachrichtigungen auch per E-Mail",
   "inbox.notifyRequests": "Benachrichtigen Sie mich, wenn jemand eine Fahrt auf einer Strecke sucht, die ich gefahren bin, oder in einem meiner Gebiete",
   "inbox.offer": "Diese Fahrt anbieten",
   "inbox.offerFilled": "Ihre übliche Fahrt ist unten eingetragen, mit einer Abfahrt passend für {name}. Prüfen Sie sie und klicken Sie auf «Fahrt anbieten».",

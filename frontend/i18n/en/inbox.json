@@ -11,6 +11,7 @@
   "inbox.loadFailed": "Failed to load your inbox: {error}",
   "inbox.mute": "Not interested in this route",
   "inbox.noLongerOpen": "This request is no longer open.",
+  "inbox.notifyEmail": "Also send me my notifications by email",
   "inbox.notifyRequests": "Tell me when a passenger asks for a ride on a route I've driven or in one of my areas",
   "inbox.offer": "Offer this drive",
   "inbox.offerFilled": "Your usual drive is filled in below, leaving in time for {name}. Check it and click \"Offer drive\".",
