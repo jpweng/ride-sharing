@@ -51,5 +51,7 @@ output "github_actions_variables" {
     # nobody can sign in by email (the demo-driver view still works).
     EMAIL_FROM      = local.email_enabled ? local.email_from : ""
     PUBLIC_BASE_URL = local.https_enabled ? "https://${var.domain_name}" : "http://${aws_eip.app.public_ip}"
+    # Profile photos (photos.tf). Leave it unset and the site offers no photos.
+    PHOTO_BUCKET = aws_s3_bucket.photos.bucket
   }
 }

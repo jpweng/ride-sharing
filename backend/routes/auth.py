@@ -21,6 +21,7 @@ import bookings
 import database as db
 import mailer
 import notify
+import profiles
 import social
 from api import (
     SESSION_COOKIE, _clear_session_cookie, _set_session_cookie, api_error, current_session, signed_in,
@@ -132,6 +133,7 @@ def delete_account(response: Response, found: Annotated[dict, Depends(signed_in)
         booked = bookings.tell_drive_cancelled(drive)
         notify.tell_drive_cancelled(drive, exclude=booked)
     bookings.tell_account_deleted(user)
+    profiles.remove_photo(user["id"])  # the stored file; the profile's row goes with the account
     deleted = db.delete_account(user["id"])
     logger.info("Account deleted: %s", {k: v for k, v in deleted.items() if v})
     _clear_session_cookie(response)

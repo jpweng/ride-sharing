@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="styles/bookings.css" />
 <link rel="stylesheet" href="styles/ratings.css" />
 <link rel="stylesheet" href="styles/account.css" />
+<link rel="stylesheet" href="styles/profiles.css" />
 <link rel="stylesheet" href="styles/social.css" />
 <link rel="stylesheet" href="styles/pwa.css" />
 <link rel="stylesheet" href="styles/inbox.css" />
@@ -143,6 +144,67 @@
       <div class="page-title" data-i18n="account.title">Your account</div>
       <div id="account-details"></div>
       <button type="button" class="submit-btn secondary" data-action="sign-out" data-i18n="account.signOut">Sign out</button>
+
+      <!-- The user's own profile (profiles.js): everything optional -->
+      <div id="profile-box" hidden>
+        <div class="section-title" data-i18n="profile.mineTitle">Your profile</div>
+        <div class="hint" data-i18n="profile.mineHint">Everything here is optional. It is shown only to people you may ride with: a passenger whose search finds your drive, and a driver you ask for a ride.</div>
+
+        <div id="profile-photo-box" hidden>
+          <label data-i18n="profile.photo">Photo</label>
+          <div class="profile-photo-row">
+            <img class="profile-photo" id="profile-photo" alt="" hidden />
+            <div>
+              <label class="submit-btn secondary profile-photo-choose"><span data-i18n="profile.photoChoose">Choose a photo</span><input type="file" id="profile-photo-file" accept="image/*" hidden /></label>
+              <button type="button" class="link-btn" id="profile-photo-remove" hidden data-i18n="profile.photoRemove">Remove the photo</button>
+            </div>
+          </div>
+          <div class="hint" data-i18n="profile.photoHint">A photo of your face works best. It is cut square and shrunk on your device before it is sent.</div>
+        </div>
+
+        <label for="profile-about" data-i18n="profile.about">About you</label>
+        <textarea id="profile-about" rows="3" maxlength="500" placeholder="A few words: where you commute, what you like to talk about…" data-i18n-placeholder="profile.aboutPlaceholder"></textarea>
+
+        <label for="profile-talkative" data-i18n="profile.traitTalkative">Talkative</label>
+        <select id="profile-talkative" class="auto-width profile-trait"></select>
+        <label for="profile-sleeps" data-i18n="profile.traitSleeps">Likes to sleep in the car</label>
+        <select id="profile-sleeps" class="auto-width profile-trait"></select>
+        <label for="profile-smoker" data-i18n="profile.traitSmoker">Smoker</label>
+        <select id="profile-smoker" class="auto-width profile-trait"></select>
+        <label for="profile-pets" data-i18n="profile.traitPets">Travels with a pet</label>
+        <select id="profile-pets" class="auto-width profile-trait"></select>
+        <label for="profile-music" data-i18n="profile.traitMusic">Likes music in the car</label>
+        <select id="profile-music" class="auto-width profile-trait"></select>
+
+        <!-- The driver's side of the profile: shown in driver mode -->
+        <div class="driver-only">
+          <div class="section-title" data-i18n="profile.carTitle">Your car</div>
+          <div class="hint" data-i18n="profile.carHint">Optional. It helps your passengers find you at the meeting point.</div>
+          <div class="name-row">
+            <div>
+              <label for="profile-car-make" data-i18n="profile.carMake">Make</label>
+              <input type="text" id="profile-car-make" maxlength="40" />
+            </div>
+            <div>
+              <label for="profile-car-model" data-i18n="profile.carModel">Model</label>
+              <input type="text" id="profile-car-model" maxlength="40" />
+            </div>
+          </div>
+          <div class="name-row">
+            <div>
+              <label for="profile-car-year" data-i18n="profile.carYear">Year</label>
+              <input type="number" id="profile-car-year" min="1950" max="2100" step="1" inputmode="numeric" />
+            </div>
+            <div>
+              <label for="profile-car-color" data-i18n="profile.carColor">Colour</label>
+              <input type="text" id="profile-car-color" maxlength="40" />
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="submit-btn" id="profile-save" data-i18n="profile.save">Save profile</button>
+        <div class="status-msg" id="profile-own-status"></div>
+      </div>
       <div id="account-delete-box">
         <div class="section-title" data-i18n="account.deleteTitle">Delete your account</div>
         <div class="hint" data-i18n="account.deleteHint">This deletes your account and all your data at once: drives, searches, ride requests and inbox. Passengers who were told about your upcoming drives hear that they're cancelled. It can't be undone.</div>
@@ -339,6 +401,7 @@
 <script src="areas.js"></script>
 <script src="bookings.js"></script>
 <script src="ratings.js"></script>
+<script src="profiles.js"></script>
 <script src="pwa.js"></script>
 <script src="social.js"></script>
 </body>

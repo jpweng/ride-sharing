@@ -74,7 +74,7 @@ _DRIVE_COLUMNS = (
     "destination_name", "destination_lat", "destination_lon", "departure_time",
     "seats_available", "route_distance_m", "route_duration_s", "is_demo", "driver_price_chf",
 )
-_DRIVE_SHOWN = tuple(c for c in _DRIVE_COLUMNS if c not in ("driver_id", "driver_price_chf"))
+_DRIVE_SHOWN = tuple(c for c in _DRIVE_COLUMNS if c != "driver_price_chf")
 
 
 def _naive(iso: str) -> datetime:
@@ -155,7 +155,7 @@ def view(booking: dict, drive: dict, accepted_seats: int) -> dict:
     price = pricing.booking_price_chf(drive, booking["ride_km"], passengers)
     return {
         **{k: booking[k] for k in (
-            "id", "drive_id", "status", "seats", "passenger_name", "origin_name", "destination_name",
+            "id", "drive_id", "status", "seats", "passenger_id", "passenger_name", "origin_name", "destination_name",
             "ride_km", "passenger_note", "driver_note", "created_at", "decided_at", "cancelled_at",
         )},
         "pickup": {

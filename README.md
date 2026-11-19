@@ -99,6 +99,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   turning them off
 - [Ratings and reports](docs/ratings-and-reports.md): stars after a ride, what is shown,
   reporting a problem, how the team handles reports
+- [Profiles](docs/profiles.md): the optional photo, description, habits and car; who may see a
+  profile; photos on S3
 - [Booking](docs/booking.md): asking for a seat, the driver's answer, cancelling, seats and prices
 - [Load test](docs/load-test.md): the event-evening simulation and its results
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
@@ -128,6 +130,8 @@ backend/
   ratings.py      ratings after a ride: who rates whom, the averages shown
   reports.py      reports of a problem with a ride, for the team (see admin.py)
   bookings.py     bookings: asking for seats on a drive, the driver's answer, cancelling
+  profiles.py     optional profiles (about, habits, car, photo) and who may see whose
+  photos.py       where profile photos are kept: a private S3 bucket (a folder in development)
   fares.py        train fares: T601 distance tariff, optional OJP fare lookup
   transit.py      transport.opendata.ch integration
   operators.py    Swiss public transport operators and their logos, for each transit leg
@@ -143,6 +147,7 @@ frontend/
   areas.js        the Driver page's "Your areas" section (see docs/driver-areas.md)
   i18n.js         language choice and translation of the page (see docs/translations.md)
   bookings.js     bookings: asking for a seat, one's bookings, a drive's passengers (docs/booking.md)
+  profiles.js     the account page's profile form and the "See profile" popup (docs/profiles.md)
   i18n/           en/de/fr/it dictionaries, one file per key prefix
   style.css       teal/white theme, logo and text wordmark: base, layout, shared components
   styles/         one stylesheet per feature, linked right after style.css by the pages using it
