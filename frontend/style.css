@@ -152,11 +152,13 @@ nav.tabs .mode-menu summary {
 }
 nav.tabs .mode-menu summary::-webkit-details-marker { display: none; }
 nav.tabs .mode-menu summary::after { content: " \25BE"; }
+/* Opens over the map, so it has to be above Leaflet's panes and controls
+   (z-index up to 1000). */
 nav.tabs .mode-menu-panel {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 20;
+  z-index: 1100;
   min-width: 100%;
   padding: 6px;
   border: 1px solid var(--border);
