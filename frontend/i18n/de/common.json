@@ -1,6 +1,7 @@
 {
   "common.driver": "Am Steuer: {name}",
   "common.loading": "Wird geladen…",
+  "common.ok": "OK",
   "common.seats.one": "{count} Platz",
   "common.seats.other": "{count} Plätze"
 }

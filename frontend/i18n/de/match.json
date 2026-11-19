@@ -1,4 +1,6 @@
 {
+  "match.demoText": "Diese Fahrt ist erfunden: Sie zeigt, wie die App funktioniert, und kann nicht ausgewählt werden. Fahrten von echten Fahrerinnen und Fahrern tragen kein «Demo»-Etikett.",
+  "match.demoTitle": "Demo-Fahrt",
   "match.dropoff": "Aussteigen ~{time}, {km} km von Ihrem Ziel",
   "match.earlier": "{duration} früher",
   "match.lastMile": "Letzte Etappe:",

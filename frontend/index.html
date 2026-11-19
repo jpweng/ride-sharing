@@ -316,6 +316,13 @@
   <div id="map"></div>
 </main>
 
+<!-- A short notice over the page (app.js: showNotice), e.g. for a demo ride that can't be selected -->
+<dialog class="notice" id="notice">
+  <div class="notice-title" id="notice-title"></div>
+  <p id="notice-text"></p>
+  <button type="button" class="submit-btn" id="notice-ok" data-i18n="common.ok">OK</button>
+</dialog>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>

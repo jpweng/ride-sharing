@@ -692,6 +692,21 @@ function goTo(page) {
 window.addEventListener("hashchange", route);
 
 // ---------------------------------------------------------------------
+// A short notice over the page, closed with OK, Escape or a click beside it
+// ---------------------------------------------------------------------
+function showNotice(title, text) {
+  const dialog = document.getElementById("notice");
+  document.getElementById("notice-title").textContent = title;
+  document.getElementById("notice-text").textContent = text;
+  if (!dialog.open) dialog.showModal();
+}
+
+document.getElementById("notice-ok").addEventListener("click", () => document.getElementById("notice").close());
+document.getElementById("notice").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.close(); // the backdrop
+});
+
+// ---------------------------------------------------------------------
 // Status helper
 // ---------------------------------------------------------------------
 function showStatus(elId, message, ok) {
@@ -1130,9 +1145,13 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
 
     const entry = { match: m, card, color, line: null };
     shown.push(entry);
+    // A demo ride is fictional: it's shown, but clicking it says so instead
+    // of selecting it.
+    const choose = () => (m.is_demo ? showNotice(t("match.demoTitle"), t("match.demoText")) : select(entry));
+    if (m.is_demo) card.classList.add("demo");
     card.addEventListener("click", (e) => {
       if (e.target.closest("a")) return; // ticket and operator links
-      select(entry);
+      choose();
     });
 
     if (m.route_geometry && m.route_geometry.length) {
@@ -1141,6 +1160,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
         .addTo(resultsLayer)
         .bindTooltip(`${esc(m.driver_name)}: ${esc(m.origin_name)} → ${esc(m.destination_name)}`, { sticky: true })
         .on("click", () => {
+          if (m.is_demo) return choose();
           if (selected !== entry) select(entry);
           // On phones that would scroll the map away from under the finger.
           if (!PHONE_LAYOUT.matches) card.scrollIntoView({ block: "nearest", behavior: "smooth" });

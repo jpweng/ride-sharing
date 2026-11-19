@@ -1,4 +1,6 @@
 {
+  "match.demoText": "Ce trajet est fictif : il montre comment l'application fonctionne et ne peut pas être sélectionné. Les trajets proposés par de vrais conducteurs n'ont pas l'étiquette « Démo ».",
+  "match.demoTitle": "Trajet de démo",
   "match.dropoff": "Dépose ~{time}, à {km} km de votre destination",
   "match.earlier": "{duration} plus tôt",
   "match.lastMile": "Dernier tronçon :",

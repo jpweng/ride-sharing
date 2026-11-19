@@ -427,6 +427,23 @@ label output { color: var(--text); text-transform: none; }
   font-weight: 600;
 }
 
+/* A short notice over the page (app.js: showNotice). */
+dialog.notice {
+  width: min(360px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+}
+dialog.notice::backdrop { background: rgba(0, 0, 0, 0.35); }
+dialog.notice .notice-title { font-size: 16px; font-weight: 700; }
+dialog.notice p { margin: 8px 0 0; font-size: 14px; line-height: 1.45; }
+dialog.notice .submit-btn { margin-top: 16px; }
+
+/* A demo ride among the search results: shown, but not to be selected. */
+.match-card.demo { opacity: 0.85; }
+
 /* "This is a demo" notices (index.html, privacy.html) */
 .demo-banner {
   background: var(--demo-bg);
