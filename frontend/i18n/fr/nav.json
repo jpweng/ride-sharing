@@ -1,6 +1,10 @@
 {
   "nav.browse": "Voir les trajets",
-  "nav.drive": "Conducteur",
+  "nav.drive": "Vos trajets",
+  "nav.driverMode": "Mode conducteur",
   "nav.inbox": "Messages",
-  "nav.ride": "Passager"
+  "nav.passengerMode": "Mode passager",
+  "nav.ride": "Trouver un trajet",
+  "nav.toDriver": "Passer en mode conducteur",
+  "nav.toPassenger": "Passer en mode passager"
 }

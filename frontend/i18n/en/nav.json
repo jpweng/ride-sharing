@@ -1,6 +1,10 @@
 {
   "nav.browse": "Browse rides",
-  "nav.drive": "Driver",
+  "nav.drive": "Your drives",
+  "nav.driverMode": "Driver mode",
   "nav.inbox": "Inbox",
-  "nav.ride": "Passenger"
+  "nav.passengerMode": "Passenger mode",
+  "nav.ride": "Find a ride",
+  "nav.toDriver": "Switch to driver",
+  "nav.toPassenger": "Switch to passenger"
 }

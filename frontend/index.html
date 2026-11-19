@@ -28,9 +28,9 @@
 <link rel="stylesheet" href="styles/inbox.css" />
 <link rel="stylesheet" href="styles/areas.css" />
 </head>
-<body>
+<body data-mode="passenger">
 <header>
-  <h1><a class="wordmark" href="#/ride"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
+  <h1><a class="wordmark" href="#/"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
   <span class="subtitle" data-i18n="header.subtitle">Shared rides to the train</span>
   <div class="lang-picker" role="group" aria-label="Language">
     <button type="button" data-lang="de">DE</button><button type="button" data-lang="fr">FR</button><button type="button" data-lang="it">IT</button><button type="button" data-lang="en">EN</button>
@@ -43,14 +43,24 @@
   <a href="privacy.html">Privacy</a> · <a href="conduct.html">Code of conduct</a>
 </div>
 
+<!-- Two modes, passenger and driver, each with its own tabs (data-mode); the
+     button switches between them (app.js: setMode). The inbox is in both. -->
 <nav class="tabs">
   <div class="tab-list">
-    <a class="tab-link" href="#/browse" data-page="browse" data-i18n="nav.browse">Browse rides</a>
-    <a class="tab-link" href="#/ride" data-page="ride" data-i18n="nav.ride">Passenger</a>
-    <a class="tab-link" href="#/drive" data-page="drive" data-i18n="nav.drive">Driver</a>
+    <a class="tab-link" href="#/ride" data-page="ride" data-mode="passenger" data-i18n="nav.ride">Find a ride</a>
+    <a class="tab-link" href="#/browse" data-page="browse" data-mode="passenger" data-i18n="nav.browse">Browse rides</a>
+    <a class="tab-link" href="#/drive" data-page="drive" data-mode="driver" data-i18n="nav.drive">Your drives</a>
     <a class="tab-link" href="#/inbox" data-page="inbox"><span data-i18n="nav.inbox">Inbox</span> <span class="unread-count" id="unread-count" hidden></span></a>
   </div>
-  <div class="account" id="account"></div>
+  <div class="nav-side">
+    <details class="mode-menu" id="mode-menu">
+      <summary id="mode-label"></summary>
+      <div class="mode-menu-panel">
+        <button type="button" id="mode-switch"></button>
+      </div>
+    </details>
+    <div class="account" id="account"></div>
+  </div>
 </nav>
 
 <main>
