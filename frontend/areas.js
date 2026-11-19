@@ -1,11 +1,13 @@
 "use strict";
 
 // ---------------------------------------------------------------------
-// Driver areas (see backend/areas.py): on the Driver page, the places the
-// driver usually drives from or to, each with a radius they choose.
+// Driver areas (see backend/areas.py): the places the driver usually
+// drives from or to, each with a radius they choose. They are managed in
+// the driver's profile (the account page, in driver mode); the Driver page
+// lists the ride requests in them.
 // Loaded after app.js, whose map, point picking and helpers it uses.
 // ---------------------------------------------------------------------
-const AREA_ROLE = "drive-area"; // "drive-": its pin shows on the Driver page
+const AREA_ROLE = "account-area"; // "account-": its pin shows on the account page
 const AREA_COLOR = "#0f6e5f";
 
 // The place being added is picked like a drive's start: typed or clicked
@@ -119,7 +121,8 @@ async function loadAreaRequests() {
   const list = document.getElementById("areas-requests");
   document.getElementById("areas-requests-filters").hidden = true;
   if (!areasData.areas.length) {
-    list.innerHTML = `<div class="empty-state">${esc(t("areas.requestsNoAreas"))}</div>`;
+    list.innerHTML = `<div class="empty-state">${esc(t("areas.requestsNoAreas"))}
+      <a href="#/account">${esc(t("areas.openProfile"))}</a></div>`;
     return;
   }
   try {
@@ -261,14 +264,22 @@ document.getElementById("areas-add").addEventListener("click", async () => {
 
 window.addEventListener("i18n:change", () => hideStatus("areas-status"));
 
-// The Driver page loads the areas with the drives. app.js may have shown
-// the page before this script ran (it routes as soon as it knows who is
-// signed in), hence the check.
-{
-  const showDrivePage = PAGES.drive.onShow;
-  PAGES.drive.onShow = () => {
-    showDrivePage();
-    loadAreas();
-  };
+// The account page loads the areas to manage them, the Driver page to list
+// the requests in them. app.js may have shown the page before this script
+// ran (it routes as soon as it knows who is signed in), hence the checks.
+function showAreasBox() {
+  // Not while viewing the demo as a fictional driver, nor before the name
+  // is chosen (as the profile above it, profiles.js).
+  const box = document.getElementById("areas-box");
+  box.hidden = !signedIn() || currentUser.is_demo;
+  if (!box.hidden) loadAreas();
 }
-if (document.getElementById("page-drive").classList.contains("active")) loadAreas();
+
+[["account", showAreasBox], ["drive", loadAreas]].forEach(([page, load]) => {
+  const showPage = PAGES[page].onShow;
+  PAGES[page].onShow = () => {
+    showPage();
+    load();
+  };
+  if (document.getElementById(`page-${page}`).classList.contains("active")) load();
+});

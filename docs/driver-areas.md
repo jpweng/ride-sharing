@@ -1,7 +1,8 @@
 # Driver areas
 
 A driver saves the places they usually drive from or to (home, work, ...), each with a radius, in
-the **Your areas** section of the Driver page. [backend/areas.py](../backend/areas.py) has the
+the **Your areas** section of their profile: the account page, in driver mode (see
+[Profiles](profiles.md)). [backend/areas.py](../backend/areas.py) has the
 rules; in short:
 
 - **An area** is a place (typed or picked on the map, like a drive's start) and a radius.
@@ -23,7 +24,7 @@ in one of their areas, on top of the drivers who made the trip before, and withi
 circle; a driver whose areas cover both ends comes first. Turning request notifications off in the
 inbox turns these off too.
 
-**Browsing the requests:** the Driver page also lists every open ride request that starts or ends
+**Browsing the requests:** the Driver page lists every open ride request that starts or ends
 in one of the driver's areas, the soonest first, to filter by area and by day
 (`notify.requests_in_areas()`). Unlike notifications, the list has no budget: the driver comes to
 it. Each request shows the passenger's first name and initial, their trip, its time, and which

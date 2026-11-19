@@ -148,7 +148,7 @@ frontend/
   conduct.html    code of conduct (draft for legal review), accepted at first sign-in
   offline.html    shown by the service worker for an uncached page while offline
   app.js          Leaflet map, point picking, address autocomplete, API calls
-  areas.js        the Driver page's "Your areas" section (see docs/driver-areas.md)
+  areas.js        driver areas: "Your areas" in the driver's profile, their requests on the Driver page (docs/driver-areas.md)
   i18n.js         language choice and translation of the page (see docs/translations.md)
   bookings.js     bookings: asking for a seat, one's bookings, a drive's passengers (docs/booking.md)
   profiles.js     the account page's profile form and the "See profile" popup (docs/profiles.md)

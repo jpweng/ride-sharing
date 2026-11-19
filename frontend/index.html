@@ -205,6 +205,29 @@
         <button type="button" class="submit-btn" id="profile-save" data-i18n="profile.save">Save profile</button>
         <div class="status-msg" id="profile-own-status"></div>
       </div>
+      <!-- Driver areas (areas.js): the places the driver usually drives from or to.
+           Part of the driver's side of the profile: shown in driver mode. -->
+      <div class="driver-only" id="areas-box">
+        <div class="section-title" data-i18n="areas.title">Your areas</div>
+        <div class="hint" data-i18n="areas.hint">The places you usually drive from or to, such as home or work, each with a radius. The ride requests that start or end there are listed under “Your drives”, and you're told about some of them in your inbox, a few times a week at most. Only you see your areas.</div>
+        <div id="areas-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
+        <div class="hint" id="areas-full" hidden></div>
+        <div id="areas-form">
+          <label data-i18n="areas.place">Place</label>
+          <div class="point-picker">
+            <button type="button" data-role="account-area" data-i18n="form.pickOnMap">Pick on map</button>
+            <div class="autocomplete">
+              <input type="text" id="name-account-area" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
+              <ul class="autocomplete-list" id="suggest-account-area"></ul>
+            </div>
+          </div>
+          <div class="coord-readout" id="readout-account-area">not set</div>
+          <label for="areas-radius" data-i18n="areas.radius">Radius</label>
+          <select id="areas-radius" class="auto-width"></select>
+          <button type="button" class="submit-btn secondary" id="areas-add" data-i18n="areas.add">Add area</button>
+        </div>
+        <div class="status-msg" id="areas-status"></div>
+      </div>
       <div id="account-delete-box">
         <div class="section-title" data-i18n="account.deleteTitle">Delete your account</div>
         <div class="hint" data-i18n="account.deleteHint">This deletes your account and all your data at once: drives, searches, ride requests and inbox. Passengers who were told about your upcoming drives hear that they're cancelled. It can't be undone.</div>
@@ -359,27 +382,6 @@
 
       <button class="submit-btn" id="drive-submit" data-i18n="drive.submit">Offer drive</button>
       <div class="status-msg" id="drive-status"></div>
-
-      <!-- Driver areas (areas.js): the places the driver usually drives from or to -->
-      <div class="section-title" data-i18n="areas.title">Your areas</div>
-      <div class="hint" data-i18n="areas.hint">The places you usually drive from or to, such as home or work, each with a radius. The ride requests that start or end there are listed above, and you're told about some of them in your inbox, a few times a week at most. Only you see your areas.</div>
-      <div id="areas-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
-      <div class="hint" id="areas-full" hidden></div>
-      <div id="areas-form">
-        <label data-i18n="areas.place">Place</label>
-        <div class="point-picker">
-          <button type="button" data-role="drive-area" data-i18n="form.pickOnMap">Pick on map</button>
-          <div class="autocomplete">
-            <input type="text" id="name-drive-area" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
-            <ul class="autocomplete-list" id="suggest-drive-area"></ul>
-          </div>
-        </div>
-        <div class="coord-readout" id="readout-drive-area">not set</div>
-        <label for="areas-radius" data-i18n="areas.radius">Radius</label>
-        <select id="areas-radius" class="auto-width"></select>
-        <button type="button" class="submit-btn secondary" id="areas-add" data-i18n="areas.add">Add area</button>
-      </div>
-      <div class="status-msg" id="areas-status"></div>
     </section>
 
     <div class="hint" id="picker-hint" hidden data-i18n="form.pickerHint">Type an address to search, or click "Pick on map" then click a point on the map.</div>
