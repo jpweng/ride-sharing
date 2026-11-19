@@ -1,4 +1,5 @@
-/* Driver areas on the Driver page (see areas.js). Linked after style.css. */
+/* Driver areas: managed on the account page in driver mode, their ride
+   requests listed on the Driver page (see areas.js). Linked after style.css. */
 
 .area-card .area-radius {
   display: flex;

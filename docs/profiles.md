@@ -15,6 +15,9 @@ Everything is optional, and an empty profile is fine.
   only; saving in passenger mode keeps what was entered.
 - **A photo**, see below.
 
+In driver mode the same page also has the driver's [areas](driver-areas.md), below the profile.
+They aren't part of what others see.
+
 To someone else, a profile shows the first name and last initial they already see, and what was
 filled in. Never the email address.
 
