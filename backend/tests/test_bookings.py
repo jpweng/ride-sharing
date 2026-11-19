@@ -332,6 +332,14 @@ def test_the_price_falls_as_passengers_are_accepted(users):
     assert [b["price_chf"] for b in booking_routes.get_bookings(jean)["as_driver"]] == [by_passengers[2]] * 2
 
 
+def test_the_whole_drive_costs_what_the_drive_says(users):
+    # Whatever the drive's distance: a booking keeps its own to 100 m.
+    jean = users["jean"]
+    for i, destination in enumerate((GENEVE, MORGES, NYON, BERN, ZURICH)):
+        drive = _drive(jean, destination=destination, at=f"1{i}:00")
+        assert _ask(users["marie"], drive)["price_chf"] == drive["price_chf"], destination["name"]
+
+
 def test_drives_show_free_and_booked_seats_and_the_next_passengers_price(users):
     jean, marie = users["jean"], users["marie"]
     drive = _drive(jean, seats=3, price_chf=pricing.band(_drive(jean, at="07:00")["route_distance_m"] / 1000)["max_chf"])

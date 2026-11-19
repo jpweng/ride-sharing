@@ -52,3 +52,7 @@
 .booking-row .booking-who { font-size: 13px; font-weight: 600; }
 
 .booking-card .link-btn { display: block; }
+
+/* Accepting a ride request: the panel takes the place of the card's buttons. */
+.notification-actions[hidden] { display: none; }
+.accept-request .hint { margin-top: 0; }

@@ -34,6 +34,12 @@ booking_requested (to the driver), booking_accepted and booking_declined
 booking_drive_cancelled (to the passengers of a cancelled drive, whose
 bookings are deleted with it).
 
+The other way round, a driver can accept a passenger's ride request
+(notify.py) directly: accept_request posts the drive and books the
+passenger on it in one step, and the request is closed. The first driver
+to accept gets it; the passenger hears of it (request_accepted) and can
+cancel the booking like any other.
+
 Errors are raised as the API's own (api.api_error), for the routes in
 routes/bookings.py.
 """
@@ -257,6 +263,32 @@ def _details(booking: dict, drive: dict, **more) -> dict:
     }
 
 
+def _insert(conn, drive_id: int, passenger_id: int, passenger_name: str, ride: dict, seats: int,
+            passenger_note: str | None = None, driver_note: str | None = None, accepted: bool = False) -> int:
+    """A new booking row from _ride()'s answer; its id. `accepted`: made by
+    the driver's own acceptance of a ride request (accept_request)."""
+    now = db.now_iso()
+    return conn.execute(
+        """
+        INSERT INTO bookings (
+            drive_id, passenger_id, passenger_name, seats, status,
+            origin_name, origin_lat, origin_lon, destination_name, destination_lat, destination_lon,
+            pickup_lat, pickup_lon, pickup_time, pickup_gap_km,
+            dropoff_lat, dropoff_lon, dropoff_time, dropoff_gap_km,
+            ride_km, passenger_note, driver_note, created_at, decided_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            drive_id, passenger_id, passenger_name, seats, "accepted" if accepted else "requested",
+            ride["origin"]["name"], ride["origin"]["lat"], ride["origin"]["lon"],
+            ride["destination"]["name"], ride["destination"]["lat"], ride["destination"]["lon"],
+            ride["pickup"]["lat"], ride["pickup"]["lon"], ride["pickup"]["time"], ride["pickup"]["gap_km"],
+            ride["dropoff"]["lat"], ride["dropoff"]["lon"], ride["dropoff"]["time"], ride["dropoff"]["gap_km"],
+            ride["ride_km"], _note(passenger_note), _note(driver_note), now, now if accepted else None,
+        ),
+    ).lastrowid
+
+
 def request(drive: dict, passenger: dict, origin: dict | None = None, destination: dict | None = None,
             seats: int = 1, note: str | None = None, now: datetime | None = None) -> dict:
     """`passenger` asks for `seats` on `drive` (with its route geometry),
@@ -285,25 +317,7 @@ def request(drive: dict, passenger: dict, origin: dict | None = None, destinatio
         # Asking again after a decline or a cancellation: the new request
         # replaces the old booking, so there is one per passenger and drive.
         conn.execute("DELETE FROM bookings WHERE drive_id = ? AND passenger_id = ?", (drive["id"], passenger["id"]))
-        booking_id = conn.execute(
-            """
-            INSERT INTO bookings (
-                drive_id, passenger_id, passenger_name, seats,
-                origin_name, origin_lat, origin_lon, destination_name, destination_lat, destination_lon,
-                pickup_lat, pickup_lon, pickup_time, pickup_gap_km,
-                dropoff_lat, dropoff_lon, dropoff_time, dropoff_gap_km,
-                ride_km, passenger_note, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                drive["id"], passenger["id"], passenger["name"], seats,
-                ride["origin"]["name"], ride["origin"]["lat"], ride["origin"]["lon"],
-                ride["destination"]["name"], ride["destination"]["lat"], ride["destination"]["lon"],
-                ride["pickup"]["lat"], ride["pickup"]["lon"], ride["pickup"]["time"], ride["pickup"]["gap_km"],
-                ride["dropoff"]["lat"], ride["dropoff"]["lon"], ride["dropoff"]["time"], ride["dropoff"]["gap_km"],
-                ride["ride_km"], _note(note), db.now_iso(),
-            ),
-        ).lastrowid
+        booking_id = _insert(conn, drive["id"], passenger["id"], passenger["name"], ride, seats, passenger_note=note)
     booking, drive = _get(booking_id)
     notify.send(drive["driver_name"], "booking_requested", _details(booking, drive))
     return _view(booking_id)
@@ -393,6 +407,110 @@ def cancel(booking_id: int, user: dict) -> dict:
             )
     other = drive["driver_name"] if by == "passenger" else booking["passenger_name"]
     notify.send(other, "booking_cancelled", _details(booking, drive, by=by, was=booking["status"]))
+    return _view(booking_id)
+
+
+# ---------------------------------------------------------------------
+# Accepting a passenger's ride request directly
+# ---------------------------------------------------------------------
+DEFAULT_SEATS_OFFERED = 3
+
+
+def _request_not_open():
+    return api_error(400, "request_not_open", "This ride request is no longer open")
+
+
+def accept_request(request: dict, driver: dict, seats_available: int = DEFAULT_SEATS_OFFERED,
+                   note: str | None = None, trip: dict | None = None, price_chf: float | None = None,
+                   now: datetime | None = None) -> dict:
+    """
+    `driver` takes a passenger's open ride request: a drive is posted for
+    them and the passenger is booked on it, accepted, in one step. The
+    request is closed, so the first driver to accept gets it; the passenger
+    is told (request_accepted), and so are the passengers of other open
+    requests the drive fits, as for any posted drive.
+
+    The drive is the passenger's own trip at their time, or `trip`, the
+    driver's own ({"origin", "destination": {name, lat, lon},
+    "departure_time"}: their usual trip, from the notification), which must
+    serve the request as a search would find it. `seats_available`: the
+    seats the driver offers in all, the passenger's included. The price is
+    the driver's `price_chf`, inside the band, or the default suggestion.
+    Returns the booking.
+    """
+    now = now or notify.local_now()
+    if request["status"] != "open" or _naive(request["requested_time"]) <= now or notify.is_demo_request(request):
+        raise _request_not_open()
+    if request["passenger_id"] == driver["id"]:
+        raise api_error(400, "own_request", "This is your own ride request")
+
+    theirs = {
+        "origin": {k: request[f"origin_{k}"] for k in ("name", "lat", "lon")},
+        "destination": {k: request[f"destination_{k}"] for k in ("name", "lat", "lon")},
+    }
+    origin, destination = (trip["origin"], trip["destination"]) if trip else (theirs["origin"], theirs["destination"])
+    departure = _iso(_naive(trip["departure_time"] if trip else request["requested_time"]))
+    if _naive(departure) <= now:
+        raise api_error(400, "drive_departed", "This drive would already have left")
+    route = matching.route_with_fallback([(origin["lat"], origin["lon"]), (destination["lat"], destination["lon"])])
+    price_band = pricing.band(route["distance_m"] / 1000.0)
+    price = None
+    if price_band:
+        price = price_band["default_chf"] if price_chf is None else round(price_chf, 2)
+        problem = pricing.check_driver_price(price, price_band)
+        if problem:
+            raise api_error(400, problem, f"The price per passenger must be between CHF {price_band['min_chf']:.2f}"
+                                          f" and CHF {price_band['max_chf']:.2f}")
+    planned = {
+        "origin_name": origin["name"], "origin_lat": origin["lat"], "origin_lon": origin["lon"],
+        "destination_name": destination["name"], "destination_lat": destination["lat"],
+        "destination_lon": destination["lon"], "departure_time": departure, "seats_available": seats_available,
+        "route_geometry": route["geometry"], "route_distance_m": route["distance_m"],
+        "route_duration_s": route["duration_s"],
+    }
+    if trip:
+        # The driver's own trip must serve the passenger as they asked: near
+        # both ends and around their time.
+        m = matching.match_drive(
+            planned, (theirs["origin"]["lat"], theirs["origin"]["lon"]),
+            (theirs["destination"]["lat"], theirs["destination"]["lon"]), request["requested_time"],
+            request["pickup_radius_km"], request["dropoff_radius_km"], request["time_tolerance_min"],
+        )
+        if m is None:
+            raise api_error(400, "not_on_route", "This drive doesn't serve the request: too far from it, or at another time")
+        ride = {**theirs, "pickup": m["pickup"], "dropoff": m["dropoff"], "ride_km": m["ride_km"]}
+    else:
+        ride = _ride(planned, None, None)
+
+    # The first driver to get here takes the request.
+    with db.get_conn() as conn:
+        taken = conn.execute(
+            "UPDATE open_requests SET status = 'accepted' WHERE id = ? AND status = 'open'", (request["id"],)
+        )
+        if taken.rowcount != 1:
+            raise _request_not_open()
+    try:
+        drive_id = db.create_drive(
+            driver_name=driver["name"], seats_available=seats_available, route_geometry=route["geometry"],
+            route_distance_m=route["distance_m"], route_duration_s=route["duration_s"], route_source=route["source"],
+            driver_price_chf=price, **{k: planned[k] for k in (
+                "origin_name", "origin_lat", "origin_lon", "destination_name", "destination_lat", "destination_lon",
+                "departure_time",
+            )},
+        )
+        with db.get_conn() as conn:
+            booking_id = _insert(
+                conn, drive_id, request["passenger_id"], request["passenger_name"], ride, 1,
+                driver_note=note, accepted=True,
+            )
+            conn.execute("UPDATE drives SET seats_available = seats_available - 1 WHERE id = ?", (drive_id,))
+    except Exception:
+        db.set_request_status(request["id"], "open")  # nothing came of it: others can still take it
+        raise
+
+    booking, drive = _get(booking_id)
+    notify.send(request["passenger_name"], "request_accepted", _details(booking, drive), request_id=request["id"])
+    notify.tell_passengers(db.get_drive(drive_id))
     return _view(booking_id)
 
 

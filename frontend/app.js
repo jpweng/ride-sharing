@@ -1445,6 +1445,17 @@ function renderInbox(data) {
 // (bookings.js): kind -> a function that fills the card.
 const NOTIFICATION_CARDS = {};
 
+// Scripts loaded after this one (bookings.js) add to the cards of the ride
+// requests a driver is shown, in the inbox and in the list of their areas
+// (areas.js): each function gets the request, the element holding the
+// card's buttons, and what the card knows more ({ notification } in the
+// inbox).
+const REQUEST_EXTRAS = [];
+
+function requestExtras(request, actions, context = {}) {
+  REQUEST_EXTRAS.forEach((extra) => extra(request, actions, context));
+}
+
 function notificationCard(n) {
   const card = document.createElement("div");
   card.className = `drive-card notification${n.read_at ? "" : " unread"}`;
@@ -1480,6 +1491,7 @@ function notificationCard(n) {
         actionButton("inbox.decline", "submit-btn secondary", () => actOn(n, "decline")),
         actionButton("inbox.mute", "link-btn", () => actOn(n, "mute")),
       );
+      requestExtras(r, actions, { notification: n });
     }
   } else if (n.kind === "drive_cancelled") {
     // The drive is deleted; the notification keeps what it was.

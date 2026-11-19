@@ -27,8 +27,9 @@ inbox turns these off too.
 in one of the driver's areas, the soonest first, to filter by area and by day
 (`notify.requests_in_areas()`). Unlike notifications, the list has no budget: the driver comes to
 it. Each request shows the passenger's first name and initial, their trip, its time and
-flexibility, and which area it fits; *Offer this drive* fills the Driver form with the passenger's
-trip and time, and posting the drive tells the passenger. The list leaves out the driver's own
+flexibility, and which area it fits; *Accept this ride* takes it in one step ([Booking](booking.md)), and *Offer this drive*
+fills the Driver form with the passenger's trip and time, to change first; posting the drive tells
+the passenger. The list leaves out the driver's own
 requests and demo requests, and shows at most 200.
 
 In the browser, the section is [frontend/areas.js](../frontend/areas.js), a script of its own

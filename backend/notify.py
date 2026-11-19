@@ -101,10 +101,11 @@ def _send(recipient_name: str, kind: str, request_id: int, **fields) -> dict:
 NO_REQUEST = 0
 
 
-def send(recipient_name: str, kind: str, details: dict) -> dict:
-    """A notification that isn't about a ride request: the inbox shows its
-    kind and details (bookings.py's, about seats on a drive)."""
-    return _send(recipient_name, kind, NO_REQUEST, details=details)
+def send(recipient_name: str, kind: str, details: dict, request_id: int = NO_REQUEST) -> dict:
+    """A notification of bookings.py's, about seats on a drive: the inbox
+    shows its kind and details. Most aren't about a ride request;
+    `request_id` is for the one that is (a driver accepted it)."""
+    return _send(recipient_name, kind, request_id, details=details)
 
 
 def local_now() -> datetime:

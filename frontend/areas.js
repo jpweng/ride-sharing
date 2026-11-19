@@ -184,13 +184,19 @@ function areaRequestCard(r) {
     <div class="meta">${esc(r.passenger_name)} · ${fmtTime(r.requested_time)} · ± ${esc(flexibilityText(r.time_tolerance_min))}</div>
     <div class="meta">${esc(requestInAreaText(r.area, r.ends))}</div>
   `;
-  card.addEventListener("click", () => showAreaRequestOnMap(r));
-  const offer = actionButton("inbox.offer", "submit-btn secondary", (e) => {
-    e.stopPropagation();
+  // Clicking the card shows the request on the map; clicking its buttons,
+  // or what they open (bookings.js's panel), doesn't.
+  card.addEventListener("click", (e) => {
+    if (!e.target.closest(".notification-actions, .booking-box")) showAreaRequestOnMap(r);
+  });
+  const actions = document.createElement("div");
+  actions.className = "notification-actions";
+  actions.appendChild(actionButton("inbox.offer", "submit-btn secondary", () => {
     fillDriveFormForRequest(r);
     showStatus("drive-status", t("inbox.offerFilledArea", { name: r.passenger_name }), true);
-  });
-  card.appendChild(offer);
+  }));
+  card.appendChild(actions);
+  requestExtras(r, actions);
   return card;
 }
 
