@@ -13,7 +13,7 @@ Who may see whose profile (may_see):
   - oneself;
   - a passenger sees a driver's profile while that driver is a candidate
     for a ride they want: the drivers a search of theirs found
-    (allow_candidates, for CANDIDATE_TTL), and the drivers of the drives
+    (allow_candidates, from then on), and the drivers of the drives
     they asked for a seat on;
   - a driver sees a passenger's profile once that passenger asked to ride
     with them: a booking on one of their drives (whatever became of it), or
@@ -25,8 +25,6 @@ To someone else, a profile shows the first name and last initial others
 already see, and what was filled in; never the email address.
 """
 import secrets
-from datetime import datetime, timedelta, timezone
-
 import database as db
 import photos
 
@@ -37,14 +35,6 @@ MIN_CAR_YEAR = 1950
 TRAITS = ("talkative", "sleeps", "smoker", "pets", "music")
 CAR = ("car_make", "car_model", "car_year", "car_color")
 FIELDS = ("about", *TRAITS, *CAR)
-
-# How long a driver found by a passenger's search stays visible to them.
-CANDIDATE_TTL = timedelta(days=2)
-
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
-
 
 def _row(user_id: int) -> dict | None:
     with db.get_conn() as conn:
@@ -155,18 +145,17 @@ def photo(user_id: int) -> bytes | None:
 # ---------------------------------------------------------------------
 def allow_candidates(viewer_id: int, driver_ids: list[int]) -> None:
     """A search of the viewer's found these drivers: the viewer may see
-    their profiles for CANDIDATE_TTL."""
+    their profiles from now on."""
     driver_ids = sorted({i for i in driver_ids if i != viewer_id})
     if not driver_ids:
         return
-    expires = (_now() + CANDIDATE_TTL).isoformat()
     with db.get_conn() as conn:
         conn.executemany(
             """
-            INSERT INTO profile_grants (viewer_id, subject_id, expires_at) VALUES (?, ?, ?)
-            ON CONFLICT (viewer_id, subject_id) DO UPDATE SET expires_at = excluded.expires_at
+            INSERT INTO profile_grants (viewer_id, subject_id) VALUES (?, ?)
+            ON CONFLICT (viewer_id, subject_id) DO NOTHING
             """,
-            [(viewer_id, driver_id, expires) for driver_id in driver_ids],
+            [(viewer_id, driver_id) for driver_id in driver_ids],
         )
 
 
@@ -176,10 +165,10 @@ def may_see(viewer_id: int, subject_id: int) -> bool:
     if viewer_id == subject_id:
         return True
     with db.get_conn() as conn:
-        # A driver the viewer's search found, not long ago.
+        # A driver one of the viewer's searches found.
         if conn.execute(
-            "SELECT 1 FROM profile_grants WHERE viewer_id = ? AND subject_id = ? AND expires_at > ?",
-            (viewer_id, subject_id, _now().isoformat()),
+            "SELECT 1 FROM profile_grants WHERE viewer_id = ? AND subject_id = ?",
+            (viewer_id, subject_id),
         ).fetchone():
             return True
         # The two sides of a booking: the passenger sees the driver, and the
@@ -211,9 +200,3 @@ def visible(viewer: dict, subject_id: int) -> dict | None:
     if not may_see(viewer["id"], subject_id):
         return None
     return _shown(subject, _row(subject_id))
-
-
-def purge_grants() -> int:
-    """Delete the grants that have run out; returns how many."""
-    with db.get_conn() as conn:
-        return conn.execute("DELETE FROM profile_grants WHERE expires_at <= ?", (_now().isoformat(),)).rowcount

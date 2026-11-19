@@ -24,13 +24,11 @@ CREATE TABLE IF NOT EXISTS profiles (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- A passenger may see a driver's profile while that driver is a candidate
--- for a ride they searched: one row per (viewer, driver), renewed by each
--- search that finds them.
+-- A passenger may see the profile of a driver one of their searches found:
+-- one row per (viewer, driver), kept until either account is deleted.
 CREATE TABLE IF NOT EXISTS profile_grants (
     viewer_id INTEGER NOT NULL,
     subject_id INTEGER NOT NULL,
-    expires_at TEXT NOT NULL,           -- UTC
     PRIMARY KEY (viewer_id, subject_id),
     FOREIGN KEY (viewer_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES users(id) ON DELETE CASCADE

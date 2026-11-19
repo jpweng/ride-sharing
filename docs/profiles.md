@@ -23,9 +23,9 @@ filled in. Never the email address.
 Nothing here is public, and signing in is not enough:
 
 - **Oneself**, on the account page.
-- **A passenger sees a driver's profile** while that driver is a candidate for a ride they want:
-  the drivers a search of theirs found, for two days (`CANDIDATE_TTL`; the search records them,
-  `profile_grants`), and the driver of a drive they asked for a seat on.
+- **A passenger sees a driver's profile** once that driver is a candidate for a ride they want:
+  the drivers a search of theirs found, from then on with no time limit (the search records
+  them, `profile_grants`), and the driver of a drive they asked for a seat on.
 - **A driver sees a passenger's profile** once that passenger asked to ride with them: a
   [booking](booking.md) on one of their drives, whatever became of it, or a ride request of that
   passenger the driver was told about. Not before: the list of requests in a driver's areas shows
@@ -35,8 +35,7 @@ Everyone else gets 404 `profile_not_found`, the same as for a profile that doesn
 demo drivers (who have none) and banned accounts. *See profile* appears where the rules allow it:
 on a search result, on a booking (both sides) and on a ride request in the inbox.
 
-A profile, its photo and what others were allowed to see are deleted with the account. Expired
-search permissions are removed by the hourly maintenance run.
+A profile, its photo and what others were allowed to see are deleted with the account.
 
 ## Photos
 

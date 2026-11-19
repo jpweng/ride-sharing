@@ -3,7 +3,7 @@ Profiles (profiles.py, photos.py, routes/profiles.py): what one can say
 about oneself, the photo, and above all who may see whose profile. Isolated
 temp DB and haversine routing, photos in a temporary folder -- no network.
 """
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 
 import pytest
 from fastapi import HTTPException
@@ -145,16 +145,18 @@ def test_a_search_without_signing_in_opens_nothing(users):
         assert conn.execute("SELECT COUNT(*) FROM profile_grants").fetchone()[0] == 0
 
 
-def test_a_candidate_stays_visible_for_two_days(users, monkeypatch):
+def test_a_candidate_stays_visible_with_no_time_limit(users):
     jean, marie = users["jean"], users["marie"]
-    _drive(jean)
+    drive = _drive(jean)
     _search(marie)
-    later = datetime.now(timezone.utc) + profiles.CANDIDATE_TTL
-    monkeypatch.setattr(profiles, "_now", lambda: later - timedelta(minutes=1))
+    _search(marie)  # finding the driver again changes nothing
+    with db.get_conn() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM profile_grants").fetchone()[0] == 1
+    # The hourly upkeep, weeks later, leaves it alone: the drive is gone,
+    # the profile still theirs to see.
+    maintenance.purge_old_data(datetime.now() + timedelta(days=40))
+    assert db.get_drive(drive["id"]) is None
     assert _sees(marie, jean) is not None
-    monkeypatch.setattr(profiles, "_now", lambda: later + timedelta(minutes=1))
-    assert _sees(marie, jean) is None
-    assert maintenance.purge_old_data(datetime.fromisoformat(f"{TOMORROW}T00:00"))["profile_grants"] == 1
 
 
 def test_a_driver_sees_a_passenger_once_they_ask_for_a_seat(users):
@@ -164,7 +166,7 @@ def test_a_driver_sees_a_passenger_once_they_ask_for_a_seat(users):
     assert _sees(jean, marie) is None
     booking = booking_routes.request_booking(drive["id"], booking_routes.BookingCreate(), marie)
     assert _sees(jean, marie)["about"] == "Passenger"
-    # And the passenger the driver, even after the search's two days.
+    # And the passenger the driver, search or not.
     assert _sees(marie, jean) is not None
     # Still so once the driver has answered.
     booking_routes.decline_booking(booking["id"], jean)

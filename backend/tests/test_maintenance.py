@@ -93,7 +93,7 @@ def test_run_refreshes_demo_drives_and_purges(isolated_db, force_haversine):
     assert maintenance.run(NOW) == {
         "demo_deleted": 0, "demo_created": 0, "demo_routes_deleted": 0, "extra_round_told": 0, "rides_to_rate": 0,
         "drives": 0, "searches": 0, "ride_requests": 0, "notifications": 0, "users": 0,
-        "sign_in_links": 0, "sessions": 0, "profile_grants": 0,
+        "sign_in_links": 0, "sessions": 0,
     }
 
 
