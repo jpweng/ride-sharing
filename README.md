@@ -29,6 +29,10 @@ takes the seats from the drive, and each step lands in the other one's inbox. A 
 accept a passenger's ride request directly: the drive is posted and the passenger booked in one
 step, and the first driver to accept gets it. See [Booking](docs/booking.md).
 
+**Two modes:** the app is either in passenger mode (find a ride, browse rides) or in driver mode
+(your drives), each with its own tabs; a button switches between them, the inbox is in both, and
+the browser remembers the mode.
+
 **Planned next: ride predictions.** The app spots people's recurring trips and offers to publish
 their next drives, or request their next rides, after they confirm. Designed, not built yet.
 
@@ -130,7 +134,7 @@ backend/
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
 frontend/
-  index.html      pages: #/ride (Passenger, the default), #/browse (public), #/drive (Driver), #/inbox,
+  index.html      pages: #/ride and #/browse (public) in passenger mode, #/drive in driver mode, #/inbox,
                   #/account; sign-in, #/signin/<token> (opening a link) and first-sign-in profile
   privacy.html    privacy notice, linked from the demo banner
   conduct.html    code of conduct (draft for legal review), accepted at first sign-in

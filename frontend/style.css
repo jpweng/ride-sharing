@@ -125,8 +125,32 @@ nav.tabs .tab-link.active {
   font-weight: 600;
 }
 
-nav.tabs .account {
+/* Each mode shows its own tabs (and the inbox). */
+body[data-mode="passenger"] .tab-link[data-mode="driver"],
+body[data-mode="driver"] .tab-link[data-mode="passenger"] { display: none; }
+
+/* On the right: the switch to the other mode, then who is signed in. */
+nav.tabs .nav-side {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+nav.tabs .mode-switch {
+  white-space: nowrap;
+  padding: 5px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+nav.tabs .mode-switch:hover { background: var(--panel); }
+
+nav.tabs .account {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -562,8 +586,8 @@ header a { text-decoration: none; }
     line-height: 1.4;
   }
 
-  /* Signed-in name on its own line; below it four equal tabs, whose
-     longer labels (FR, DE, IT) wrap onto two lines. */
+  /* The mode switch and the signed-in name on their own line; below it the
+     mode's tabs, equal, whose longer labels (FR, DE, IT) wrap onto two lines. */
   nav.tabs {
     flex-direction: column;
     gap: 0;
@@ -588,14 +612,15 @@ header a { text-decoration: none; }
     text-align: center;
     white-space: normal;
   }
-  nav.tabs .account {
+  nav.tabs .nav-side {
     order: -1;
     margin: 0;
     padding: 6px 16px;
-    justify-content: flex-end;
+    justify-content: space-between;
     border-bottom: 1px solid var(--border);
     background: var(--bg);
   }
+  nav.tabs .account { min-width: 0; }
   nav.tabs .account:empty { display: none; }
   nav.tabs .account a {
     min-width: 0;

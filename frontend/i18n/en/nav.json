@@ -1,6 +1,8 @@
 {
   "nav.browse": "Browse rides",
-  "nav.drive": "Driver",
+  "nav.drive": "Your drives",
   "nav.inbox": "Inbox",
-  "nav.ride": "Passenger"
+  "nav.ride": "Find a ride",
+  "nav.toDriver": "Switch to driver",
+  "nav.toPassenger": "Switch to passenger"
 }

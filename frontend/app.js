@@ -584,7 +584,7 @@ document.getElementById("signin-demo").addEventListener("click", async () => {
 // at once. Mail scanners that open links don't run this, so they can't use
 // up the token.
 async function verifySignInLink(token) {
-  history.replaceState(null, "", `${location.pathname}${location.search}#/ride`);
+  history.replaceState(null, "", `${location.pathname}${location.search}#/${MODE_HOME[mode]}`);
   document.querySelectorAll(".page").forEach((s) => s.classList.toggle("active", s.id === "page-verify"));
   document.getElementById("verify-retry").hidden = true;
   hideStatus("verify-status");
@@ -598,7 +598,7 @@ async function verifySignInLink(token) {
   }
 }
 
-// The address bar already shows #/ride: route() shows the sign-in page.
+// The address bar already shows the mode's home page: route() shows the sign-in page.
 document.getElementById("verify-retry").addEventListener("click", () => route());
 
 // First sign-in (or a new code of conduct): name, 18+, code of conduct.
@@ -652,7 +652,7 @@ document.getElementById("account-delete").addEventListener("click", async () => 
 });
 
 // ---------------------------------------------------------------------
-// Pages: #/ride (passenger, the default), #/browse (public), #/drive
+// Pages: #/ride (passenger), #/browse (public), #/drive
 // (driver), #/inbox, #/account. Until signed in, the sign-in page shows
 // instead of those that need a user; until the profile is complete, the
 // profile page does (but the account page stays reachable, to delete it).
@@ -667,12 +667,53 @@ const PAGES = {
   profile: { onShow: showProfile },
 };
 const LINKED_PAGES = ["ride", "browse", "drive", "inbox", "account"];
-const DEFAULT_PAGE = "ride";
+
+// ---------------------------------------------------------------------
+// Two modes, passenger and driver, each with its own tabs (the inbox and
+// the account are in both). A button switches to the other one; opening a
+// page of the other mode (a link, a button of the inbox) switches too. The
+// mode is remembered in this browser: the app opens where it was left.
+// ---------------------------------------------------------------------
+const MODE_OF_PAGE = { ride: "passenger", browse: "passenger", drive: "driver" };
+const MODE_HOME = { passenger: "ride", driver: "drive" };
+const MODE_STORAGE_KEY = "rideandrail.mode";
+
+function savedMode() {
+  try {
+    const saved = localStorage.getItem(MODE_STORAGE_KEY);
+    return saved in MODE_HOME ? saved : null;
+  } catch {
+    return null; // storage unavailable (private window etc.)
+  }
+}
+
+let mode = savedMode() || "passenger";
+document.body.dataset.mode = mode;
+
+function setMode(next) {
+  mode = next;
+  document.body.dataset.mode = next; // style.css shows that mode's tabs
+  try {
+    localStorage.setItem(MODE_STORAGE_KEY, next);
+  } catch {
+    // fine: the mode just won't be remembered
+  }
+  renderModeSwitch();
+}
+
+function renderModeSwitch() {
+  document.getElementById("mode-switch").textContent = mode === "passenger" ? t("nav.toDriver") : t("nav.toPassenger");
+}
+
+document.getElementById("mode-switch").addEventListener("click", () => {
+  goTo(MODE_HOME[mode === "passenger" ? "driver" : "passenger"]); // route() sets the mode
+});
 
 function route() {
   const requested = location.hash.replace(/^#\/?/, "");
   if (requested.startsWith("signin/")) return verifySignInLink(requested.slice("signin/".length));
-  const page = LINKED_PAGES.includes(requested) ? requested : DEFAULT_PAGE;
+  const page = LINKED_PAGES.includes(requested) ? requested : MODE_HOME[mode];
+  if (MODE_OF_PAGE[page] && MODE_OF_PAGE[page] !== mode) setMode(MODE_OF_PAGE[page]);
   let shown = page;
   if (PAGES[page].needsUser && !currentUser) shown = "signin";
   else if (PAGES[page].needsUser && !currentUser.profile_complete && !PAGES[page].beforeProfile) shown = "profile";
@@ -1721,6 +1762,7 @@ function translateUnsetReadouts() {
 // Another language picked: redo everything built in JavaScript.
 window.addEventListener("i18n:change", () => {
   renderAccount();
+  renderModeSwitch();
   ["signin-status", "drive-status", "ride-status", "profile-status", "account-status"].forEach(hideStatus);
   translateUnsetReadouts();
   renderPriceBand();
@@ -1730,6 +1772,7 @@ window.addEventListener("i18n:change", () => {
 
 I18N.ready.then(async () => {
   translateUnsetReadouts();
+  renderModeSwitch();
   renderPriceBand();
   await loadCurrentUser();
   route();

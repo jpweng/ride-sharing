@@ -1,6 +1,8 @@
 {
   "nav.browse": "Viaggi",
-  "nav.drive": "Conducente",
+  "nav.drive": "I suoi viaggi",
   "nav.inbox": "Messaggi",
-  "nav.ride": "Passeggero"
+  "nav.ride": "Trovare un passaggio",
+  "nav.toDriver": "Passare a conducente",
+  "nav.toPassenger": "Passare a passeggero"
 }

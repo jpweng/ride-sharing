@@ -1,6 +1,8 @@
 {
   "nav.browse": "Fahrten ansehen",
-  "nav.drive": "Fahren",
+  "nav.drive": "Ihre Fahrten",
   "nav.inbox": "Posteingang",
-  "nav.ride": "Mitfahren"
+  "nav.ride": "Mitfahrt finden",
+  "nav.toDriver": "Zum Fahren wechseln",
+  "nav.toPassenger": "Zum Mitfahren wechseln"
 }
