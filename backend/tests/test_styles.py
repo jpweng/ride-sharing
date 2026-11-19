@@ -38,3 +38,11 @@ def test_pages_with_pwa_js_have_its_styles():
         html = (FRONTEND / page).read_text()
         if '<script src="pwa.js"></script>' in html:
             assert "styles/pwa.css" in _own_stylesheets(page), page
+
+
+def test_mode_menu_opens_above_the_map():
+    # The menu drops down over the map; Leaflet's panes and controls go up
+    # to z-index 1000, and anything lower is hidden behind them.
+    css = (FRONTEND / "style.css").read_text()
+    rule = re.search(r"nav\.tabs \.mode-menu-panel \{([^}]*)\}", css).group(1)
+    assert int(re.search(r"z-index:\s*(\d+)", rule).group(1)) > 1000
