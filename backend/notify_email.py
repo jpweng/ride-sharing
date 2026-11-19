@@ -13,8 +13,8 @@ email is still to decide (notifications.email_state is NULL) and, for each:
     banned, turned emails off, or has read it in the app meanwhile;
   - holds it during the night (QUIET_FROM to QUIET_UNTIL, Swiss time) when
     it can wait: a passenger's request for a driver, a drive posted for a
-    request. News about a booking or a cancelled drive goes out at any
-    hour: someone is counting on that ride;
+    request, the question how a ride went. News about a booking or a
+    cancelled drive goes out at any hour: someone is counting on that ride;
   - sends it, at most MAX_ATTEMPTS times, and gives up on notifications
     older than MAX_AGE.
 
@@ -42,7 +42,7 @@ SWITCH_ENV = "EMAIL_NOTIFICATIONS"
 QUIET_FROM = time(22, 0)
 QUIET_UNTIL = time(7, 0)
 # Kinds that can wait until the morning.
-CAN_WAIT = {"request_for_driver", "drive_for_passenger"}
+CAN_WAIT = {"request_for_driver", "drive_for_passenger", "rate_ride"}
 
 MAX_AGE = timedelta(hours=24)
 MAX_ATTEMPTS = 3
@@ -157,6 +157,12 @@ def _sentence(n: dict, language: str) -> tuple[str, str]:
         return t("bookingCancelledByPassenger", name=details.get("passenger_name", "")), drive_trip
     if kind == "booking_drive_cancelled":
         return t("bookingDriveCancelled", name=drive.get("driver_name", "")), drive_trip
+    if kind == "request_accepted":
+        return t("requestAccepted", name=drive.get("driver_name", "")), drive_trip
+    if kind == "rate_ride":
+        name = details.get("rated_name", "")
+        asked = t("rateDriver", name=name) if details.get("rated_role") == "driver" else t("ratePassenger", name=name)
+        return asked, drive_trip
     # A kind this module doesn't know yet: still worth a look at the inbox.
     return t("other"), drive_trip or request_trip
 

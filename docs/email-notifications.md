@@ -5,9 +5,10 @@ answer or a cancellation without opening the app. [backend/notify_email.py](../b
 has the rules; in short:
 
 - **What is emailed:** every notification of the inbox: a passenger's request for a driver, a
-  drive posted for a passenger's request, a drive cancelled, and every step of a
-  [booking](booking.md). A kind added later gets a general "there is news for you" until it has
-  its own sentence.
+  drive posted for a passenger's request, a drive cancelled, every step of a
+  [booking](booking.md) (a driver accepting a request included), and the question how a ride went
+  ([ratings](ratings-and-reports.md)). A kind added later gets a general "there is news for you"
+  until it has its own sentence.
 - **The email** says what happened in one sentence, with the trip and its time, links to the
   inbox, and ends with a link to turn these emails off. It is in the user's language (the one of
   their last sign-in), from the `email.notify.*` keys of the [dictionaries](translations.md).
@@ -15,7 +16,7 @@ has the rules; in short:
   minute the app goes through the notifications whose email is still to decide
   (`send_pending()`, started by `main.py`).
 - **Quiet hours:** between 22:00 and 07:00 Swiss time, what can wait is held until the morning: a
-  request for a driver, a drive posted for a request. News about a booking or a cancelled drive
+  request for a driver, a drive posted for a request, the question how a ride went. News about a booking or a cancelled drive
   goes out at any hour, because someone is counting on that ride.
 - **Not sent** when the user has read the notification in the app meanwhile, turned these emails
   off, is banned or has no email address (demo drivers); nor for notifications older than 24
