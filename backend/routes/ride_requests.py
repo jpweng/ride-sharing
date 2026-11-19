@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, model_validator
 import bookings
 import database as db
 import notify
+import search
 from api import LatLon, Member, Writer, api_error
 from routes.match import MatchRequest
 
@@ -48,7 +49,8 @@ def create_ride_request(payload: RideRequestCreate, user: Writer):
     request = db.create_open_request(
         user["name"], payload.origin.model_dump(), payload.destination.model_dump(),
         asked.isoformat(timespec="minutes"),
-        payload.pickup_radius_km, payload.dropoff_radius_km, payload.time_tolerance_min,
+        # As a search: the limits aren't the passenger's to choose.
+        search.SEARCH_RADIUS_KM, search.SEARCH_RADIUS_KM, search.SEARCH_TIME_TOLERANCE_MIN,
     )
     told = notify.notify_drivers(request)
     # A real passenger's request only reaches real drivers, so the count is

@@ -225,24 +225,6 @@ input[type=text], input[type=email], input[type=number], input[type=date], selec
 .datetime select, select.auto-width { width: auto; }
 .datetime select { padding: 8px 4px; }
 
-.radius-slider {
-  width: 100%;
-  margin: 2px 0 0;
-}
-.radius-slider.pickup { accent-color: #1a7f37; }
-.radius-slider.dropoff { accent-color: #d8232a; }
-
-/* Same colours as the circles on the map. */
-.radius-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 6px;
-  vertical-align: -1px;
-}
-.radius-swatch.pickup { background: #1a7f37; }
-.radius-swatch.dropoff { background: #d8232a; }
 label output { color: var(--text); text-transform: none; }
 
 .name-row {
@@ -399,26 +381,6 @@ label output { color: var(--text); text-transform: none; }
 }
 .match-card.selected:hover { box-shadow: 0 0 0 2px var(--accent); }
 .has-selection .match-card:not(.selected) { opacity: 0.6; }
-
-/* Rides just outside the passenger's selection (dashed on the map). */
-.outside-title {
-  margin: 14px 0 2px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--muted);
-}
-.match-card.outside { border-left-style: dashed; }
-.outside-note {
-  display: inline-block;
-  margin: 4px 0 2px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--demo-bg);
-  color: var(--demo-text);
-  font-size: 12px;
-}
 
 .link-btn {
   margin-top: 6px;
@@ -665,8 +627,6 @@ header a { text-decoration: none; }
   .submit-btn { padding: 13px; font-size: 15px; }
   .point-picker button { padding: 10px; }
   .autocomplete-list li { padding: 10px 12px; font-size: 14px; }
-
-  .radius-slider { height: 28px; }
 
   .doc { padding: 16px; }
 }
