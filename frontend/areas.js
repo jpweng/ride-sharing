@@ -181,7 +181,7 @@ function areaRequestCard(r) {
   card.className = "drive-card clickable area-request-card";
   card.innerHTML = `
     <div class="route">${esc(r.origin_name)} → ${esc(r.destination_name)}</div>
-    <div class="meta">${esc(r.passenger_name)} · ${fmtTime(r.requested_time)} · ± ${esc(flexibilityText(r.time_tolerance_min))}</div>
+    <div class="meta">${esc(r.passenger_name)} · ${fmtTime(r.requested_time)}</div>
     <div class="meta">${esc(requestInAreaText(r.area, r.ends))}</div>
   `;
   // Clicking the card shows the request on the map; clicking its buttons,
@@ -198,11 +198,6 @@ function areaRequestCard(r) {
   card.appendChild(actions);
   requestExtras(r, actions);
   return card;
-}
-
-// "2 h", "30 min", "1 h 30": how far from their time the passenger can go.
-function flexibilityText(minutes) {
-  return minutes && minutes % 60 === 0 ? `${minutes / 60} h` : fmtMinutes(minutes);
 }
 
 // The passenger's start and destination, joined by a dashed line (it's a

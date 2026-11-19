@@ -4,10 +4,6 @@
   "match.lastMile": "Last mile:",
   "match.later": "{duration} later",
   "match.onTime": "on time",
-  "match.outside": "Outside your selection:",
-  "match.outsideDropoff": "drop-off beyond your {km} km circle",
-  "match.outsidePickup": "pickup beyond your {km} km circle",
-  "match.outsideTime": "time beyond your {tolerance} flexibility",
   "match.pickup": "Pickup ~{time}, {km} km from your start",
   "match.rideKm": "{km} km together"
 }

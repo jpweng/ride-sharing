@@ -2,9 +2,9 @@
 
 A demo of a ride-sharing app for Switzerland that combines car rides with public transport, live at
 <https://rideandrail.ch>. Drivers post drives; passengers either browse them or ask for a match based
-on route corridor matching (drivers whose route passes within the passenger's chosen pickup and
-drop-off radii, around their time), with a public-transport comparison and last-mile-transit
-suggestion via [transport.opendata.ch](https://transport.opendata.ch).
+on route corridor matching (drivers whose route passes near the passenger's start and destination,
+around their time; the passenger gives only those three, and the closest come first), with a
+public-transport comparison and last-mile-transit suggestion via [transport.opendata.ch](https://transport.opendata.ch).
 
 See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for the full design rationale.
 
@@ -116,7 +116,7 @@ backend/
   database.py     SQLite access layer; init_db() applies migrations/ at startup
   migrations/     schema changes, one idempotent file each (YYYYMMDDHHMM_name.py), in name order
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
-  search.py       upcoming drives that fit a trip (used by searches and ride requests)
+  search.py       upcoming drives that fit a trip, within fixed limits (searches, ride requests)
   notify.py       ride requests: which drivers are told, limits, the inbox
   notify_email.py notifications also sent by email: quiet hours, switches, the unsubscribe link
   areas.py        driver areas: the places a driver usually drives from or to, with a radius

@@ -32,10 +32,12 @@ Rides:
 - `DELETE /api/drives/{id}` — may change; cancels one's own drive (403 `not_your_drive`), telling
   passengers who were told about it
 - `GET  /api/ride_requests` — signed in; one's recent searches (deduplicated)
-- `POST /api/match` — public; finds rides (optional pickup/drop-off radii and time tolerance); a
-  signed-in user's search is kept. Returns ranked driver matches, a last-mile transit suggestion for
-  the best ones, up to 5 rides just outside the selection (`outside_matches`, each saying what it's
-  outside of), and a pure public-transport alternative
+- `POST /api/match` `{origin, destination, requested_time}` — public; finds rides; a signed-in
+  user's search is kept. The passenger chooses no distance and no flexibility: a search covers
+  drives passing within 10 km of both ends, with a pickup within 4 hours of the time
+  (`backend/search.py`). Returns the driver matches as one list, the closest in time and place
+  first (`driver_matches`), a last-mile transit suggestion for the best ones, and a pure
+  public-transport alternative
 - `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`);
   returns the request and how many drivers were told (`drivers_told`: real drivers only, for a real
   passenger), and `demo_request`; a demo request (under a demo driver's name) also gets

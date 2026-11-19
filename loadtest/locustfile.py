@@ -72,8 +72,6 @@ class Passenger(HttpUser):
     def search(self):
         origin, destination, when = self._trip()
         body = {"passenger_name": self.name, "origin": origin, "destination": destination, "requested_time": when}
-        if random.random() < 0.3:  # some widen their circles
-            body.update(pickup_radius_km=10, dropoff_radius_km=10, time_tolerance_min=180)
         with self.client.post("/api/match", json=body, catch_response=True) as resp:
             if resp.ok:
                 matches = resp.json()["driver_matches"]

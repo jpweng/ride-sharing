@@ -4,10 +4,6 @@
   "match.lastMile": "Letzte Etappe:",
   "match.later": "{duration} später",
   "match.onTime": "pünktlich",
-  "match.outside": "Ausserhalb Ihrer Auswahl:",
-  "match.outsideDropoff": "Ausstieg ausserhalb Ihres {km}-km-Kreises",
-  "match.outsidePickup": "Einstieg ausserhalb Ihres {km}-km-Kreises",
-  "match.outsideTime": "Zeit ausserhalb Ihrer Flexibilität von {tolerance}",
   "match.pickup": "Einsteigen ~{time}, {km} km von Ihrem Start",
   "match.rideKm": "{km} km gemeinsam"
 }

@@ -26,8 +26,8 @@ inbox turns these off too.
 **Browsing the requests:** the Driver page also lists every open ride request that starts or ends
 in one of the driver's areas, the soonest first, to filter by area and by day
 (`notify.requests_in_areas()`). Unlike notifications, the list has no budget: the driver comes to
-it. Each request shows the passenger's first name and initial, their trip, its time and
-flexibility, and which area it fits; *Accept this ride* takes it in one step ([Booking](booking.md)), and *Offer this drive*
+it. Each request shows the passenger's first name and initial, their trip, its time, and which
+area it fits; *Accept this ride* takes it in one step ([Booking](booking.md)), and *Offer this drive*
 fills the Driver form with the passenger's trip and time, to change first; posting the drive tells
 the passenger. The list leaves out the driver's own
 requests and demo requests, and shows at most 200.
@@ -50,6 +50,6 @@ Access levels and error codes as in [API](api.md).
 - `DELETE /api/areas/{id}` — may change; removes it (404 `area_not_found`)
 - `GET  /api/areas/requests` — signed in; the open ride requests that start or end in one of the
   user's areas, the soonest first: each as in the inbox (`passenger_name`, both ends with their
-  coordinates, `requested_time`, the radii and `time_tolerance_min`), with `area` (the one of the
+  coordinates, `requested_time`), with `area` (the one of the
   user's areas it fits best), `ends` (`origin`, `destination` or both: the ends the user's areas
   cover) and `area_ids` (every area of the user's it touches)

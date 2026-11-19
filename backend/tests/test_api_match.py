@@ -115,19 +115,16 @@ def test_matteo_marie_versam_match_with_last_mile(isolated_db, force_haversine, 
     )
     _set_route(drive, LOCARNO_CHUR_ROUTE_GEOMETRY)
 
-    def search(dropoff_radius_km):
-        return match_routes.match_ride(match_routes.MatchRequest(
-            origin={"name": "Riazzino", "lat": 46.18094253540039, "lon": 8.88644790649414},
-            destination={"name": "Versam", "lat": 46.80705642700195, "lon": 9.311906814575195},
-            requested_time=f"{DAY_2}T15:15",
-            dropoff_radius_km=dropoff_radius_km,
-        ))["driver_matches"]
+    matches = match_routes.match_ride(match_routes.MatchRequest(
+        origin={"name": "Riazzino", "lat": 46.18094253540039, "lon": 8.88644790649414},
+        destination={"name": "Versam", "lat": 46.80705642700195, "lon": 9.311906814575195},
+        requested_time=f"{DAY_2}T15:15",
+    ))["driver_matches"]
 
-    # His route passes ~9 km from Versam: outside the default 5 km drop-off radius...
-    assert search(5) == []
-    # ...inside a 10 km one, with a bus for the rest of the way.
-    matches = search(10)
+    # His route passes ~9 km from Versam: within a search's 10 km, with a
+    # bus for the rest of the way.
     assert [m["driver_name"] for m in matches] == ["Matteo"]
+    assert 5 < matches[0]["dropoff"]["gap_km"] <= 10
     assert matches[0]["last_mile_transit"]["from_station"] == "Domat/Ems, Parc industrial"
     assert matches[0]["last_mile_transit"]["to_station"] == "Versam-Safien"
 
@@ -180,14 +177,14 @@ def test_town_endpoints_use_their_train_stations(isolated_db, force_haversine, f
 
 def test_drives_at_the_edge_of_the_time_tolerance_still_match(isolated_db, force_haversine, fake_transit):
     # Only drives near the requested time are loaded; the bounds must not cut
-    # off one whose pickup is exactly time_tolerance_min away, whatever its
-    # time format. Pickup at Aigle, the drives' start: pickup time = departure.
+    # off one whose pickup is exactly a search's four hours away, whatever
+    # its time format. Pickup at Aigle, the drives' start: pickup time = departure.
     aigle = ("Aigle", 46.3180, 6.9700)
     bern = ("Bern", 46.9480, 7.4474)
-    _post_drive("Early", aigle, bern, f"{DAY_1}T16:00:00")
-    _post_drive("Late", aigle, bern, f"{DAY_1}T20:00")
-    _post_drive("Too late", aigle, bern, f"{DAY_1}T20:05")
-    _post_drive("Too early", aigle, bern, f"{DAY_1}T15:55")
+    _post_drive("Early", aigle, bern, f"{DAY_1}T14:00:00")
+    _post_drive("Late", aigle, bern, f"{DAY_1}T22:00")
+    _post_drive("Too late", aigle, bern, f"{DAY_1}T22:05")
+    _post_drive("Too early", aigle, bern, f"{DAY_1}T13:55")
 
     payload = match_routes.MatchRequest(
         origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
@@ -201,29 +198,30 @@ def test_drives_at_the_edge_of_the_time_tolerance_still_match(isolated_db, force
 
 def test_a_drive_that_left_earlier_matches_by_its_pickup_time(isolated_db, force_haversine, fake_transit):
     # Aigle -> Bern straight line (~80 km at the fallback 60 km/h): a drive
-    # leaving Aigle at 16:30 passes Fribourg-ish ~17:30.
-    _post_drive("Bernard", ("Aigle", 46.3180, 6.9700), ("Bern", 46.9480, 7.4474), f"{DAY_1}T16:30")
+    # leaving Aigle at 13:15 passes Fribourg-ish ~14:15, within four hours
+    # of 17:45; its departure isn't.
+    _post_drive("Bernard", ("Aigle", 46.3180, 6.9700), ("Bern", 46.9480, 7.4474), f"{DAY_1}T13:15")
+    _post_drive("Too early", ("Aigle", 46.3180, 6.9700), ("Bern", 46.9480, 7.4474), f"{DAY_1}T12:15")
 
-    def search(tolerance):
-        return match_routes.match_ride(match_routes.MatchRequest(
-            origin={"name": "Near Fribourg", "lat": 46.75, "lon": 7.30},
-            destination={"name": "Bern", "lat": 46.9480, "lon": 7.4474},
-            requested_time=f"{DAY_1}T17:45",
-            time_tolerance_min=tolerance,
-        ))["driver_matches"]
-
-    assert [m["driver_name"] for m in search(30)] == ["Bernard"]
-    assert search(5) == []
+    matches = match_routes.match_ride(match_routes.MatchRequest(
+        origin={"name": "Near Fribourg", "lat": 46.75, "lon": 7.30},
+        destination={"name": "Bern", "lat": 46.9480, "lon": 7.4474},
+        requested_time=f"{DAY_1}T17:45",
+    ))["driver_matches"]
+    assert [m["driver_name"] for m in matches] == ["Bernard"]
+    assert -240 <= matches[0]["time_diff_min"] < -180
 
 
-def test_rides_just_outside_the_selection_are_proposed_and_marked(isolated_db, force_haversine, fake_transit):
-    # Straight lines (force_haversine), passing through Aigle and ending in Bern.
+def test_one_list_within_fixed_limits_the_best_first(isolated_db, force_haversine, fake_transit):
+    # Straight lines (force_haversine), passing through Aigle and ending in
+    # Bern. The passenger chooses no circles and no flexibility: what a
+    # search covers is the same for everyone (search.py).
     aigle, bern = ("Aigle", 46.3180, 6.9700), ("Bern", 46.9480, 7.4474)
-    _post_drive("Inside", aigle, bern, f"{DAY_1}T18:00")
-    _post_drive("Late", aigle, bern, f"{DAY_1}T21:00")  # 3 h off: outside ± 2 h, inside the wider ± 4 h
-    _post_drive("Far", ("Rennaz", 46.3600, 6.9250), bern, f"{DAY_1}T18:00")  # passes ~6 km from Aigle
-    _post_drive("Too far", ("Sion", 46.2331, 7.3606), bern, f"{DAY_1}T18:00")
-    _post_drive("Too late", aigle, bern, f"{DAY_1}T23:00")
+    _post_drive("On time", aigle, bern, f"{DAY_1}T18:00")
+    _post_drive("Late", aigle, bern, f"{DAY_1}T21:00")                        # 3 h after
+    _post_drive("Far", ("Rennaz", 46.3600, 6.9250), bern, f"{DAY_1}T18:00")   # passes ~6 km from Aigle
+    _post_drive("Too far", ("Sion", 46.2331, 7.3606), bern, f"{DAY_1}T18:00")  # more than 10 km
+    _post_drive("Too late", aigle, bern, f"{DAY_1}T23:00")                    # more than 4 h
 
     result = match_routes.match_ride(match_routes.MatchRequest(
         origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
@@ -231,8 +229,17 @@ def test_rides_just_outside_the_selection_are_proposed_and_marked(isolated_db, f
         requested_time=f"{DAY_1}T18:00",
     ))
 
-    assert [m["driver_name"] for m in result["driver_matches"]] == ["Inside"]
-    assert result["driver_matches"][0]["outside"] == []
-    outside = {m["driver_name"]: m["outside"] for m in result["outside_matches"]}
-    assert outside == {"Far": ["pickup"], "Late": ["time"]}
-    assert all("price_chf" in m for m in result["outside_matches"])
+    # One list, the closest in time and place first.
+    assert [m["driver_name"] for m in result["driver_matches"]] == ["On time", "Far", "Late"]
+    assert "outside_matches" not in result
+    assert all("outside" not in m and "price_chf" in m for m in result["driver_matches"])
+
+
+def test_the_passenger_cant_choose_the_limits():
+    # Fields an older page still sends are ignored, not refused.
+    payload = match_routes.MatchRequest(
+        origin={"name": "Aigle", "lat": 46.3180, "lon": 6.9700},
+        destination={"name": "Bern", "lat": 46.9546, "lon": 7.4207},
+        requested_time=f"{DAY_1}T18:00", pickup_radius_km=1, dropoff_radius_km=1, time_tolerance_min=30,
+    )
+    assert not hasattr(payload, "pickup_radius_km")

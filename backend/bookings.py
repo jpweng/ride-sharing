@@ -49,15 +49,15 @@ import database as db
 import matching
 import notify
 import pricing
+import search
 from api import api_error
 
 MAX_NOTE_CHARS = 300
 MAX_SEATS = 8
 
 # A booking's start and destination can be as far from the drive's route as
-# the widest circle a search shows rides in (search.with_outside: twice the
-# passenger's own, which is at most 30 km).
-MAX_GAP_KM = 60.0
+# a search looks: a ride found by a search can be booked.
+MAX_GAP_KM = search.SEARCH_RADIUS_KM
 
 ACTIVE = ("requested", "accepted")
 # Statuses a passenger sees on their page (their own cancellations are gone),
