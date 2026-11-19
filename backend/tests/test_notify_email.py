@@ -101,6 +101,9 @@ KINDS = [
     ("booking_cancelled", {**BOOKING, "by": "driver", "was": "accepted"}),
     ("booking_cancelled", {**BOOKING, "by": "passenger", "was": "accepted"}),
     ("booking_drive_cancelled", {**BOOKING, "was": "accepted"}),
+    ("request_accepted", BOOKING),
+    ("rate_ride", {"booking_id": 1, "rated_role": "driver", "rated_name": "Jean D.", "drive": DRIVE}),
+    ("rate_ride", {"booking_id": 1, "rated_role": "passenger", "rated_name": "Marie M.", "drive": DRIVE}),
     ("a_kind_added_later", {}),
 ]
 
@@ -148,7 +151,19 @@ def test_what_can_wait_waits_for_the_morning(outbox, account):
 def test_booking_news_goes_out_at_night_too(outbox, account):
     account("Marie M.", "marie@example.ch")
     notify.send("Marie M.", "booking_drive_cancelled", {**BOOKING, "was": "accepted"})
-    assert notify_email.send_pending(NIGHT)["sent"] == 1
+    notify.send("Marie M.", "request_accepted", BOOKING)
+    assert notify_email.send_pending(NIGHT)["sent"] == 2
+    assert [e["subject"] for e in outbox] == [
+        "Jean D. cancelled the drive you were going to join", "Jean D. will drive you",
+    ]
+
+
+def test_the_question_how_a_ride_went_waits_for_the_morning(outbox, account):
+    account("Marie M.", "marie@example.ch")
+    notify.send("Marie M.", "rate_ride", {"booking_id": 1, "rated_role": "driver", "rated_name": "Jean D.", "drive": DRIVE})
+    assert notify_email.send_pending(NIGHT)["held"] == 1
+    assert notify_email.send_pending(MORNING)["sent"] == 1
+    assert outbox[0]["subject"] == "How was your ride with Jean D.?"
 
 
 # --- Who gets none ---------------------------------------------------------------
