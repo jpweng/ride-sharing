@@ -32,6 +32,7 @@ import auth
 import database as db
 import demo_drives
 import notify
+import profiles
 import ratings
 
 RETENTION = timedelta(days=30)
@@ -53,6 +54,8 @@ def purge_old_data(now: datetime) -> dict:
             (datetime.now(timezone.utc) - auth.SIGN_IN_LINK_RETENTION).isoformat()
         ),
         "sessions": db.delete_expired_sessions(datetime.now(timezone.utc).isoformat()),
+        # Which drivers a passenger's searches let them see, once that has run out.
+        "profile_grants": profiles.purge_grants(),
     }
 
 

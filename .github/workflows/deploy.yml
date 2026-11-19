@@ -104,6 +104,8 @@ jobs:
           ENV_FILE=$(printf '%s\nEMAIL_NOTIFICATIONS=%s\n' "$ENV_FILE" "${{ vars.EMAIL_NOTIFICATIONS }}")
           # REPORTS_EMAIL: optional repo variable, where reports of a problem are emailed.
           ENV_FILE=$(printf '%s\nREPORTS_EMAIL=%s\n' "$ENV_FILE" "${{ vars.REPORTS_EMAIL }}")
+          # PHOTO_BUCKET: optional repo variable, the S3 bucket for profile photos.
+          ENV_FILE=$(printf '%s\nPHOTO_BUCKET=%s\n' "$ENV_FILE" "${{ vars.PHOTO_BUCKET }}")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \
