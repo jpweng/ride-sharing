@@ -45,7 +45,8 @@
 </div>
 
 <!-- Two modes, passenger and driver, each with its own tabs (data-mode); the
-     button switches between them (app.js: setMode). The inbox is in both. -->
+     button names the current mode and switches to the other one (app.js:
+     setMode). The inbox is in both. -->
 <nav class="tabs">
   <div class="tab-list">
     <a class="tab-link" href="#/ride" data-page="ride" data-mode="passenger" data-i18n="nav.ride">Find a ride</a>
@@ -54,12 +55,7 @@
     <a class="tab-link" href="#/inbox" data-page="inbox"><span data-i18n="nav.inbox">Inbox</span> <span class="unread-count" id="unread-count" hidden></span></a>
   </div>
   <div class="nav-side">
-    <details class="mode-menu" id="mode-menu">
-      <summary id="mode-label"></summary>
-      <div class="mode-menu-panel">
-        <button type="button" id="mode-switch"></button>
-      </div>
-    </details>
+    <button type="button" class="mode-switch" id="mode-switch"></button>
     <div class="account" id="account"></div>
   </div>
 </nav>
