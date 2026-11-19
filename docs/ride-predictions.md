@@ -25,7 +25,7 @@ match leaves with nothing. This feature uses each person's own history to fill b
 | Publishing predictions | **Never automatic:** the user confirms every drive or request | A predicted drive that doesn't happen breaks a passenger's plans; a wrong request wastes drivers' attention. One tap to confirm keeps most of the convenience. |
 | Suggestions and notifications | Suggestions only appear on the user's own page; they **never send a notification** | Notifications are kept for things another person is waiting on. Guesses about the user's own habits can wait until they visit. |
 | Which requests reach drivers | Only requests the passenger made or confirmed | Same reason: drivers only hear about real needs. |
-| Channel | An in-app inbox for now, behind a channel interface | Accounts now have an email address (sign-in by email link, `backend/auth.py`), and `backend/mailer.py` can send; email notifications can plug in as a channel, with no change to the throttling. Not built yet. |
+| Channel | The in-app inbox, and the same by email | Every notification of the inbox is also emailed, with quiet hours at night and a switch per user ([Notifications by email](email-notifications.md)); the throttling is the inbox's, unchanged. |
 | History used | The last 13 weeks, within the existing 30-day retention for visitors | A weekly habit shows up after 3 weeks, so 30 days is enough to start. Keeping more history for real users is a separate privacy decision. |
 | Demo | 3 months of fictional history | So investors and testers can see suggestions and notifications without building up weeks of their own history. |
 | Demo and real requests | **Never mixed:** a real passenger's request only reaches real drivers; a request made under a demo driver's name only reaches demo drivers | Nobody waits for a driver who doesn't exist, and no real driver acts on a fictional need. The demo still shows requests arriving (see [Demo data](#demo-data)). |
@@ -120,12 +120,12 @@ When a drive is posted (manually, from a suggestion, or as an offer), open reque
 checked with the same rules as a search, and their passengers are told. A passenger gets at most one
 notification per request per day; several drives are merged into one.
 
-### Delivery and email later
+### Delivery
 
-A notification is first saved to the database (`notifications` table), then delivered through each
-channel in `CHANNELS`. Today the only channel is the inbox, which just shows the stored rows. Email
-will be an `EmailChannel` with quiet hours (no email at night) and a weekly digest, on top of the
-same limits.
+A notification is saved to the database (`notifications` table); the inbox shows the stored rows.
+Each is then also sent by email, within a minute or, at night, in the morning, unless its
+recipient turned emails off or read it meanwhile: see
+[Notifications by email](email-notifications.md). A weekly digest isn't built.
 
 ## Data
 
@@ -204,5 +204,4 @@ The privacy notice says (ride requests) and must say (predictions), in all four 
 ## Open questions
 
 - **Prediction history for real users:** keep 30 days, or longer once there are accounts?
-- **Email notifications:** they arrive with email sign-in. Decide the digest day and the quiet hours
-  then.
+- **Email digest:** notifications are emailed one by one; whether a weekly digest is wanted too.

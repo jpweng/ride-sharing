@@ -11,6 +11,7 @@
   "inbox.loadFailed": "Impossibile caricare i suoi messaggi: {error}",
   "inbox.mute": "Questo percorso non mi interessa",
   "inbox.noLongerOpen": "Questa richiesta non è più aperta.",
+  "inbox.notifyEmail": "Inviarmi le notifiche anche via e-mail",
   "inbox.notifyRequests": "Avvisarmi quando un passeggero cerca un passaggio su un percorso che ho fatto o in una delle mie zone",
   "inbox.offer": "Offrire questo passaggio",
   "inbox.offerFilled": "Il suo tragitto abituale è compilato qui sotto, con una partenza adatta a {name}. Lo controlli e clicchi su «Offrire il passaggio».",

@@ -17,7 +17,8 @@ browsers don't send it with cross-site POST/PUT/DELETE requests; on top of
 that, every such request to /api/ must come from this site's own pages
 (Origin header, or Sec-Fetch-Site), see reject_cross_site_writes.
 
-An hourly background task keeps a rolling week of fictional demo drives in
+Every minute, a background task emails the notifications that are due
+(notify_email.py). An hourly one keeps a rolling week of fictional demo drives in
 the database and deletes visitors' data a month after it's last useful (see
 maintenance.py). DEMO_DRIVES=off in the environment removes the demo
 drives and hides them everywhere (see demo_drives.py).
@@ -38,12 +39,14 @@ from fastapi.staticfiles import StaticFiles
 import auth
 import database as db
 import maintenance
+import notify_email
 import routes
 from api import FRONTEND_DIR, api_error
 
 logger = logging.getLogger("uvicorn.error")
 
 MAINTENANCE_INTERVAL_S = 3600
+EMAIL_INTERVAL_S = 60
 
 APP_THREADS = int(os.environ.get("APP_THREADS", "16"))
 
@@ -61,6 +64,19 @@ async def _maintenance_loop():
         await asyncio.sleep(MAINTENANCE_INTERVAL_S)
 
 
+async def _email_loop():
+    # Notifications are emailed from here, not when they're made, so no
+    # request waits for an email to leave (see notify_email.py).
+    while True:
+        await asyncio.sleep(EMAIL_INTERVAL_S)
+        try:
+            counts = await asyncio.to_thread(notify_email.send_pending)
+            if counts["sent"] or counts["failed"]:
+                logger.info("Notification emails: %s", counts)
+        except Exception:
+            logger.exception("Sending notification emails failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Requests are handled in a thread pool (the endpoints are synchronous):
@@ -70,9 +86,10 @@ async def lifespan(app: FastAPI):
     anyio.to_thread.current_default_thread_limiter().total_tokens = APP_THREADS
     if os.environ.get("EMAIL_BACKEND") == "ses" and not os.environ.get("PUBLIC_BASE_URL"):
         logger.warning("PUBLIC_BASE_URL is not set: no sign-in links can be sent")
-    task = asyncio.create_task(_maintenance_loop())
+    tasks = [asyncio.create_task(_maintenance_loop()), asyncio.create_task(_email_loop())]
     yield
-    task.cancel()
+    for task in tasks:
+        task.cancel()
 
 
 app = FastAPI(title="Ride and Rail", lifespan=lifespan)
