@@ -1,4 +1,6 @@
 {
+  "match.demoText": "This ride is fictional: it shows how the app works, and can't be selected. Rides offered by real drivers have no \"Demo\" label.",
+  "match.demoTitle": "Demo ride",
   "match.dropoff": "Drop-off ~{time}, {km} km from your destination",
   "match.earlier": "{duration} earlier",
   "match.lastMile": "Last mile:",
