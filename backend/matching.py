@@ -407,6 +407,11 @@ def find_matches(
         )
         if m is not None:
             matches.append(m)
-    # Equally good: a real drive before a demo one, then the earliest pickup.
-    matches.sort(key=lambda m: (m["score"], bool(m.get("is_demo")), m["pickup"]["time"]))
+    matches.sort(key=merit)
     return matches[:max_results]
+
+
+def merit(match: dict) -> tuple:
+    """Sort key of a match, the best first: the score; equally good, a real
+    drive before a demo one, then the earliest pickup."""
+    return (match["score"], bool(match.get("is_demo")), match["pickup"]["time"])

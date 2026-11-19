@@ -56,8 +56,8 @@ MAX_NOTE_CHARS = 300
 MAX_SEATS = 8
 
 # A booking's start and destination can be as far from the drive's route as
-# a search looks: a ride found by a search can be booked.
-MAX_GAP_KM = search.SEARCH_RADIUS_KM
+# a search looks at its widest: a ride found by a search can be booked.
+MAX_GAP_KM = search.WIDER_RADIUS_KM
 
 ACTIVE = ("requested", "accepted")
 # Statuses a passenger sees on their page (their own cancellations are gone),

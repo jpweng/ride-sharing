@@ -24,5 +24,6 @@
   "ride.submit": "Mitfahrt finden",
   "ride.title": "Mitfahrt finden",
   "ride.transitTitle": "Alternative mit dem ÖV",
-  "ride.when": "Wann"
+  "ride.when": "Wann",
+  "ride.widerNote": "Keine buchbare Fahrt führt näher als {near} km an Ihrem Start und Ihrem Ziel vorbei. Die mit «weiter entfernt» markierten führen innerhalb von {far} km vorbei: Prüfen Sie, wie Sie zum Einstieg und vom Ausstieg weiterkommen."
 }

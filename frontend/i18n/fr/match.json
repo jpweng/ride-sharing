@@ -3,9 +3,11 @@
   "match.demoTitle": "Trajet de démo",
   "match.dropoff": "Dépose ~{time}, à {km} km de votre destination",
   "match.earlier": "{duration} plus tôt",
-  "match.lastMile": "Dernier tronçon :",
+  "match.firstMile": "Jusqu'à la prise en charge :",
+  "match.lastMile": "Depuis la dépose :",
   "match.later": "{duration} plus tard",
   "match.onTime": "à l'heure",
   "match.pickup": "Prise en charge ~{time}, à {km} km de votre départ",
-  "match.rideKm": "{km} km ensemble"
+  "match.rideKm": "{km} km ensemble",
+  "match.wider": "plus loin"
 }

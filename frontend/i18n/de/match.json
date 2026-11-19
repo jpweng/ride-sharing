@@ -3,9 +3,11 @@
   "match.demoTitle": "Demo-Fahrt",
   "match.dropoff": "Aussteigen ~{time}, {km} km von Ihrem Ziel",
   "match.earlier": "{duration} früher",
-  "match.lastMile": "Letzte Etappe:",
+  "match.firstMile": "Zum Einstieg:",
+  "match.lastMile": "Ab dem Ausstieg:",
   "match.later": "{duration} später",
   "match.onTime": "pünktlich",
   "match.pickup": "Einsteigen ~{time}, {km} km von Ihrem Start",
-  "match.rideKm": "{km} km gemeinsam"
+  "match.rideKm": "{km} km gemeinsam",
+  "match.wider": "weiter entfernt"
 }

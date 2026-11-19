@@ -35,9 +35,11 @@ Rides:
 - `POST /api/match` `{origin, destination, requested_time}` — public; finds rides; a signed-in
   user's search is kept. The passenger chooses no distance and no flexibility: a search covers
   drives passing within 10 km of both ends, with a pickup within 4 hours of the time
-  (`backend/search.py`). Returns the driver matches as one list, the closest in time and place
-  first (`driver_matches`), a last-mile transit suggestion for the best ones, and a pure
-  public-transport alternative
+  (`backend/search.py`); when none of those can be booked, it also takes the bookable drives
+  passing within 30 km (`wider: true`). Returns the driver matches as one list, the closest in
+  time and place first (`driver_matches`), public transport to the pickup and from the drop-off
+  for the best ones where it makes sense (`first_mile_transit`, `last_mile_transit`; see
+  [Search limits](search-limits.md)), and a pure public-transport alternative
 - `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`);
   returns the request and how many drivers were told (`drivers_told`: real drivers only, for a real
   passenger), and `demo_request`; a demo request (under a demo driver's name) also gets

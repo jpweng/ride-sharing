@@ -3,9 +3,11 @@
   "match.demoTitle": "Viaggio demo",
   "match.dropoff": "Discesa ~{time}, a {km} km dalla sua destinazione",
   "match.earlier": "{duration} prima",
-  "match.lastMile": "Ultimo tratto:",
+  "match.firstMile": "Fino alla salita:",
+  "match.lastMile": "Dalla discesa:",
   "match.later": "{duration} più tardi",
   "match.onTime": "puntuale",
   "match.pickup": "Salita ~{time}, a {km} km dalla sua partenza",
-  "match.rideKm": "{km} km insieme"
+  "match.rideKm": "{km} km insieme",
+  "match.wider": "più lontano"
 }

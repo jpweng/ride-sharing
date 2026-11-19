@@ -10,7 +10,7 @@ Runs against an isolated temp sqlite DB (isolated_db fixture) and fully
 mocked OSRM/transit lookups (force_haversine, fake_transit) -- never the
 real rideshare.db, never the live network.
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import database
 import pricing
@@ -105,7 +105,12 @@ def test_bernard_marie_bern_match(isolated_db, force_haversine, fake_transit):
 def test_matteo_marie_versam_match_with_last_mile(isolated_db, force_haversine, fake_transit):
     fake_transit.add_station("Domat/Ems, Parc industrial", 46.830489, 9.428246)
     fake_transit.add_station("Versam-Safien", 46.80705642700195, 9.311906814575195)
-    fake_transit.set_connections("Domat/Ems, Parc industrial", "Versam-Safien", CONNECTION)
+    # A bus a quarter of an hour after the car gets there.
+    fake_transit.set_connections("Domat/Ems, Parc industrial", "Versam-Safien", lambda when: [{
+        "departure": (datetime.fromisoformat(when) + timedelta(minutes=15)).isoformat(),
+        "arrival": (datetime.fromisoformat(when) + timedelta(minutes=35)).isoformat(),
+        "duration": "00:20:00", "transfers": 0, "products": ["B"],
+    }])
 
     drive = _post_drive(
         "Matteo",

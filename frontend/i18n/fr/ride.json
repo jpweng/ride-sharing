@@ -24,5 +24,6 @@
   "ride.submit": "Trouver un trajet",
   "ride.title": "Trouver un trajet",
   "ride.transitTitle": "Alternative en transports publics",
-  "ride.when": "Quand"
+  "ride.when": "Quand",
+  "ride.widerNote": "Aucun trajet réservable ne passe à moins de {near} km de votre départ et de votre destination. Ceux marqués « plus loin » passent à moins de {far} km : voyez comment rejoindre la prise en charge et repartir de la dépose."
 }

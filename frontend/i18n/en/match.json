@@ -3,9 +3,11 @@
   "match.demoTitle": "Demo ride",
   "match.dropoff": "Drop-off ~{time}, {km} km from your destination",
   "match.earlier": "{duration} earlier",
-  "match.lastMile": "Last mile:",
+  "match.firstMile": "To the pickup:",
+  "match.lastMile": "From the drop-off:",
   "match.later": "{duration} later",
   "match.onTime": "on time",
   "match.pickup": "Pickup ~{time}, {km} km from your start",
-  "match.rideKm": "{km} km together"
+  "match.rideKm": "{km} km together",
+  "match.wider": "further away"
 }
