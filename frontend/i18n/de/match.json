@@ -1,13 +1,19 @@
 {
   "match.demoText": "Diese Fahrt ist erfunden: Sie zeigt, wie die App funktioniert, und kann nicht ausgewählt werden. Fahrten von echten Fahrerinnen und Fahrern tragen kein «Demo»-Etikett.",
   "match.demoTitle": "Demo-Fahrt",
+  "match.directions": "Route",
   "match.dropoff": "Aussteigen ~{time}, {km} km von Ihrem Ziel",
+  "match.dropoffAt": "Aussteigen ~{time} bei {place}, {km} km von Ihrem Ziel",
   "match.earlier": "{duration} früher",
   "match.firstMile": "Zum Einstieg:",
   "match.lastMile": "Ab dem Ausstieg:",
   "match.later": "{duration} später",
   "match.onTime": "pünktlich",
+  "match.onwardCar": "{min} Min. mit dem Auto",
+  "match.onwardTransit": "{min} Min. mit dem öffentlichen Verkehr",
+  "match.onwardWalk": "{min} Min. zu Fuss",
   "match.pickup": "Einsteigen ~{time}, {km} km von Ihrem Start",
+  "match.pickupAt": "Einsteigen ~{time} bei {place}, {km} km von Ihrem Start",
   "match.rideKm": "{km} km gemeinsam",
   "match.wider": "weiter entfernt"
 }

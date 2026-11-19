@@ -49,6 +49,36 @@ matches that need a leg get one (`MAX_MATCHES`), those that can be booked first,
 cached for a few minutes ([backend/transit.py](../backend/transit.py)). If the service can't be
 reached, matches simply come without legs.
 
+## Names and the way on, for each match
+
+So a card can be read without the map, each match's `pickup` and `dropoff` carry more
+([backend/meeting_points.py](../backend/meeting_points.py)); the page words it:
+
+- **`name`** (both points): the nearest public transport stop when it is at most 500 m away, else
+  `null`. It comes from the timetable service already used for legs (`transit.nearest_named_station`:
+  same service, same cache, no new party receives coordinates, so the privacy page is unchanged).
+  OSRM's `nearest` isn't used: our server runs without the data street names need
+  (`--disable-feature-dataset ROUTE_STEPS`), and a street name lacks its town. Lookups are limited
+  per search (12 different uncached points, a 3 s budget, a stop after 3 unanswered in a row) and a
+  point that got no answer isn't asked again for 2 minutes. No name never fails a search: the card
+  falls back to the wording without a place.
+- **`pickup.walk_min`**: the way from the passenger's start on foot, `null` when the pickup is
+  200 m or less away.
+- **`dropoff.onward`**: the rest of the way to the destination, `{walk_min, car_min, transit_min,
+  walk_km, car_km, source}`, or `null` when the drop-off is 200 m or less from it (`NEAR_KM`).
+  - `car_min`: one OSRM `table` call for all matches (same timeouts and circuit breaker as
+    routes), `source: "osrm"`; without OSRM an estimate from the straight line (`"estimate"`).
+  - `walk_min`: **an estimate, not a walking route**: a distance at the walking pace used for
+    ranking (12 min per km, `matching.MINUTES_PER_GAP_KM`). The distance is OSRM's road distance
+    when there is one, else the straight line times 1.3; never below the straight line. The same
+    estimate gives `pickup.walk_min`.
+  - `transit_min`: from the car's drop-off time to the arrival of the first connection of
+    `last_mile_transit`; `null` when there is no such leg (no extra timetable call).
+
+The page also links the way from the start to the pickup and from the drop-off to the destination
+to Google Maps' plain URL scheme (`https://www.google.com/maps/dir/?api=1&origin=…&destination=…`,
+new tab, `rel="noopener"`): no Google API, no key, nothing sent from the server.
+
 ## In the API
 
 `POST /api/match` (see [API](api.md)) returns, next to `driver_matches` and `transit_option`,

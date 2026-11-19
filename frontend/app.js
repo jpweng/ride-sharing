@@ -1108,6 +1108,33 @@ function renderResults() {
   renderTransitOption(data.transit_option);
 }
 
+// A match's pickup or drop-off line: the time, its place name when we have
+// one, the gap to the passenger's own start or destination and, further
+// than that, how long the way takes (the pickup: on foot; the drop-off: on
+// foot, by car and by public transport) with a Google Maps directions link
+// (its plain URL scheme: no API, no key). `onward` is the API's structured
+// data; the walking time is an estimate, not a route. A point practically at
+// the passenger's own start or destination has neither times nor link.
+function meetingPointLine(kind, point, passengerPoint, onward) {
+  const params = { time: fmtClock(point.time), km: fmtNumber(point.gap_km), place: point.name };
+  const sentence = t(point.name ? `match.${kind}At` : `match.${kind}`, params);
+  const minutes = kind === "pickup"
+    ? [["match.onwardWalk", point.walk_min]]
+    : onward
+      ? [["match.onwardWalk", onward.walk_min], ["match.onwardCar", onward.car_min], ["match.onwardTransit", onward.transit_min]]
+      : [];
+  const parts = [sentence, ...minutes.filter(([, min]) => min).map(([key, min]) => t(key, { min }))];
+  let link = "";
+  if (kind === "pickup" ? point.walk_min : onward) {
+    // The way between the passenger's own point and the meeting point.
+    const [from, to] = kind === "pickup" ? [passengerPoint, point] : [point, passengerPoint];
+    const url = "https://www.google.com/maps/dir/?api=1"
+      + `&origin=${from.lat},${from.lon}&destination=${to.lat},${to.lon}`;
+    link = ` <a class="directions-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(t("match.directions"))}</a>`;
+  }
+  return `<div class="meta">${parts.map(esc).join(" · ")}${link}</div>`;
+}
+
 // The drives that serve the trip, the best first (see backend/search.py).
 // `limits`: the search's answer, for its two distances.
 function renderMatches(matches, passengerOrigin, passengerDestination, limits = {}) {
@@ -1189,8 +1216,8 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     card.innerHTML = `
       <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}${demoBadge(m)}</div>
       <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
-      <div class="meta">${esc(t("match.pickup", { time: fmtClock(m.pickup.time), km: fmtNumber(m.pickup.gap_km) }))}</div>
-      <div class="meta">${esc(t("match.dropoff", { time: fmtClock(m.dropoff.time), km: fmtNumber(m.dropoff.gap_km) }))}</div>
+      ${meetingPointLine("pickup", m.pickup, passengerOrigin, null)}
+      ${meetingPointLine("dropoff", m.dropoff, passengerDestination, m.dropoff.onward)}
       ${priceBadges(m)}
       ${timeDiffBadge(m.time_diff_min)}
       <span class="badge">${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</span>
