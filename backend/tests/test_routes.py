@@ -40,6 +40,8 @@ API_ROUTES = {
     ("post", "/api/bookings/{booking_id}/accept"),
     ("post", "/api/bookings/{booking_id}/decline"),
     ("post", "/api/bookings/{booking_id}/cancel"),
+    ("post", "/api/bookings/{booking_id}/rating"),
+    ("post", "/api/bookings/{booking_id}/report"),
     ("get", "/api/price_band"),
     ("post", "/api/match"),
     ("get", "/api/ride_requests"),

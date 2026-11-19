@@ -11,6 +11,8 @@
 #   ANDROID_CERT_SHA256     signing-certificate fingerprint(s) of the Android
 #                           app, comma-separated, for /.well-known/assetlinks.json
 #                           (optional; see mobile/android/README.md)
+#   REPORTS_EMAIL           where users' reports of a problem are emailed
+#                           (optional; see docs/ratings-and-reports.md)
 #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_ID, APPLE_TEAM_ID,
 #   APPLE_KEY_ID, APPLE_PRIVATE_KEY
 #                           sign-in with Google and Apple (optional: each is
@@ -84,6 +86,9 @@ services:
       SES_REGION: ${AWS_REGION}
       # For the links in emails, e.g. https://rideandrail.ch.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # Where reports of a problem are emailed (backend/reports.py). Empty:
+      # they are only logged and listed by admin.py.
+      REPORTS_EMAIL: ${REPORTS_EMAIL:-}
       # Sign-in with Google and Apple (backend/social.py). Empty: not offered.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

@@ -1,5 +1,7 @@
 {
   "errors.account_banned": "This account is closed.",
+  "errors.already_rated": "You have already rated this ride.",
+  "errors.already_reported": "You have already reported this ride.",
   "errors.already_requested": "You have already asked for a seat on this drive.",
   "errors.area_not_found": "This area no longer exists.",
   "errors.booking_not_found": "This booking no longer exists.",
@@ -20,6 +22,7 @@
   "errors.no_seats_left": "This drive doesn't have that many free seats.",
   "errors.not_bookable": "Demo drives are fictional and can't be booked.",
   "errors.not_on_route": "This drive doesn't pass near that start and destination.",
+  "errors.not_rateable": "Only a ride that was booked can be rated.",
   "errors.not_signed_in": "Please sign in first.",
   "errors.not_your_drive": "Only the driver who posted this drive can cancel it.",
   "errors.not_your_request": "Only the passenger who made this request can cancel it.",
@@ -34,6 +37,7 @@
   "errors.request_not_found": "This ride request no longer exists.",
   "errors.request_too_far": "A ride request can be at most 14 days ahead.",
   "errors.request_too_soon": "A ride request must be at least 1 hour ahead.",
+  "errors.ride_not_over": "This ride isn't over yet.",
   "errors.social_cancelled": "You didn't finish signing in. Try again, or use the email link.",
   "errors.social_email_unverified": "That account has no confirmed email address, so it can't be used to sign in here. Use the email link instead.",
   "errors.social_failed": "Signing in didn't work. Please try again, or use the email link.",

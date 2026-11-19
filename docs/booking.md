@@ -35,8 +35,10 @@ can cancel afterwards. [backend/bookings.py](../backend/bookings.py) has the rul
   bookings are deleted 30 days after the departure
   ([data retention](demo-drives-and-data-retention.md)); they leave both pages a day after it.
 
-Not there yet: paying through the app, ratings, and what happens after late cancellations or
-no-shows.
+After the ride, both sides are asked to [rate it](ratings-and-reports.md), and either can report
+a problem to the team at any time.
+
+Not there yet: paying through the app, and what happens after late cancellations or no-shows.
 
 A booking's statuses: `requested`, then `accepted` or `declined` by the driver;
 `cancelled_by_passenger` or `cancelled_by_driver` afterwards. The inbox's kinds:

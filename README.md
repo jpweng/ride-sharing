@@ -90,6 +90,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [Deploying to AWS](docs/deploying-to-aws.md): the server, Terraform, CI deploys, domain, emails,
   operations
 - [Routing](docs/routing.md): our own OSRM server and its monthly data
+- [Ratings and reports](docs/ratings-and-reports.md): stars after a ride, what is shown,
+  reporting a problem, how the team handles reports
 - [Booking](docs/booking.md): asking for a seat, the driver's answer, cancelling, seats and prices
 - [Load test](docs/load-test.md): the event-evening simulation and its results
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
@@ -107,7 +109,7 @@ backend/
   auth.py         sign-in by email link, sessions, profile (18+, code of conduct), demo-driver view
   social.py       sign-in with Google or Apple (OpenID Connect), off until their keys are set
   mailer.py       email: console backend (development, tests) or Amazon SES
-  admin.py        command line: ban / unban an account
+  admin.py        command line: ban / unban an account, list and close reports
   database.py     SQLite access layer; init_db() applies migrations/ at startup
   migrations/     schema changes, one idempotent file each (YYYYMMDDHHMM_name.py), in name order
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
@@ -115,6 +117,8 @@ backend/
   notify.py       ride requests: which drivers are told, limits, the inbox
   areas.py        driver areas: the places a driver usually drives from or to, with a radius
   pricing.py      ride prices: the driver's price band, what each passenger pays
+  ratings.py      ratings after a ride: who rates whom, the averages shown
+  reports.py      reports of a problem with a ride, for the team (see admin.py)
   bookings.py     bookings: asking for seats on a drive, the driver's answer, cancelling
   fares.py        train fares: T601 distance tariff, optional OJP fare lookup
   transit.py      transport.opendata.ch integration

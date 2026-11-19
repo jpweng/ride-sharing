@@ -1,0 +1,10 @@
+{
+  "rating.askDriver": "Comment s'est passé votre trajet avec {name} ?",
+  "rating.askPassenger": "Comment était {name} comme passager ?",
+  "rating.badge": "★ {average} ({count})",
+  "rating.done": "Vous avez évalué ce trajet. Merci.",
+  "rating.hintDriver": "Moyenne des étoiles données par les passagers à cette personne au volant, et nombre d'évaluations",
+  "rating.hintPassenger": "Moyenne des étoiles données par les conducteurs à ce passager, et nombre d'évaluations",
+  "rating.stars.one": "{count} étoile",
+  "rating.stars.other": "{count} étoiles"
+}

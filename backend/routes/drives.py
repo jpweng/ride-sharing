@@ -24,6 +24,7 @@ import demo_drives
 import matching
 import notify
 import pricing
+import ratings
 import search
 from api import LatLon, Writer, api_error, current_session, member, signed_in
 
@@ -103,7 +104,8 @@ def get_drives(
         upcoming_only=upcoming_only, driver_name=driver_name, with_geometry=False, limit=limit,
         include_demo=demo_drives.enabled(),
     )
-    return [search.with_bookable(pricing.with_prices(d)) for d in bookings.with_seats_booked(drives)]
+    drives = ratings.with_driver_ratings(bookings.with_seats_booked(drives))
+    return [search.with_bookable(pricing.with_prices(d)) for d in drives]
 
 
 @router.get("/api/drives/{drive_id}")
@@ -111,7 +113,8 @@ def get_drive(drive_id: int):
     drive = db.get_drive(drive_id)
     if not drive or (drive["is_demo"] and not demo_drives.enabled()):
         raise api_error(404, "drive_not_found", "Drive not found")
-    return search.with_bookable(pricing.with_prices(bookings.with_seats_booked([drive])[0]))
+    drive = ratings.with_driver_ratings(bookings.with_seats_booked([drive]))[0]
+    return search.with_bookable(pricing.with_prices(drive))
 
 
 @router.delete("/api/drives/{drive_id}")

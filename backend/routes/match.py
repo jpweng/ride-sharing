@@ -17,6 +17,7 @@ import bookings
 import database as db
 import matching
 import pricing
+import ratings
 import search
 import transit
 from api import LatLon, api_error, current_session
@@ -80,6 +81,7 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     # What the passenger pays for their part of the drive, given the seats
     # already booked, and the train fare for it (see pricing.py).
     bookings.with_seats_booked(driver_matches + outside_matches)
+    ratings.with_driver_ratings(driver_matches + outside_matches)
     driver_matches = [pricing.with_ride_prices(m) for m in driver_matches]
     outside_matches = [pricing.with_ride_prices(m) for m in outside_matches]
 

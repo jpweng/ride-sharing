@@ -5,7 +5,8 @@ Hourly upkeep of the database, run by main.py at startup and then every hour:
      With DEMO_DRIVES=off, delete them all instead, then the trips' routes
      no demo drive uses any more.
   2. Give unanswered ride requests their one extra round of drivers
-     (notify.run_extra_rounds).
+     (notify.run_extra_rounds), and ask both sides of the rides that are
+     over how they went (ratings.ask_after_rides).
   3. Delete visitors' data once it's RETENTION old: drives and ride
      requests a month after their time, searches and notifications a month
      after they were made. Nothing in the UI shows any of it by then.
@@ -31,6 +32,7 @@ import auth
 import database as db
 import demo_drives
 import notify
+import ratings
 
 RETENTION = timedelta(days=30)
 
@@ -55,17 +57,19 @@ def purge_old_data(now: datetime) -> dict:
 
 
 def run(now: datetime | None = None) -> dict:
-    """Refresh demo drives, run the requests' extra rounds, then purge old
-    visitor data; returns what changed."""
+    """Refresh demo drives, run the requests' extra rounds, ask for ratings
+    of the rides that are over, then purge old visitor data; returns what
+    changed."""
     now = now or datetime.now(demo_drives.LOCAL_TZ).replace(tzinfo=None)
     deleted, created = demo_drives.refresh(now)
     # Off: their routes too. On, they're kept, so the routing server isn't
     # asked again for a trip that comes back.
     routes_deleted = 0 if demo_drives.enabled() else db.delete_unused_demo_routes()
     told = notify.run_extra_rounds(now)
+    asked = ratings.ask_after_rides(now)
     return {
         "demo_deleted": deleted, "demo_created": created, "demo_routes_deleted": routes_deleted,
-        "extra_round_told": told, **purge_old_data(now),
+        "extra_round_told": told, "rides_to_rate": asked, **purge_old_data(now),
     }
 
 
