@@ -1,0 +1,58 @@
+/* Profiles (see profiles.js): one's own on the account page, and the popup
+   with someone else's. Linked after style.css. */
+
+/* The driver's side of the account page: in driver mode only. */
+body[data-mode="passenger"] .driver-only { display: none; }
+
+#profile-box textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--panel);
+  resize: vertical;
+}
+#profile-box .profile-trait { display: block; }
+#profile-box .name-row > div { flex: 1; min-width: 0; }
+
+.profile-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.profile-photo {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.profile-photo[hidden] { display: none; }
+.profile-photo-choose {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+  padding: 7px 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.profile-photo-row .link-btn { display: block; margin-top: 8px; color: var(--muted); }
+
+/* "See profile" on a card, and the popup it opens. */
+.profile-link-box { margin-top: 6px; }
+.profile-link-box .link-btn { margin: 0; color: var(--accent-dark); }
+
+dialog.profile-dialog { width: min(400px, calc(100vw - 32px)); }
+dialog.profile-dialog .profile-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+dialog.profile-dialog .profile-photo { width: 96px; height: 96px; flex: none; }
+dialog.profile-dialog ul { margin: 10px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.6; }
+dialog.profile-dialog .profile-about { white-space: pre-line; }

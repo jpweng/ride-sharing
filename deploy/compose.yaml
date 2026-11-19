@@ -15,6 +15,8 @@
 #                           also sent by email, see docs/email-notifications.md
 #   REPORTS_EMAIL           where users' reports of a problem are emailed
 #                           (optional; see docs/ratings-and-reports.md)
+#   PHOTO_BUCKET            the S3 bucket for profile photos (optional: no
+#                           photos without it; see docs/profiles.md)
 #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_ID, APPLE_TEAM_ID,
 #   APPLE_KEY_ID, APPLE_PRIVATE_KEY
 #                           sign-in with Google and Apple (optional: each is
@@ -94,6 +96,11 @@ services:
       # Where reports of a problem are emailed (backend/reports.py). Empty:
       # they are only logged and listed by admin.py.
       REPORTS_EMAIL: ${REPORTS_EMAIL:-}
+      # Profile photos (backend/photos.py): the S3 bucket, read and written
+      # with the instance role's credentials (infra/photos.tf). Empty: no
+      # photos.
+      PHOTO_BUCKET: ${PHOTO_BUCKET:-}
+      PHOTO_REGION: ${AWS_REGION}
       # Sign-in with Google and Apple (backend/social.py). Empty: not offered.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

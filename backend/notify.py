@@ -506,7 +506,7 @@ def run_extra_rounds(now: datetime | None = None) -> int:
 # The inbox
 # ---------------------------------------------------------------------
 _REQUEST_SHOWN = (
-    "id", "passenger_name", "origin_name", "origin_lat", "origin_lon", "destination_name",
+    "id", "passenger_id", "passenger_name", "origin_name", "origin_lat", "origin_lon", "destination_name",
     "destination_lat", "destination_lon", "requested_time", "pickup_radius_km", "dropoff_radius_km",
     "time_tolerance_min", "status",
 )

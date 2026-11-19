@@ -18,6 +18,7 @@ import auth
 import bookings
 import database as db
 import pricing
+import profiles
 import ratings
 import search
 import transit
@@ -66,6 +67,10 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     bookings.with_seats_booked(driver_matches)
     ratings.with_driver_ratings(driver_matches)
     driver_matches = [pricing.with_ride_prices(m) for m in driver_matches]
+    # The real drivers found are candidates for this ride: a signed-in
+    # passenger may see their profiles (profiles.py).
+    if user and auth.profile_complete(user) and not (user["is_demo"] or found["session"]["is_demo"]):
+        profiles.allow_candidates(user["id"], [m["driver_id"] for m in driver_matches if not m["is_demo"]])
 
     # Public transport to the pickup and from the drop-off, where they're too
     # far to walk.
