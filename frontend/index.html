@@ -53,7 +53,12 @@
     <a class="tab-link" href="#/inbox" data-page="inbox"><span data-i18n="nav.inbox">Inbox</span> <span class="unread-count" id="unread-count" hidden></span></a>
   </div>
   <div class="nav-side">
-    <button type="button" class="mode-switch" id="mode-switch"></button>
+    <details class="mode-menu" id="mode-menu">
+      <summary id="mode-label"></summary>
+      <div class="mode-menu-panel">
+        <button type="button" id="mode-switch"></button>
+      </div>
+    </details>
     <div class="account" id="account"></div>
   </div>
 </nav>

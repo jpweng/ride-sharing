@@ -701,11 +701,26 @@ function setMode(next) {
   renderModeSwitch();
 }
 
+// The current mode is shown as a large label that opens a small menu with
+// the button to switch to the other mode.
 function renderModeSwitch() {
+  document.getElementById("mode-label").textContent = mode === "passenger" ? t("nav.passengerMode") : t("nav.driverMode");
   document.getElementById("mode-switch").textContent = mode === "passenger" ? t("nav.toDriver") : t("nav.toPassenger");
 }
 
+// Closes the mode menu (after a choice, a click elsewhere, or Escape).
+function closeModeMenu() {
+  document.getElementById("mode-menu").open = false;
+}
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#mode-menu")) closeModeMenu();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModeMenu();
+});
+
 document.getElementById("mode-switch").addEventListener("click", () => {
+  closeModeMenu();
   goTo(MODE_HOME[mode === "passenger" ? "driver" : "passenger"]); // route() sets the mode
 });
 
