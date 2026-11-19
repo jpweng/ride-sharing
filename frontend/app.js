@@ -1426,6 +1426,7 @@ async function loadInbox() {
 
 function renderInbox(data) {
   document.getElementById("inbox-notify-requests").checked = data.notify_requests;
+  document.getElementById("inbox-notify-email").checked = data.notify_email;
   const paused = document.getElementById("inbox-paused");
   paused.hidden = !data.paused_until;
   if (data.paused_until) {
@@ -1444,6 +1445,17 @@ function renderInbox(data) {
 // Kinds of notification added by scripts loaded after this one
 // (bookings.js): kind -> a function that fills the card.
 const NOTIFICATION_CARDS = {};
+
+// Scripts loaded after this one (bookings.js) add to the cards of the ride
+// requests a driver is shown, in the inbox and in the list of their areas
+// (areas.js): each function gets the request, the element holding the
+// card's buttons, and what the card knows more ({ notification } in the
+// inbox).
+const REQUEST_EXTRAS = [];
+
+function requestExtras(request, actions, context = {}) {
+  REQUEST_EXTRAS.forEach((extra) => extra(request, actions, context));
+}
 
 function notificationCard(n) {
   const card = document.createElement("div");
@@ -1480,6 +1492,7 @@ function notificationCard(n) {
         actionButton("inbox.decline", "submit-btn secondary", () => actOn(n, "decline")),
         actionButton("inbox.mute", "link-btn", () => actOn(n, "mute")),
       );
+      requestExtras(r, actions, { notification: n });
     }
   } else if (n.kind === "drive_cancelled") {
     // The drive is deleted; the notification keeps what it was.
@@ -1585,6 +1598,7 @@ function fmtDate(iso) {
 }
 
 document.getElementById("inbox-notify-requests").addEventListener("change", (e) => updateNotificationSettings({ notify_requests: e.target.checked }));
+document.getElementById("inbox-notify-email").addEventListener("change", (e) => updateNotificationSettings({ notify_email: e.target.checked }));
 document.getElementById("inbox-resume").addEventListener("click", () => updateNotificationSettings({ resume: true }));
 
 async function updateNotificationSettings(changes) {

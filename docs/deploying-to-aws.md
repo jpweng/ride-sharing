@@ -71,6 +71,8 @@ Optional repo variable: `ANDROID_CERT_SHA256`, the Android app's signing-certifi
 for `/.well-known/assetlinks.json` (see [mobile/android/README.md](../mobile/android/README.md)). Unset,
 that file is an empty list.
 
+Optional repo variable: `EMAIL_NOTIFICATIONS`, `off` to stop the emails about notifications (see
+[Notifications by email](email-notifications.md)); unset or `on`, they are sent.
 Optional repo variable: `REPORTS_EMAIL`, the address users' reports of a problem are emailed to
 (see [Ratings and reports](ratings-and-reports.md)); unset, they are only logged and listed by
 `admin.py reports`.

@@ -48,6 +48,7 @@ API_ROUTES = {
     ("post", "/api/requests"),
     ("get", "/api/requests"),
     ("delete", "/api/requests/{request_id}"),
+    ("post", "/api/requests/{request_id}/accept"),
     ("get", "/api/notifications"),
     ("post", "/api/notifications/read"),
     ("post", "/api/notifications/{notification_id}/action"),

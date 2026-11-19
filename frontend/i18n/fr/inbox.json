@@ -11,6 +11,7 @@
   "inbox.loadFailed": "Impossible de charger vos messages : {error}",
   "inbox.mute": "Cette route ne m'intéresse pas",
   "inbox.noLongerOpen": "Cette demande n'est plus ouverte.",
+  "inbox.notifyEmail": "M'envoyer aussi mes notifications par e-mail",
   "inbox.notifyRequests": "Me prévenir quand un passager cherche un trajet sur une route que j'ai faite ou dans une de mes zones",
   "inbox.offer": "Proposer ce trajet",
   "inbox.offerFilled": "Votre trajet habituel est rempli ci-dessous, avec un départ adapté à {name}. Vérifiez-le et cliquez sur « Proposer le trajet ».",

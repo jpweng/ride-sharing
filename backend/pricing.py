@@ -178,6 +178,10 @@ def booking_price_chf(drive: dict, ride_km: float, passengers: int) -> float | N
     drive_km = drive["route_distance_m"] / 1000.0 if drive.get("route_distance_m") else None
     if not drive_km or not ride_km or ride_km <= 0:
         return None
+    # A booking keeps its distance to 100 m: the whole drive is priced as
+    # the drive itself, not a few metres short of it.
+    if abs(ride_km - drive_km) < 0.1:
+        ride_km = drive_km
     share = _driver_price(drive, drive_km) * min(1.0, ride_km / drive_km)
     return passenger_price_chf(share, ride_km, max(1, passengers))
 

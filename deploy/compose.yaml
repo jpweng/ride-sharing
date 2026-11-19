@@ -11,6 +11,8 @@
 #   ANDROID_CERT_SHA256     signing-certificate fingerprint(s) of the Android
 #                           app, comma-separated, for /.well-known/assetlinks.json
 #                           (optional; see mobile/android/README.md)
+#   EMAIL_NOTIFICATIONS     "on" (default when empty) or "off": notifications
+#                           also sent by email, see docs/email-notifications.md
 #   REPORTS_EMAIL           where users' reports of a problem are emailed
 #                           (optional; see docs/ratings-and-reports.md)
 #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_ID, APPLE_TEAM_ID,
@@ -86,6 +88,9 @@ services:
       SES_REGION: ${AWS_REGION}
       # For the links in emails, e.g. https://rideandrail.ch.
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # Notifications also sent by email (backend/notify_email.py): "on"
+      # (default when empty) or "off".
+      EMAIL_NOTIFICATIONS: ${EMAIL_NOTIFICATIONS:-on}
       # Where reports of a problem are emailed (backend/reports.py). Empty:
       # they are only logged and listed by admin.py.
       REPORTS_EMAIL: ${REPORTS_EMAIL:-}

@@ -6,14 +6,19 @@ A passenger's searches and ride requests:
                               a few drivers who made the trip before are
                               told (see notify.py).
   GET/DELETE /api/requests -- a passenger's open ride requests; cancel one.
+  POST /api/requests/{id}/accept -- a driver takes a passenger's request: the
+                              drive is posted and the passenger booked on it
+                              (see bookings.accept_request).
 """
 from datetime import datetime
 
 from fastapi import APIRouter
+from pydantic import BaseModel, Field, model_validator
 
+import bookings
 import database as db
 import notify
-from api import Member, Writer, api_error
+from api import LatLon, Member, Writer, api_error
 from routes.match import MatchRequest
 
 router = APIRouter()
@@ -70,3 +75,40 @@ def cancel_ride_request(request_id: int, user: Writer):
         raise api_error(403, "not_your_request", "Only the passenger who made this request can cancel it")
     db.set_request_status(request_id, "cancelled")
     return {"cancelled": request_id}
+
+
+class RequestAccept(BaseModel):
+    # The seats the driver offers in all, the passenger's included.
+    seats_available: int = Field(default=bookings.DEFAULT_SEATS_OFFERED, ge=1, le=8)
+    note: str | None = Field(default=None, max_length=bookings.MAX_NOTE_CHARS)
+    price_chf: float | None = Field(default=None, ge=0, le=1000)
+    # The driver's own trip (their usual one, from the notification); all
+    # three or none: without them, the passenger's trip at their time.
+    origin: LatLon | None = None
+    destination: LatLon | None = None
+    departure_time: str | None = None  # ISO 8601
+
+    @model_validator(mode="after")
+    def _a_whole_trip_or_none(self):
+        given = [self.origin is not None, self.destination is not None, self.departure_time is not None]
+        if any(given) and not all(given):
+            raise ValueError("give origin, destination and departure_time together, or none of them")
+        return self
+
+
+@router.post("/api/requests/{request_id}/accept")
+def accept_ride_request(request_id: int, payload: RequestAccept, user: Writer):
+    request = db.get_open_request(request_id)
+    if not request:
+        raise api_error(404, "request_not_found", "Ride request not found")
+    trip = None
+    if payload.origin:
+        try:
+            datetime.fromisoformat(payload.departure_time)
+        except ValueError:
+            raise api_error(400, "invalid_time", "departure_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
+        trip = {
+            "origin": payload.origin.model_dump(), "destination": payload.destination.model_dump(),
+            "departure_time": payload.departure_time,
+        }
+    return bookings.accept_request(request, user, payload.seats_available, payload.note, trip, payload.price_chf)

@@ -25,8 +25,9 @@ opentransportdata.swiss when `OJP_API_KEY` is set (see [Train fares](docs/train-
 
 **Booking:** a passenger asks for seats on a drive, from a search result or the list of drives,
 with a short message; the driver accepts or declines, and either can cancel afterwards. Accepting
-takes the seats from the drive, and each step lands in the other one's inbox. See
-[Booking](docs/booking.md).
+takes the seats from the drive, and each step lands in the other one's inbox. A driver can also
+accept a passenger's ride request directly: the drive is posted and the passenger booked in one
+step, and the first driver to accept gets it. See [Booking](docs/booking.md).
 
 **Planned next: ride predictions.** The app spots people's recurring trips and offers to publish
 their next drives, or request their next rides, after they confirm. Designed, not built yet.
@@ -90,6 +91,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [Deploying to AWS](docs/deploying-to-aws.md): the server, Terraform, CI deploys, domain, emails,
   operations
 - [Routing](docs/routing.md): our own OSRM server and its monthly data
+- [Notifications by email](docs/email-notifications.md): what is emailed and when, quiet hours,
+  turning them off
 - [Ratings and reports](docs/ratings-and-reports.md): stars after a ride, what is shown,
   reporting a problem, how the team handles reports
 - [Booking](docs/booking.md): asking for a seat, the driver's answer, cancelling, seats and prices
@@ -115,6 +118,7 @@ backend/
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
   search.py       upcoming drives that fit a trip (used by searches and ride requests)
   notify.py       ride requests: which drivers are told, limits, the inbox
+  notify_email.py notifications also sent by email: quiet hours, switches, the unsubscribe link
   areas.py        driver areas: the places a driver usually drives from or to, with a radius
   pricing.py      ride prices: the driver's price band, what each passenger pays
   ratings.py      ratings after a ride: who rates whom, the averages shown
