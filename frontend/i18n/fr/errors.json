@@ -1,5 +1,7 @@
 {
   "errors.account_banned": "Ce compte est fermé.",
+  "errors.already_rated": "Vous avez déjà évalué ce trajet.",
+  "errors.already_reported": "Vous avez déjà signalé ce trajet.",
   "errors.already_requested": "Vous avez déjà demandé une place sur ce trajet.",
   "errors.area_not_found": "Cette zone n'existe plus.",
   "errors.booking_not_found": "Cette réservation n'existe plus.",
@@ -20,6 +22,7 @@
   "errors.no_seats_left": "Ce trajet n'a pas autant de places libres.",
   "errors.not_bookable": "Les trajets de démo sont fictifs et ne peuvent pas être réservés.",
   "errors.not_on_route": "Ce trajet ne passe pas près de ce départ et de cette destination.",
+  "errors.not_rateable": "Seul un trajet réservé peut être évalué.",
   "errors.not_signed_in": "Connectez-vous d'abord, s'il vous plaît.",
   "errors.not_your_drive": "Seule la personne qui a proposé ce trajet peut l'annuler.",
   "errors.not_your_request": "Seul le passager qui a fait cette demande peut l'annuler.",
@@ -36,6 +39,7 @@
   "errors.request_not_open": "Cette demande de trajet n'est plus ouverte : un autre conducteur l'a acceptée, ou elle a été annulée.",
   "errors.request_too_far": "Une demande de trajet peut être faite au plus 14 jours à l'avance.",
   "errors.request_too_soon": "Une demande de trajet doit être faite au moins 1 heure à l'avance.",
+  "errors.ride_not_over": "Ce trajet n'est pas encore terminé.",
   "errors.social_cancelled": "La connexion n'a pas été terminée. Réessayez ou utilisez le lien par e-mail.",
   "errors.social_email_unverified": "Ce compte n'a pas d'adresse e-mail confirmée et ne peut pas servir à la connexion ici. Utilisez plutôt le lien par e-mail.",
   "errors.social_failed": "La connexion n'a pas fonctionné. Réessayez, s'il vous plaît, ou utilisez le lien par e-mail.",

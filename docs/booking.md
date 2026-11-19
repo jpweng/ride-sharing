@@ -55,8 +55,10 @@ passenger booked on it, accepted, in one step (`bookings.accept_request()`).
 - *Offer this drive* is still there, to change the trip or the time first; the passenger then asks
   for a seat as usual.
 
-Not there yet: paying through the app, ratings, and what happens after late cancellations or
-no-shows.
+After the ride, both sides are asked to [rate it](ratings-and-reports.md), and either can report
+a problem to the team at any time.
+
+Not there yet: paying through the app, and what happens after late cancellations or no-shows.
 
 A booking's statuses: `requested`, then `accepted` or `declined` by the driver;
 `cancelled_by_passenger` or `cancelled_by_driver` afterwards. The inbox's kinds:

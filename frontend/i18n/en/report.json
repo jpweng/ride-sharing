@@ -1,0 +1,13 @@
+{
+  "report.details": "What happened? (optional)",
+  "report.hint": "Only the Ride and Rail team reads this. {name} isn't told.",
+  "report.link": "Report a problem",
+  "report.reasonBehaviour": "Inappropriate behaviour",
+  "report.reasonLate": "Very late",
+  "report.reasonNoShow": "Didn't show up",
+  "report.reasonOther": "Something else",
+  "report.reasonUnsafe": "Unsafe driving",
+  "report.send": "Send report",
+  "report.sent": "Thank you. Your report has reached the team.",
+  "report.title": "What went wrong?"
+}

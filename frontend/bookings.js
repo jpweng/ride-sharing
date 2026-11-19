@@ -29,6 +29,16 @@ function loadBookings() {
   return bookingsLoaded;
 }
 
+// Scripts loaded after this one (ratings.js) add to the cards of bookings:
+// each function gets the booking, its element, and the role of the OTHER
+// side ("driver" on the passenger's own bookings, "passenger" on a
+// driver's passengers and requests).
+const BOOKING_EXTRAS = [];
+
+function bookingExtras(booking, element, otherRole) {
+  BOOKING_EXTRAS.forEach((extra) => extra(booking, element, otherRole));
+}
+
 function bookingStatusText(status) {
   if (status === "requested") return t("booking.statusRequested");
   if (status === "accepted") return t("booking.statusAccepted");
@@ -162,7 +172,7 @@ function passengerRow(b) {
     <div class="status-msg"></div>
   `;
   row.addEventListener("click", (e) => {
-    if (!e.target.closest("input, button")) showBookingOnMap(b);
+    if (!e.target.closest("input, button, select")) showBookingOnMap(b);
   });
 
   // After the driver's answer the drive's seats have changed: reload both.
@@ -188,6 +198,7 @@ function passengerRow(b) {
       }),
     );
   }
+  bookingExtras(b, row, "passenger");
   return row;
 }
 
@@ -259,6 +270,8 @@ function myBookingCard(b) {
       showBoxError(card, err.message);
     }
   });
+  // After the cancel button is wired: extras may add buttons of their own.
+  bookingExtras(b, card, "driver");
   return card;
 }
 

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 import bookings
 import database as db
 import demo_drives
+import ratings
 from api import LatLon, Member, Writer, api_error
 
 router = APIRouter()
@@ -58,7 +59,8 @@ def request_booking(drive_id: int, payload: BookingCreate, user: Writer):
 
 @router.get("/api/bookings")
 def get_bookings(user: Member):
-    return bookings.for_user(user)
+    # Each with what the other side was rated on earlier rides.
+    return ratings.with_booking_ratings(bookings.for_user(user))
 
 
 @router.post("/api/bookings/{booking_id}/accept")

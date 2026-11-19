@@ -13,6 +13,8 @@
 #                           (optional; see mobile/android/README.md)
 #   EMAIL_NOTIFICATIONS     "on" (default when empty) or "off": notifications
 #                           also sent by email, see docs/email-notifications.md
+#   REPORTS_EMAIL           where users' reports of a problem are emailed
+#                           (optional; see docs/ratings-and-reports.md)
 #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_ID, APPLE_TEAM_ID,
 #   APPLE_KEY_ID, APPLE_PRIVATE_KEY
 #                           sign-in with Google and Apple (optional: each is
@@ -89,6 +91,9 @@ services:
       # Notifications also sent by email (backend/notify_email.py): "on"
       # (default when empty) or "off".
       EMAIL_NOTIFICATIONS: ${EMAIL_NOTIFICATIONS:-on}
+      # Where reports of a problem are emailed (backend/reports.py). Empty:
+      # they are only logged and listed by admin.py.
+      REPORTS_EMAIL: ${REPORTS_EMAIL:-}
       # Sign-in with Google and Apple (backend/social.py). Empty: not offered.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

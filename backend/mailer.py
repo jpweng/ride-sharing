@@ -17,7 +17,7 @@ placeholders, formal address).
 import logging
 import os
 from functools import cache
-from html import escape
+from html import escape  # noqa: F401 (also for reports.py)
 
 import translations
 

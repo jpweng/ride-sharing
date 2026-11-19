@@ -73,6 +73,9 @@ that file is an empty list.
 
 Optional repo variable: `EMAIL_NOTIFICATIONS`, `off` to stop the emails about notifications (see
 [Notifications by email](email-notifications.md)); unset or `on`, they are sent.
+Optional repo variable: `REPORTS_EMAIL`, the address users' reports of a problem are emailed to
+(see [Ratings and reports](ratings-and-reports.md)); unset, they are only logged and listed by
+`admin.py reports`.
 
 Optional, for sign-in with Google and Apple: the repo variables `GOOGLE_CLIENT_ID`, `APPLE_CLIENT_ID`,
 `APPLE_TEAM_ID`, `APPLE_KEY_ID` and the repo secrets `GOOGLE_CLIENT_SECRET`, `APPLE_PRIVATE_KEY`; see

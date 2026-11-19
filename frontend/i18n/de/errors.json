@@ -1,5 +1,7 @@
 {
   "errors.account_banned": "Dieses Konto ist gesperrt.",
+  "errors.already_rated": "Sie haben diese Fahrt bereits bewertet.",
+  "errors.already_reported": "Sie haben diese Fahrt bereits gemeldet.",
   "errors.already_requested": "Sie haben für diese Fahrt bereits einen Platz angefragt.",
   "errors.area_not_found": "Dieses Gebiet gibt es nicht mehr.",
   "errors.booking_not_found": "Diese Buchung gibt es nicht mehr.",
@@ -20,6 +22,7 @@
   "errors.no_seats_left": "Auf dieser Fahrt sind nicht so viele Plätze frei.",
   "errors.not_bookable": "Demo-Fahrten sind erfunden und können nicht gebucht werden.",
   "errors.not_on_route": "Diese Fahrt führt nicht in der Nähe dieses Starts und Ziels vorbei.",
+  "errors.not_rateable": "Nur eine gebuchte Fahrt kann bewertet werden.",
   "errors.not_signed_in": "Bitte melden Sie sich zuerst an.",
   "errors.not_your_drive": "Nur wer die Fahrt angeboten hat, kann sie absagen.",
   "errors.not_your_request": "Nur die Person, die diese Anfrage gestellt hat, kann sie zurückziehen.",
@@ -36,6 +39,7 @@
   "errors.request_not_open": "Diese Fahrtanfrage ist nicht mehr offen: Jemand anderes hat sie übernommen, oder sie wurde zurückgezogen.",
   "errors.request_too_far": "Eine Fahrtanfrage ist höchstens 14 Tage im Voraus möglich.",
   "errors.request_too_soon": "Eine Fahrtanfrage muss mindestens 1 Stunde im Voraus erfolgen.",
+  "errors.ride_not_over": "Diese Fahrt ist noch nicht zu Ende.",
   "errors.social_cancelled": "Die Anmeldung wurde nicht abgeschlossen. Versuchen Sie es noch einmal oder verwenden Sie den Link per E-Mail.",
   "errors.social_email_unverified": "Dieses Konto hat keine bestätigte E-Mail-Adresse und kann hier nicht zur Anmeldung dienen. Verwenden Sie stattdessen den Link per E-Mail.",
   "errors.social_failed": "Die Anmeldung hat nicht funktioniert. Bitte versuchen Sie es noch einmal oder verwenden Sie den Link per E-Mail.",

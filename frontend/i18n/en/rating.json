@@ -1,0 +1,10 @@
+{
+  "rating.askDriver": "How was your ride with {name}?",
+  "rating.askPassenger": "How was {name} as a passenger?",
+  "rating.badge": "★ {average} ({count})",
+  "rating.done": "You rated this ride. Thank you.",
+  "rating.hintDriver": "Average of the stars passengers gave this driver, and how many ratings",
+  "rating.hintPassenger": "Average of the stars drivers gave this passenger, and how many ratings",
+  "rating.stars.one": "{count} star",
+  "rating.stars.other": "{count} stars"
+}

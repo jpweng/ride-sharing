@@ -1,0 +1,13 @@
+{
+  "report.details": "Che cosa è successo? (facoltativo)",
+  "report.hint": "Lo legge solo il team di Ride and Rail. {name} non viene informato.",
+  "report.link": "Segnalare un problema",
+  "report.reasonBehaviour": "Comportamento inappropriato",
+  "report.reasonLate": "Molto in ritardo",
+  "report.reasonNoShow": "Non si è presentato",
+  "report.reasonOther": "Altro",
+  "report.reasonUnsafe": "Guida pericolosa",
+  "report.send": "Inviare la segnalazione",
+  "report.sent": "Grazie. La sua segnalazione è arrivata al team.",
+  "report.title": "Che cosa non è andato?"
+}

@@ -1,5 +1,7 @@
 {
   "errors.account_banned": "Questo account è chiuso.",
+  "errors.already_rated": "Ha già valutato questo viaggio.",
+  "errors.already_reported": "Ha già segnalato questo viaggio.",
   "errors.already_requested": "Ha già chiesto un posto su questo viaggio.",
   "errors.area_not_found": "Questa zona non esiste più.",
   "errors.booking_not_found": "Questa prenotazione non esiste più.",
@@ -20,6 +22,7 @@
   "errors.no_seats_left": "Su questo viaggio non ci sono così tanti posti liberi.",
   "errors.not_bookable": "I viaggi demo sono fittizi e non si possono prenotare.",
   "errors.not_on_route": "Questo viaggio non passa vicino a questa partenza e a questa destinazione.",
+  "errors.not_rateable": "Si può valutare solo un viaggio prenotato.",
   "errors.not_signed_in": "Acceda prima, per favore.",
   "errors.not_your_drive": "Solo chi ha offerto il viaggio può annullarlo.",
   "errors.not_your_request": "Solo il passeggero che ha fatto questa richiesta può annullarla.",
@@ -36,6 +39,7 @@
   "errors.request_not_open": "Questa richiesta di passaggio non è più aperta: un altro conducente l'ha accettata, oppure è stata annullata.",
   "errors.request_too_far": "Una richiesta di passaggio può essere fatta al massimo 14 giorni prima.",
   "errors.request_too_soon": "Una richiesta di passaggio va fatta almeno 1 ora prima.",
+  "errors.ride_not_over": "Questo viaggio non è ancora finito.",
   "errors.social_cancelled": "L'accesso non è stato completato. Riprovi oppure usi il link via e-mail.",
   "errors.social_email_unverified": "Questo account non ha un indirizzo e-mail confermato e non può essere usato per accedere qui. Usi invece il link via e-mail.",
   "errors.social_failed": "L'accesso non ha funzionato. Riprovi oppure usi il link via e-mail.",

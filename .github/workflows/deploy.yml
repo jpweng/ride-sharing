@@ -102,6 +102,8 @@ jobs:
             "${{ vars.APPLE_CLIENT_ID }}" "${{ vars.APPLE_TEAM_ID }}" "${{ vars.APPLE_KEY_ID }}" "$APPLE_PRIVATE_KEY")
           # EMAIL_NOTIFICATIONS: optional repo variable, "on" (or unset) or "off".
           ENV_FILE=$(printf '%s\nEMAIL_NOTIFICATIONS=%s\n' "$ENV_FILE" "${{ vars.EMAIL_NOTIFICATIONS }}")
+          # REPORTS_EMAIL: optional repo variable, where reports of a problem are emailed.
+          ENV_FILE=$(printf '%s\nREPORTS_EMAIL=%s\n' "$ENV_FILE" "${{ vars.REPORTS_EMAIL }}")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \

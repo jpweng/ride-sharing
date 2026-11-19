@@ -1,0 +1,10 @@
+{
+  "rating.askDriver": "Wie war Ihre Fahrt mit {name}?",
+  "rating.askPassenger": "Wie war {name} als Mitfahrerin oder Mitfahrer?",
+  "rating.badge": "★ {average} ({count})",
+  "rating.done": "Sie haben diese Fahrt bewertet. Vielen Dank.",
+  "rating.hintDriver": "Durchschnitt der Sterne, die Mitfahrende dieser Person am Steuer gegeben haben, und Anzahl Bewertungen",
+  "rating.hintPassenger": "Durchschnitt der Sterne, die Fahrende dieser mitfahrenden Person gegeben haben, und Anzahl Bewertungen",
+  "rating.stars.one": "{count} Stern",
+  "rating.stars.other": "{count} Sterne"
+}
