@@ -1,21 +1,20 @@
 """
 POST /api/match -- a passenger asks for a ride; the app finds the drives
-whose route passes within their pickup and drop-off radii, around their
-time (see matching.py) and a few just outside them, adds a last-mile
-transit connection from the drop-off for the best ones, and also offers a
-pure-public-transport option (see transit.py). Matches say whether they're
-"bookable": demo drives aren't.
+whose route passes near their start and their destination, around their
+time (search.py's fixed limits, see matching.py), the best first, adds a
+last-mile transit connection from the drop-off for the best ones, and also
+offers a pure-public-transport option (see transit.py). Matches say
+whether they're "bookable": demo drives aren't.
 """
 from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 import auth
 import bookings
 import database as db
-import matching
 import pricing
 import ratings
 import search
@@ -37,11 +36,6 @@ class MatchRequest(BaseModel):
     origin: LatLon
     destination: LatLon
     requested_time: str  # ISO 8601
-    # How far from their start / destination the passenger will meet the
-    # driver, and how far from requested_time the pickup may be.
-    pickup_radius_km: float = Field(default=matching.DEFAULT_PICKUP_RADIUS_KM, ge=0.5, le=50)
-    dropoff_radius_km: float = Field(default=matching.DEFAULT_DROPOFF_RADIUS_KM, ge=0.5, le=50)
-    time_tolerance_min: int = Field(default=matching.DEFAULT_TIME_TOLERANCE_MIN, ge=0, le=360)
 
 
 @router.post("/api/match")
@@ -71,19 +65,13 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     origin_place = payload.origin.name if payload.origin.kind == "place" else None
     destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
-    driver_matches, outside_matches = search.with_outside(
-        passenger_origin, passenger_destination, payload.requested_time,
-        pickup_radius_km=payload.pickup_radius_km,
-        dropoff_radius_km=payload.dropoff_radius_km,
-        time_tolerance_min=payload.time_tolerance_min,
-    )
+    driver_matches = search.upcoming_matches(passenger_origin, passenger_destination, payload.requested_time)
 
     # What the passenger pays for their part of the drive, given the seats
     # already booked, and the train fare for it (see pricing.py).
-    bookings.with_seats_booked(driver_matches + outside_matches)
-    ratings.with_driver_ratings(driver_matches + outside_matches)
+    bookings.with_seats_booked(driver_matches)
+    ratings.with_driver_ratings(driver_matches)
     driver_matches = [pricing.with_ride_prices(m) for m in driver_matches]
-    outside_matches = [pricing.with_ride_prices(m) for m in outside_matches]
 
     # A public transport connection from the drop-off to the passenger's
     # actual destination, when it's too far to walk.
@@ -118,8 +106,5 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
 
     return {
         "driver_matches": driver_matches,
-        # Just outside the passenger's circles or time flexibility, marked
-        # as such: they may like them anyway. No last-mile lookups.
-        "outside_matches": outside_matches,
         "transit_option": transit_option,
     }

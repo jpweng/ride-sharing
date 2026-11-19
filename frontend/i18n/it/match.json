@@ -4,10 +4,6 @@
   "match.lastMile": "Ultimo tratto:",
   "match.later": "{duration} più tardi",
   "match.onTime": "puntuale",
-  "match.outside": "Fuori dalla sua selezione:",
-  "match.outsideDropoff": "discesa oltre il suo cerchio di {km} km",
-  "match.outsidePickup": "salita oltre il suo cerchio di {km} km",
-  "match.outsideTime": "orario oltre la sua flessibilità di {tolerance}",
   "match.pickup": "Salita ~{time}, a {km} km dalla sua partenza",
   "match.rideKm": "{km} km insieme"
 }

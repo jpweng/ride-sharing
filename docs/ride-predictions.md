@@ -67,8 +67,8 @@ Rules (in `backend/notify.py`):
 
 1. **Candidates:** drivers with a past drive in the last 13 weeks that:
    - leaves within **±60 min** of the requested time of day;
-   - has a route passing within the passenger's pickup and drop-off radii, in that order
-     (`matching.match_drive`, the same rule as a search).
+   - has a route passing near the passenger's start and destination, in that order
+     (`matching.match_drive`, the same rule and the same 10 km as a search).
 2. **Candidates by area**, after those: drivers who saved an area (`backend/areas.py`) the
    request starts or ends in, whether or not they ever made the trip. A new driver has no history,
    and a driver living at one end may well go that way. Drivers whose areas cover both ends (home
@@ -129,8 +129,9 @@ recipient turned emails off or read it meanwhile: see
 
 ## Data
 
-- `open_requests`: the passenger, start and end, time, pickup/drop-off radii and time tolerance (the
-  same as a search), status (`open` / `cancelled`; past ones have expired), whether the extra round
+- `open_requests`: the passenger, start and end, time, the search's limits when it was made
+  (`pickup_radius_km`, `dropoff_radius_km`, `time_tolerance_min`: no longer the passenger's choice,
+  see `backend/search.py`), status (`open` / `cancelled`; past ones have expired), whether the extra round
   ran. With predictions: whether it came from a suggestion. Whether a request is a demo request
   isn't stored: it follows from the passenger's name (`notify.is_demo_request`).
 - `notifications`: recipient, kind (`request_for_driver` / `drive_for_passenger`), the request(s)

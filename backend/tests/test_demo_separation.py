@@ -184,10 +184,10 @@ def test_demo_drives_are_labelled_and_not_bookable(isolated_db, force_haversine,
     assert drive_routes.get_drive(real_id)["bookable"] is True
 
 
-def test_rides_just_outside_the_selection_say_whether_bookable(isolated_db, force_haversine, fake_transit):
-    _upcoming_drive(DEMO_DRIVER, is_demo=True, at="20:30")  # outside the default time flexibility
-    outside = _match()["outside_matches"]
-    assert [(m["driver_name"], m["bookable"]) for m in outside] == [(DEMO_DRIVER, False)]
+def test_rides_far_from_the_requested_time_say_whether_bookable(isolated_db, force_haversine, fake_transit):
+    _upcoming_drive(DEMO_DRIVER, is_demo=True, at="20:30")  # hours after the requested time
+    found = _match()["driver_matches"]
+    assert [(m["driver_name"], m["bookable"]) for m in found] == [(DEMO_DRIVER, False)]
 
 
 def test_a_better_demo_drive_still_comes_first(isolated_db, force_haversine, fake_transit):
@@ -223,7 +223,7 @@ def test_switched_off_demo_drives_are_hidden_everywhere(isolated_db, demo_networ
         drive_routes.get_drive(demo_id)
     assert e.value.status_code == 404
     result = _match()
-    assert [m["id"] for m in result["driver_matches"] + result["outside_matches"]] == [real_id]
+    assert [m["id"] for m in result["driver_matches"]] == [real_id]
 
     # A passenger told about it earlier no longer sees it in their inbox.
     request = db.create_open_request("Marie", VEVEY, FRIBOURG, f"{TOMORROW}T18:30", 5, 5, 60)
