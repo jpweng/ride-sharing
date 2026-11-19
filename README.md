@@ -90,6 +90,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [Deploying to AWS](docs/deploying-to-aws.md): the server, Terraform, CI deploys, domain, emails,
   operations
 - [Routing](docs/routing.md): our own OSRM server and its monthly data
+- [Notifications by email](docs/email-notifications.md): what is emailed and when, quiet hours,
+  turning them off
 - [Booking](docs/booking.md): asking for a seat, the driver's answer, cancelling, seats and prices
 - [Load test](docs/load-test.md): the event-evening simulation and its results
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
@@ -113,6 +115,7 @@ backend/
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
   search.py       upcoming drives that fit a trip (used by searches and ride requests)
   notify.py       ride requests: which drivers are told, limits, the inbox
+  notify_email.py notifications also sent by email: quiet hours, switches, the unsubscribe link
   areas.py        driver areas: the places a driver usually drives from or to, with a radius
   pricing.py      ride prices: the driver's price band, what each passenger pays
   bookings.py     bookings: asking for seats on a drive, the driver's answer, cancelling

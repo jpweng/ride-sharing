@@ -1426,6 +1426,7 @@ async function loadInbox() {
 
 function renderInbox(data) {
   document.getElementById("inbox-notify-requests").checked = data.notify_requests;
+  document.getElementById("inbox-notify-email").checked = data.notify_email;
   const paused = document.getElementById("inbox-paused");
   paused.hidden = !data.paused_until;
   if (data.paused_until) {
@@ -1585,6 +1586,7 @@ function fmtDate(iso) {
 }
 
 document.getElementById("inbox-notify-requests").addEventListener("change", (e) => updateNotificationSettings({ notify_requests: e.target.checked }));
+document.getElementById("inbox-notify-email").addEventListener("change", (e) => updateNotificationSettings({ notify_email: e.target.checked }));
 document.getElementById("inbox-resume").addEventListener("click", () => updateNotificationSettings({ resume: true }));
 
 async function updateNotificationSettings(changes) {
