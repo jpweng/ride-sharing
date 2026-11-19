@@ -232,11 +232,15 @@ def sbb_booking_url(from_name: str, from_id: str, to_name: str, to_id: str, depa
     return f"{SBB_TIMETABLE_URL}?{urlencode(params, safe='/~,')}"
 
 
-def get_connections(from_station: str, to_station: str, when_iso: str | None = None, limit: int = 3) -> list[dict]:
+def get_connections(
+    from_station: str, to_station: str, when_iso: str | None = None, limit: int = 3, arrive_by: bool = False,
+) -> list[dict]:
     """
     Fetch up to `limit` journey options between two named stations.
-    when_iso: ISO 8601 datetime string for the desired departure time;
-    defaults to "now" (the API's own default) if omitted/unparseable.
+    when_iso: ISO 8601 datetime string for the desired departure time, or,
+    with arrive_by, the time to be there by (the journeys that arrive by
+    then, the latest last); defaults to "now" (the API's own default) if
+    omitted/unparseable.
     Returns [] if the API is unreachable or returns no connections. Answers
     are cached for CONNECTIONS_TTL_S.
     """
@@ -246,6 +250,8 @@ def get_connections(from_station: str, to_station: str, when_iso: str | None = N
             dt = datetime.fromisoformat(when_iso)
             params["date"] = dt.strftime("%Y-%m-%d")
             params["time"] = dt.strftime("%H:%M")
+            if arrive_by:
+                params["isArrivalTime"] = 1
         except ValueError:
             pass
 

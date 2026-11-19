@@ -24,5 +24,6 @@
   "ride.submit": "Find a ride",
   "ride.title": "Find a ride",
   "ride.transitTitle": "Public transport alternative",
-  "ride.when": "When"
+  "ride.when": "When",
+  "ride.widerNote": "No ride you can book passes within {near} km of your start and destination. The ones marked “further away” pass within {far} km: see how you would get to the pickup and from the drop-off."
 }

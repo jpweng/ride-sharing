@@ -1,5 +1,6 @@
-/* Public transport: the last-mile connection under a match, the public
-   transport option, and the connection list (app.js). Linked after style.css. */
+/* Public transport: the connections to the pickup and from the drop-off under
+   a match, the public transport option, and the connection list (app.js).
+   Linked after style.css. */
 
 .last-mile, .transit-box {
   margin-top: 8px;
@@ -86,3 +87,13 @@
   text-decoration: none;
 }
 .pt-book:hover { background: var(--accent-dark); }
+
+/* A drive found further away than a search usually looks (search.py), and
+   the sentence above the results that says so. */
+.badge.wider {
+  background: #fff4e5;
+  color: #995c00;
+  font-weight: 600;
+}
+
+.wider-note { margin-bottom: 8px; }

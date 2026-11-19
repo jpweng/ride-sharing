@@ -4,7 +4,8 @@ A demo of a ride-sharing app for Switzerland that combines car rides with public
 <https://rideandrail.ch>. Drivers post drives; passengers either browse them or ask for a match based
 on route corridor matching (drivers whose route passes near the passenger's start and destination,
 around their time; the passenger gives only those three, and the closest come first), with a
-public-transport comparison and last-mile-transit suggestion via [transport.opendata.ch](https://transport.opendata.ch).
+public-transport comparison, and public transport to the pickup and from the drop-off where they are
+too far to walk, via [transport.opendata.ch](https://transport.opendata.ch).
 
 See [RIDESHARE_IMPLEMENTATION_BRIEF.md](RIDESHARE_IMPLEMENTATION_BRIEF.md) for the full design rationale.
 
@@ -101,6 +102,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   reporting a problem, how the team handles reports
 - [Profiles](docs/profiles.md): the optional photo, description, habits and car; who may see a
   profile; photos on S3
+- [Search limits](docs/search-limits.md): how far a search looks, and when public transport to
+  the pickup and from the drop-off is proposed
 - [Booking](docs/booking.md): asking for a seat, the driver's answer, cancelling, seats and prices
 - [Load test](docs/load-test.md): the event-evening simulation and its results
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
@@ -123,6 +126,7 @@ backend/
   migrations/     schema changes, one idempotent file each (YYYYMMDDHHMM_name.py), in name order
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)
   search.py       upcoming drives that fit a trip, within fixed limits (searches, ride requests)
+  transit_legs.py public transport to a match's pickup and from its drop-off, when it makes sense
   notify.py       ride requests: which drivers are told, limits, the inbox
   notify_email.py notifications also sent by email: quiet hours, switches, the unsubscribe link
   areas.py        driver areas: the places a driver usually drives from or to, with a radius

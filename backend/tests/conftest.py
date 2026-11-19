@@ -72,7 +72,9 @@ class FakeTransit:
     coordinate match. `place_stations` maps a town name (as the user
     picked it) -> the station station_for_place should return for it.
     `connections` maps (from_name, to_name) -> a list of connection dicts
-    (or leave a pair out / map it to [] for "no route found").
+    (or leave a pair out / map it to [] for "no route found"), or a function
+    of the time asked for that returns one. `connection_queries` lists every
+    lookup as (from, to, when, arrive_by).
     """
 
     def __init__(self):
@@ -80,6 +82,7 @@ class FakeTransit:
         self.place_stations = {}
         self.connections = {}
         self.connection_calls = []
+        self.connection_queries = []
         self.nearest_station_calls = []
 
     def add_station(self, name, lat, lon):
@@ -109,9 +112,11 @@ class FakeTransit:
         distance_m = matching.haversine_km(lat, lon, closest["lat"], closest["lon"]) * 1000.0
         return {"name": closest["name"], "lat": closest["lat"], "lon": closest["lon"], "distance_m": distance_m}
 
-    def get_connections(self, from_station, to_station, when_iso=None, limit=3):
+    def get_connections(self, from_station, to_station, when_iso=None, limit=3, arrive_by=False):
         self.connection_calls.append((from_station, to_station))
-        return self.connections.get((from_station, to_station), [])
+        self.connection_queries.append((from_station, to_station, when_iso, arrive_by))
+        connections = self.connections.get((from_station, to_station), [])
+        return connections(when_iso) if callable(connections) else connections
 
 
 @pytest.fixture

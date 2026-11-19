@@ -24,5 +24,6 @@
   "ride.submit": "Trovare un passaggio",
   "ride.title": "Trovare un passaggio",
   "ride.transitTitle": "Alternativa con i trasporti pubblici",
-  "ride.when": "Quando"
+  "ride.when": "Quando",
+  "ride.widerNote": "Nessun viaggio prenotabile passa a meno di {near} km dalla sua partenza e dalla sua destinazione. Quelli contrassegnati «più lontano» passano entro {far} km: verifichi come raggiungere il punto di salita e proseguire da quello di discesa."
 }

@@ -1115,12 +1115,13 @@ let lastResults = null;
 
 function renderResults() {
   const { data, origin, destination } = lastResults;
-  renderMatches(data.driver_matches, origin, destination);
+  renderMatches(data.driver_matches, origin, destination, data);
   renderTransitOption(data.transit_option);
 }
 
 // The drives that serve the trip, the best first (see backend/search.py).
-function renderMatches(matches, passengerOrigin, passengerDestination) {
+// `limits`: the search's answer, for its two distances.
+function renderMatches(matches, passengerOrigin, passengerDestination, limits = {}) {
   const container = document.getElementById("ride-matches");
   container.classList.remove("has-selection");
   document.getElementById("ride-matches-hint").hidden = !matches.length;
@@ -1129,6 +1130,16 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
     return;
   }
   container.innerHTML = "";
+  // Nothing bookable passes near: the search looked further away.
+  if (matches.some((m) => m.wider)) {
+    const note = document.createElement("div");
+    note.className = "hint wider-note";
+    note.textContent = t("ride.widerNote", {
+      near: fmtNumber(limits.search_radius_km),
+      far: fmtNumber(limits.wider_radius_km),
+    });
+    container.appendChild(note);
+  }
 
   L.marker([passengerOrigin.lat, passengerOrigin.lon], { title: t("map.pickupTitle") })
     .addTo(resultsLayer)
@@ -1194,7 +1205,9 @@ function renderMatches(matches, passengerOrigin, passengerDestination) {
       ${priceBadges(m)}
       ${timeDiffBadge(m.time_diff_min)}
       <span class="badge">${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</span>
-      ${renderLastMile(m.last_mile_transit)}
+      ${m.wider ? `<span class="badge wider">${esc(t("match.wider"))}</span>` : ""}
+      ${renderTransitLeg("match.firstMile", m.first_mile_transit)}
+      ${renderTransitLeg("match.lastMile", m.last_mile_transit)}
     `;
     container.appendChild(card);
     cardExtras("match", m, card);
@@ -1241,11 +1254,12 @@ function fmtMinutes(minutes) {
   return h ? `${h} h ${pad2(m)}` : `${m} min`;
 }
 
-function renderLastMile(lastMile) {
-  if (!lastMile) return "";
-  return `<div class="last-mile"><strong>${esc(t("match.lastMile"))}</strong> ${esc(lastMile.from_station)} → ${esc(
-    lastMile.to_station
-  )}${renderConnections(lastMile.connections)}</div>`;
+// Public transport to the pickup or from the drop-off (backend/transit_legs.py).
+function renderTransitLeg(labelKey, leg) {
+  if (!leg) return "";
+  return `<div class="last-mile"><strong>${esc(t(labelKey))}</strong> ${esc(leg.from_station)} → ${esc(
+    leg.to_station
+  )}${renderConnections(leg.connections)}</div>`;
 }
 
 function renderTransitOption(transit) {

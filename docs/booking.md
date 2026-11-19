@@ -82,7 +82,7 @@ Access levels and error codes as in [API](api.md).
   `seats` (1 by default) on the drive. `origin` and `destination` (`{name, lat, lon}`) are the
   passenger's own, both or neither (the whole drive); `note` is at most 300 characters. Returns the
   booking. 404 `drive_not_found`; 400 `not_bookable` (a demo drive), `own_drive`, `drive_departed`,
-  `no_seats_left`, `already_requested` (a request waiting, or an accepted booking), `not_on_route` (the drive doesn't pass within 60 km of both
+  `no_seats_left`, `already_requested` (a request waiting, or an accepted booking), `not_on_route` (the drive doesn't pass within 30 km of both
   ends, in that order)
 - `GET  /api/bookings` — signed in; `{as_passenger, as_driver}`: one's own bookings, and the
   requests and accepted bookings on one's drives, the soonest drive first. Each has its `status`,

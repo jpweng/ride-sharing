@@ -1,9 +1,11 @@
 """
 POST /api/match -- a passenger asks for a ride; the app finds the drives
 whose route passes near their start and their destination, around their
-time (search.py's fixed limits, see matching.py), the best first, adds a
-last-mile transit connection from the drop-off for the best ones, and also
-offers a pure-public-transport option (see transit.py). Matches say
+time (search.py's fixed limits, see matching.py), the best first; when
+none of them can be booked, also the bookable ones passing further away
+("wider"). The best ones get public transport to the pickup and from the
+drop-off where that makes sense (transit_legs.py), and a pure-public-
+transport option is offered next to them (see transit.py). Matches say
 whether they're "bookable": demo drives aren't.
 """
 from datetime import datetime
@@ -20,18 +22,10 @@ import profiles
 import ratings
 import search
 import transit
+import transit_legs
 from api import LatLon, api_error, current_session
 
 router = APIRouter()
-
-# Beyond this distance, a drive's drop-off point is considered "not the
-# passenger's actual destination", and we look for a last-mile transit leg.
-LAST_MILE_THRESHOLD_KM = 1.0
-
-# Last-mile connections are only looked up for the best few matches: each
-# costs a few calls to transport.opendata.ch, a free, rate-limited API.
-MAX_LAST_MILE_LOOKUPS = 5
-
 
 class MatchRequest(BaseModel):
     origin: LatLon
@@ -66,7 +60,7 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     origin_place = payload.origin.name if payload.origin.kind == "place" else None
     destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
-    driver_matches = search.upcoming_matches(passenger_origin, passenger_destination, payload.requested_time)
+    driver_matches = search.matches_for_search(passenger_origin, passenger_destination, payload.requested_time)
 
     # What the passenger pays for their part of the drive, given the seats
     # already booked, and the train fare for it (see pricing.py).
@@ -78,27 +72,9 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     if user and auth.profile_complete(user) and not (user["is_demo"] or found["session"]["is_demo"]):
         profiles.allow_candidates(user["id"], [m["driver_id"] for m in driver_matches if not m["is_demo"]])
 
-    # A public transport connection from the drop-off to the passenger's
-    # actual destination, when it's too far to walk.
-    destination_station = None
-    for i, m in enumerate(driver_matches):
-        m["last_mile_transit"] = None
-        if i >= MAX_LAST_MILE_LOOKUPS or m["dropoff"]["gap_km"] <= LAST_MILE_THRESHOLD_KM:
-            continue
-        if destination_station is None:
-            destination_station = transit.resolve_station(
-                payload.destination.lat, payload.destination.lon, destination_place
-            ) or {}
-        from_station = transit.nearest_named_station(m["dropoff"]["lat"], m["dropoff"]["lon"])
-        if not from_station or not destination_station or from_station["name"] == destination_station["name"]:
-            continue
-        connections = transit.get_connections(from_station["name"], destination_station["name"], m["dropoff"]["time"])
-        if connections:
-            m["last_mile_transit"] = {
-                "from_station": from_station["name"],
-                "to_station": destination_station["name"],
-                "connections": connections,
-            }
+    # Public transport to the pickup and from the drop-off, where they're too
+    # far to walk.
+    transit_legs.add_to(driver_matches, payload.origin, payload.destination)
 
     # Pure public-transport alternative, origin to final destination, for comparison.
     transit_option = transit.transit_option_for_trip(
@@ -112,4 +88,7 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     return {
         "driver_matches": driver_matches,
         "transit_option": transit_option,
+        # For the page's sentence about drives found further away.
+        "search_radius_km": search.SEARCH_RADIUS_KM,
+        "wider_radius_km": search.WIDER_RADIUS_KM,
     }
