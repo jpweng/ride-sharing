@@ -105,7 +105,9 @@ Rules (in `backend/notify.py`):
 | Back-off | After **3** notifications in a row without a reaction, the budget drops to 1 per week. After **5**, notifications pause for **30 days**, and the inbox says so with a "turn back on" button. | Silence is the clearest sign that we're bothering someone. Any reaction resets the count. |
 | Extra round | Once only: after **12 h** without an offer, if the trip is still more than 12 h away, up to **2** more drivers, of either kind | Gives the request a second chance without turning into a broadcast. |
 
-Each driver notification offers three choices:
+Each driver notification offers four choices:
+- **Accept this ride** posts the drive and books the passenger on it in one step; the first driver
+  to accept gets it ([Booking](booking.md)).
 - **Offer this drive** fills in the Driver form with the driver's usual start and end and the
   requested time; for a driver chosen by area, with the passenger's own trip and time, to adjust.
   The driver still confirms.

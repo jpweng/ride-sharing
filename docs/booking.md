@@ -35,20 +35,42 @@ can cancel afterwards. [backend/bookings.py](../backend/bookings.py) has the rul
   bookings are deleted 30 days after the departure
   ([data retention](demo-drives-and-data-retention.md)); they leave both pages a day after it.
 
+**Accepting a ride request directly.** The other way round, a driver shown a passenger's
+[ride request](ride-predictions.md) (in their inbox, or in the list of requests in their
+[areas](driver-areas.md)) can take it with *Accept this ride*: the drive is posted and the
+passenger booked on it, accepted, in one step (`bookings.accept_request()`).
+
+- **The first driver to accept gets it:** the request is closed in the same step, so a second
+  driver is told it's no longer open, and nothing is posted for them. It leaves the list of
+  requests, and other notified drivers' notifications say it's no longer open.
+- **Which drive:** the passenger's own trip at their time. A driver who was told because they
+  usually make a trip drives that trip instead, leaving so as to reach the passenger at their
+  time, and picks them up on the way; that trip must serve the request as a search would find it.
+- **Seats and price:** the driver says how many seats they offer in all (3 by default), the
+  passenger's included, so others can ask to join; the price is the default suggestion for the
+  drive. They can add a message for the passenger.
+- **The passenger** is told who drives them and finds the booking under *Your bookings*; they can
+  cancel it like any other, and the driver keeps the drive. The passengers of other open requests
+  the drive fits are told, as for any posted drive.
+- *Offer this drive* is still there, to change the trip or the time first; the passenger then asks
+  for a seat as usual.
+
 Not there yet: paying through the app, ratings, and what happens after late cancellations or
 no-shows.
 
 A booking's statuses: `requested`, then `accepted` or `declined` by the driver;
 `cancelled_by_passenger` or `cancelled_by_driver` afterwards. The inbox's kinds:
 `booking_requested`, `booking_accepted`, `booking_declined`, `booking_cancelled` (its details say
-`by` whom and what it `was`) and `booking_drive_cancelled`. They carry the drive and the
+`by` whom and what it `was`), `booking_drive_cancelled`, and `request_accepted` (a driver took the
+passenger's ride request, whose status becomes `accepted`). They carry the drive and the
 passenger's name in their `details`, as the booking itself may be gone.
 
 In the browser, all of it is [frontend/bookings.js](../frontend/bookings.js), a script of its own
 loaded after `app.js`. It adds to the cards of drives and to the inbox through two lists `app.js`
 offers to such scripts: `CARD_EXTRAS` (functions called with each card of a drive: the driver's
-own, a search result, the public list) and `NOTIFICATION_CARDS` (kind of notification → what fills
-its card).
+own, a search result, the public list), `NOTIFICATION_CARDS` (kind of notification → what fills
+its card) and `REQUEST_EXTRAS` (functions called with each card of a ride request shown to a
+driver, for *Accept this ride*).
 
 ## Endpoints
 
@@ -72,6 +94,15 @@ Access levels and error codes as in [API](api.md).
   or the driver (an accepted booking); 400 `booking_not_open`
 
 All three answer 404 `booking_not_found` for a booking the user has no part in.
+
+- `POST /api/requests/{id}/accept` `{seats_available, note, price_chf, origin, destination,
+  departure_time}` — may change; takes a passenger's open ride request: posts the drive and books
+  the passenger on it. `seats_available` (3 by default) is what the driver offers in all;
+  `price_chf` is optional (the default suggestion); `origin`, `destination` and `departure_time`
+  are the driver's own trip, all three or none (the passenger's trip at their time). Returns the
+  booking. 404 `request_not_found`; 400 `request_not_open` (taken, cancelled, past, or a demo
+  request), `own_request`, `not_on_route` (the driver's own trip doesn't serve it),
+  `price_too_high` / `price_too_low`, `drive_departed`
 
 Every drive and match also carries `seats_available`, its free seats, and `seats_booked`, those
 taken by accepted bookings.

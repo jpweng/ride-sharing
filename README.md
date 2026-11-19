@@ -25,8 +25,9 @@ opentransportdata.swiss when `OJP_API_KEY` is set (see [Train fares](docs/train-
 
 **Booking:** a passenger asks for seats on a drive, from a search result or the list of drives,
 with a short message; the driver accepts or declines, and either can cancel afterwards. Accepting
-takes the seats from the drive, and each step lands in the other one's inbox. See
-[Booking](docs/booking.md).
+takes the seats from the drive, and each step lands in the other one's inbox. A driver can also
+accept a passenger's ride request directly: the drive is posted and the passenger booked in one
+step, and the first driver to accept gets it. See [Booking](docs/booking.md).
 
 **Planned next: ride predictions.** The app spots people's recurring trips and offers to publish
 their next drives, or request their next rides, after they confirm. Designed, not built yet.

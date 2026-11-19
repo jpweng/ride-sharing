@@ -319,6 +319,86 @@ NOTIFICATION_CARDS.booking_drive_cancelled = bookingNotification(
   null,
 );
 
+NOTIFICATION_CARDS.request_accepted = bookingNotification(
+  (details, drive) => t("booking.inboxRequestAccepted", { name: drive.driver_name }),
+  "booking.inboxSeeBookings", "ride",
+);
+
+// ---------------------------------------------------------------------
+// Accepting a passenger's ride request directly, from the inbox or from
+// the list of requests in one's areas (app.js's REQUEST_EXTRAS): the drive
+// is posted and the passenger booked on it in one step, and the first
+// driver to accept gets it (bookings.accept_request).
+// ---------------------------------------------------------------------
+const DEFAULT_SEATS_OFFERED = 3;
+
+REQUEST_EXTRAS.push((request, actions, context) => {
+  if (!signedIn() || currentUser.is_demo) return;
+  // "Accept this ride" comes first; the buttons already there step back.
+  actions.querySelectorAll(".submit-btn").forEach((button) => button.classList.add("secondary"));
+  actions.prepend(actionButton("booking.acceptRequest", "submit-btn", () => showAcceptRequest(request, actions, context)));
+});
+
+function showAcceptRequest(request, actions, context) {
+  // A driver told because they usually make a trip drives that trip, and
+  // picks the passenger up on the way; otherwise it's the passenger's trip.
+  const usual = context.notification?.details?.trip;
+  const trip = usual
+    ? { origin: usual.origin, destination: usual.destination, departure_time: context.notification.details.suggested_departure }
+    : null;
+  const name = request.passenger_name;
+  const text = trip
+    ? t("booking.acceptRequestUsual", { name, from: trip.origin.name, to: trip.destination.name, time: fmtTime(trip.departure_time) })
+    : t("booking.acceptRequestTheirs", { name, from: request.origin_name, to: request.destination_name, time: fmtTime(request.requested_time) });
+  const seats = [...Array(8).keys()]
+    .map((i) => `<option${i + 1 === DEFAULT_SEATS_OFFERED ? " selected" : ""}>${i + 1}</option>`)
+    .join("");
+  const panel = document.createElement("div");
+  panel.className = "booking-box accept-request";
+  panel.innerHTML = `
+    <div class="hint">${esc(text)}</div>
+    <div class="booking-form-row">
+      <label>${esc(t("booking.acceptRequestSeats"))}</label>
+      <select aria-label="${esc(t("booking.acceptRequestSeats"))}">${seats}</select>
+    </div>
+    <input type="text" maxlength="300" placeholder="${esc(t("booking.acceptNote"))}" aria-label="${esc(t("booking.acceptNote"))}" />
+    <div class="booking-form-row booking-buttons"></div>
+    <div class="status-msg"></div>
+  `;
+  const confirmButton = actionButton("booking.acceptRequestConfirm", "submit-btn", async () => {
+    confirmButton.disabled = true;
+    try {
+      await postJson(`/api/requests/${request.id}/accept`, {
+        seats_available: Number(panel.querySelector("select").value),
+        note: panel.querySelector("input").value.trim() || null,
+        ...(trip || {}),
+      });
+    } catch (err) {
+      confirmButton.disabled = false;
+      showBoxError(panel, err.message);
+      return;
+    }
+    // Answered: the notification no longer waits for one.
+    if (context.notification) await actOn(context.notification, "offer", false);
+    panel.innerHTML = `<div class="hint">${esc(t("booking.acceptRequestDone", { name }))}</div><div class="booking-form-row booking-buttons"></div>`;
+    panel.querySelector(".booking-buttons").append(actionButton("booking.inboxSeeDrives", "submit-btn secondary", () => goTo("drive")));
+    // On the Driver page: the new drive is listed, the request leaves the list.
+    if (document.getElementById("page-drive").classList.contains("active")) {
+      await loadBookings();
+      loadMyDrives();
+    }
+  });
+  panel.querySelector(".booking-buttons").append(
+    confirmButton,
+    actionButton("booking.notNow", "link-btn", () => {
+      panel.remove();
+      actions.hidden = false;
+    }),
+  );
+  actions.hidden = true;
+  actions.after(panel);
+}
+
 // ---------------------------------------------------------------------
 // Hooking into app.js's pages: the bookings are loaded before the page's
 // own lists, whose cards wait for them (CARD_EXTRAS above).
