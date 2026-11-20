@@ -1,13 +1,19 @@
 {
   "match.demoText": "This ride is fictional: it shows how the app works, and can't be selected. Rides offered by real drivers have no \"Demo\" label.",
   "match.demoTitle": "Demo ride",
+  "match.directions": "Directions",
   "match.dropoff": "Drop-off ~{time}, {km} km from your destination",
+  "match.dropoffAt": "Drop-off ~{time} near {place}, {km} km from your destination",
   "match.earlier": "{duration} earlier",
   "match.firstMile": "To the pickup:",
   "match.lastMile": "From the drop-off:",
   "match.later": "{duration} later",
   "match.onTime": "on time",
+  "match.onwardCar": "{duration} by car",
+  "match.onwardTransit": "{duration} by public transport",
+  "match.onwardWalk": "{duration} on foot",
   "match.pickup": "Pickup ~{time}, {km} km from your start",
+  "match.pickupAt": "Pickup ~{time} near {place}, {km} km from your start",
   "match.rideKm": "{km} km together",
   "match.wider": "further away"
 }
