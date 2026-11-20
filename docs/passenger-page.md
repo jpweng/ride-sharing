@@ -14,8 +14,12 @@ map in [frontend/app.js](../frontend/app.js).
 - A field that is still empty offers the places of the passenger's recent searches (the same
   `GET /api/ride_requests` that used to fill the "recent searches" list), for From their starts
   first, for To their destinations.
-- The last entry of every list is "Pick on map": it opens the map, the next click on it sets the
-  place, and the map closes again.
+- The last entry of every list is "Pick on map": it opens the map. A click there proposes what is
+  at that spot in a small card (a restaurant, a shop, a stop, a park, a company..., otherwise the
+  address, with the other places right next to it); "Use this place" takes it and closes the map.
+  Zoomed out too far to tell places apart, a click proposes the town. The places come from
+  Photon's reverse search on OpenStreetMap data (`placesAt` in `app.js`), and the driver's form
+  and the driver's areas pick the same way.
 - The round button swaps the two.
 
 Scripts add entries to a field's list through `FIELD_SUGGESTIONS` in `app.js` (role -> a function

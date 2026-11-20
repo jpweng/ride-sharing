@@ -3,8 +3,11 @@
   "map.destinationPopup": "Destinazione: {name}",
   "map.destinationTitle": "La sua destinazione",
   "map.dropoffPoint": "Discesa ~{time}",
+  "map.nearby": "Lì accanto:",
   "map.pickHint": "Tocchi il luogo sulla mappa.",
   "map.pickupPoint": "Salita ~{time}",
   "map.pickupPopup": "Partenza: {name}",
-  "map.pickupTitle": "La sua partenza"
+  "map.pickupTitle": "La sua partenza",
+  "map.station": "{name} (stazione)",
+  "map.useThisPlace": "Usare questo luogo"
 }
