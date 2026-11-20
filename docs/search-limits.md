@@ -58,10 +58,12 @@ So a card can be read without the map, each match's `pickup` and `dropoff` carry
   `null`. It comes from the timetable service already used for legs (`transit.nearest_named_station`:
   same service, same cache, no new party receives coordinates, so the privacy page is unchanged).
   OSRM's `nearest` isn't used: our server runs without the data street names need
-  (`--disable-feature-dataset ROUTE_STEPS`), and a street name lacks its town. Lookups are limited
-  per search (12 different uncached points, a 3 s budget, a stop after 3 unanswered in a row) and a
-  point that got no answer isn't asked again for 2 minutes. No name never fails a search: the card
-  falls back to the wording without a place.
+  (`--disable-feature-dataset ROUTE_STEPS`), and a street name lacks its town. The stop is near the
+  point, not at it, so the card says "near". Lookups are limited per search: 12 different uncached
+  points, those of the rides that can be booked first, asked four at a time (for the whole app)
+  and given 3 s in all; when the service doesn't answer within that, it isn't asked again for a
+  minute. A point that got no name isn't asked again for 2 minutes. No name never fails a search:
+  the card falls back to the wording without a place.
 - **`pickup.walk_min`**: the way from the passenger's start on foot, `null` when the pickup is
   200 m or less away.
 - **`dropoff.onward`**: the rest of the way to the destination, `{walk_min, car_min, transit_min,
@@ -71,7 +73,8 @@ So a card can be read without the map, each match's `pickup` and `dropoff` carry
   - `walk_min`: **an estimate, not a walking route**: a distance at the walking pace used for
     ranking (12 min per km, `matching.MINUTES_PER_GAP_KM`). The distance is OSRM's road distance
     when there is one, else the straight line times 1.3; never below the straight line. The same
-    estimate gives `pickup.walk_min`.
+    estimate gives `pickup.walk_min`. The card leaves a walk of more than an hour out, and shows
+    longer times in hours and minutes.
   - `transit_min`: from the car's drop-off time to the arrival of the first connection of
     `last_mile_transit`; `null` when there is no such leg (no extra timetable call).
 

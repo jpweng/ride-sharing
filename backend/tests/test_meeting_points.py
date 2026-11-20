@@ -3,6 +3,7 @@ meeting_points.py: names, walking time and onward times for a match's pickup
 and drop-off, and the same through POST /api/match. Offline: OSRM and the
 timetable are faked (see conftest.py).
 """
+import time
 from datetime import date, timedelta
 
 import matching
@@ -16,8 +17,10 @@ from test_api_match import AIGLE_BERN_ROUTE_GEOMETRY, DAY_1, _post_drive, _set_r
 @pytest.fixture(autouse=True)
 def fresh_misses():
     meeting_points._misses.clear()
+    meeting_points._paused_until = 0.0
     yield
     meeting_points._misses.clear()
+    meeting_points._paused_until = 0.0
 
 
 DEST = LatLon(name="Somewhere", lat=46.95, lon=7.44)
@@ -112,13 +115,54 @@ def test_name_lookups_are_limited_and_deduplicated(fake_transit, monkeypatch):
     assert len(fake_transit.nearest_station_calls) <= meeting_points.MAX_NAME_LOOKUPS
 
 
-def test_stops_asking_when_the_service_does_not_answer(fake_transit, monkeypatch):
+def test_bookable_rides_are_named_first(fake_transit, monkeypatch):
     monkeypatch.setattr(matching, "osrm_table", lambda s, t: None)
-    meeting_points._misses.clear()
+    monkeypatch.setattr(meeting_points, "MAX_NAME_LOOKUPS", 2)
+    fake_transit.add_station("Stop", 46.31, 6.91)  # at every pickup
     matches = [_match(dropoff=(46.9 + i * 0.01, 7.4)) for i in range(10)]
-    meeting_points.add_to(matches, START, DEST)  # no stations: every lookup finds nothing
-    assert len(fake_transit.nearest_station_calls) == meeting_points.MAX_MISSES
-    assert all(m["dropoff"]["name"] is None for m in matches)
+    matches[9]["bookable"] = True  # the last of the list is the one that can be booked
+    meeting_points.add_to(matches, START, DEST)
+    asked = {(round(lat, 4), round(lon, 4)) for lat, lon in fake_transit.nearest_station_calls}
+    assert asked == {(46.31, 6.91), (46.99, 7.4)}  # its pickup and its drop-off, nothing else
+    assert matches[9]["pickup"]["name"] == "Stop"
+
+
+def test_names_are_looked_up_side_by_side(monkeypatch):
+    monkeypatch.setattr(matching, "osrm_table", lambda s, t: None)
+
+    def slow(lat, lon):
+        time.sleep(0.2)
+        return {"name": f"Stop {lat}", "distance_m": 10}
+
+    monkeypatch.setattr(transit, "nearest_named_station", slow)
+    matches = [_match(dropoff=(46.9 + i * 0.01, 7.4)) for i in range(7)]  # 8 different points
+    started = time.monotonic()
+    meeting_points.add_to(matches, START, DEST)
+    assert time.monotonic() - started < 1.2  # one after another: 1.6 s
+    assert all(m["dropoff"]["name"] for m in matches)
+
+
+def test_pauses_when_the_service_does_not_answer_in_time(monkeypatch):
+    monkeypatch.setattr(matching, "osrm_table", lambda s, t: None)
+    monkeypatch.setattr(meeting_points, "NAME_BUDGET_S", 0.05)
+    calls = []
+
+    def hangs(lat, lon):
+        calls.append((lat, lon))
+        time.sleep(0.4)
+        return {"name": "Late", "distance_m": 10}
+
+    monkeypatch.setattr(transit, "nearest_named_station", hangs)
+    m = _match()
+    started = time.monotonic()
+    meeting_points.add_to([m], START, DEST)
+    assert time.monotonic() - started < 0.35  # the search didn't wait for it
+    assert m["pickup"]["name"] is None and m["dropoff"]["onward"] is not None
+    time.sleep(0.5)  # let the two lookups end
+    asked = len(calls)
+    other = _match(dropoff=(46.80, 7.30))
+    meeting_points.add_to([other], START, DEST)
+    assert len(calls) == asked  # paused: the service isn't asked again
 
 
 def test_name_lookup_raising_does_not_fail(monkeypatch):

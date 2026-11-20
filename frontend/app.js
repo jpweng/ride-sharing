@@ -1113,8 +1113,11 @@ function renderResults() {
 // than that, how long the way takes (the pickup: on foot; the drop-off: on
 // foot, by car and by public transport) with a Google Maps directions link
 // (its plain URL scheme: no API, no key). `onward` is the API's structured
-// data; the walking time is an estimate, not a route. A point practically at
-// the passenger's own start or destination has neither times nor link.
+// data; the walking time is an estimate, not a route, and left out beyond
+// MAX_WALK_SHOWN_MIN. A point practically at the passenger's own start or
+// destination has neither times nor link.
+const MAX_WALK_SHOWN_MIN = 60;
+
 function meetingPointLine(kind, point, passengerPoint, onward) {
   const params = { time: fmtClock(point.time), km: fmtNumber(point.gap_km), place: point.name };
   const sentence = t(point.name ? `match.${kind}At` : `match.${kind}`, params);
@@ -1123,7 +1126,9 @@ function meetingPointLine(kind, point, passengerPoint, onward) {
     : onward
       ? [["match.onwardWalk", onward.walk_min], ["match.onwardCar", onward.car_min], ["match.onwardTransit", onward.transit_min]]
       : [];
-  const parts = [sentence, ...minutes.filter(([, min]) => min).map(([key, min]) => t(key, { min }))];
+  // A walk of more than an hour isn't proposed: by car or public transport then.
+  const shown = minutes.filter(([key, min]) => min && !(key === "match.onwardWalk" && min > MAX_WALK_SHOWN_MIN));
+  const parts = [sentence, ...shown.map(([key, min]) => t(key, { duration: fmtMinutes(min) }))];
   let link = "";
   if (kind === "pickup" ? point.walk_min : onward) {
     // The way between the passenger's own point and the meeting point.
