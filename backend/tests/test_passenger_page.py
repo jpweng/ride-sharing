@@ -75,6 +75,19 @@ def test_public_transport_is_one_line_of_plain_rows():
         assert "<" not in texts["transit.tickets"], lang
 
 
+def test_place_fields_dont_look_like_name_or_address_fields_to_a_browser():
+    # A browser's own suggestions (a saved name or address) would lie over
+    # ours. Chromium ignores autocomplete="off" for those and guesses from the
+    # field's name, or its id when it has none: "name-ride-origin" is a name.
+    fields = re.findall(r'<input type="text" id="name-[a-z-]+"[^>]*>', HTML)
+    assert len(fields) == 5
+    for field in fields:
+        name = re.search(r' name="([^"]+)"', field)
+        assert name, field
+        assert not re.search(r"name|address|street|city|zip|post|phone|mail", name.group(1)), field
+        assert 'autocomplete="off"' in field, field
+
+
 def test_the_time_and_the_lists_show_only_when_there_is_something():
     for hidden in ("ride-when", "ride-results", "ride-requests-title", "ride-requests"):
         assert re.search(rf'<div[^>]*\bid="{hidden}"[^>]*\bhidden\b', RIDE), hidden
