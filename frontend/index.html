@@ -213,7 +213,7 @@
           <div class="point-picker">
             <button type="button" data-role="account-area" data-i18n="form.pickOnMap">Pick on map</button>
             <div class="autocomplete">
-              <input type="text" id="name-account-area" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
+              <input type="text" id="name-account-area" name="area-centre" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
               <ul class="autocomplete-list" id="suggest-account-area"></ul>
             </div>
           </div>
@@ -239,19 +239,22 @@
     <section id="page-ride" class="page">
       <div class="page-title" data-i18n="ride.title">Find a ride</div>
 
+      <!-- The place fields have a name of their own: without one a browser
+           goes by the id, takes "name-…" for a person's name, and lays its
+           own suggestions over ours (autocomplete="off" doesn't stop that). -->
       <div class="trip-bar">
       <div class="trip-card">
         <div class="trip-field">
           <span class="trip-dot" aria-hidden="true"></span>
           <div class="autocomplete">
-            <input type="text" id="name-ride-origin" placeholder="From" data-i18n-placeholder="form.from" aria-label="From" data-i18n-aria-label="form.from" autocomplete="off" />
+            <input type="text" id="name-ride-origin" name="ride-from" placeholder="From" data-i18n-placeholder="form.from" aria-label="From" data-i18n-aria-label="form.from" autocomplete="off" />
             <ul class="autocomplete-list" id="suggest-ride-origin"></ul>
           </div>
         </div>
         <div class="trip-field">
           <span class="trip-dot" aria-hidden="true"></span>
           <div class="autocomplete">
-            <input type="text" id="name-ride-destination" placeholder="To" data-i18n-placeholder="form.to" aria-label="To" data-i18n-aria-label="form.to" autocomplete="off" />
+            <input type="text" id="name-ride-destination" name="ride-to" placeholder="To" data-i18n-placeholder="form.to" aria-label="To" data-i18n-aria-label="form.to" autocomplete="off" />
             <ul class="autocomplete-list" id="suggest-ride-destination"></ul>
           </div>
         </div>
@@ -332,7 +335,7 @@
       <div class="point-picker">
         <button type="button" data-role="drive-origin" data-i18n="form.pickOnMap">Pick on map</button>
         <div class="autocomplete">
-          <input type="text" id="name-drive-origin" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
+          <input type="text" id="name-drive-origin" name="drive-from" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
           <ul class="autocomplete-list" id="suggest-drive-origin"></ul>
         </div>
       </div>
@@ -342,7 +345,7 @@
       <div class="point-picker">
         <button type="button" data-role="drive-destination" data-i18n="form.pickOnMap">Pick on map</button>
         <div class="autocomplete">
-          <input type="text" id="name-drive-destination" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
+          <input type="text" id="name-drive-destination" name="drive-to" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
           <ul class="autocomplete-list" id="suggest-drive-destination"></ul>
         </div>
       </div>
