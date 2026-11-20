@@ -185,6 +185,9 @@ def test_osrm_table_parses_answer_and_failure(monkeypatch):
         def json(self):
             return {"code": "Ok", "distances": [[1500.0], [None]], "durations": [[120.0], [None]]}
 
+    # A fresh circuit breaker: an earlier test's failed routing calls may have
+    # left the shared one open, and osrm_table() then answers None unasked.
+    monkeypatch.setattr(matching, "_breaker", matching._CircuitBreaker(matching.OSRM_MAX_FAILURES, 60.0))
     monkeypatch.setattr(matching._session, "get", lambda *a, **k: Resp())
     assert matching.osrm_table([(46.9, 7.4), (46.8, 7.4)], (46.95, 7.44)) == [(1500.0, 120.0), None]
 
