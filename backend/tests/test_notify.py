@@ -268,7 +268,7 @@ def test_demo_view_hides_real_passengers_requests(isolated_db):
 
 
 @pytest.mark.parametrize("when, code", [
-    (timedelta(minutes=30), "request_too_soon"),
+    (timedelta(minutes=10), "request_too_soon"),
     (timedelta(days=15), "request_too_far"),
 ])
 def test_api_request_time_limits(user_named, when, code):
@@ -278,3 +278,11 @@ def test_api_request_time_limits(user_named, when, code):
             origin=VEVEY, destination=FRIBOURG, requested_time=asked,
         ), user_named("Marie"))
     assert e.value.detail["code"] == code
+
+
+def test_api_request_a_quarter_of_an_hour_ahead_is_enough(user_named, isolated_db):
+    asked = (notify.local_now() + timedelta(minutes=20)).isoformat(timespec="minutes")
+    answer = request_routes.create_ride_request(request_routes.RideRequestCreate(
+        origin=VEVEY, destination=FRIBOURG, requested_time=asked,
+    ), user_named("Marie"))
+    assert answer["request"]["status"] == "open"

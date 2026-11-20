@@ -42,7 +42,7 @@
   "errors.request_not_found": "Questa richiesta di passaggio non esiste più.",
   "errors.request_not_open": "Questa richiesta di passaggio non è più aperta: un altro conducente l'ha accettata, oppure è stata annullata.",
   "errors.request_too_far": "Una richiesta di passaggio può essere fatta al massimo 14 giorni prima.",
-  "errors.request_too_soon": "Una richiesta di passaggio va fatta almeno 1 ora prima.",
+  "errors.request_too_soon": "Una richiesta di passaggio va fatta almeno 15 minuti prima.",
   "errors.ride_not_over": "Questo viaggio non è ancora finito.",
   "errors.social_cancelled": "L'accesso non è stato completato. Riprovi oppure usi il link via e-mail.",
   "errors.social_email_unverified": "Questo account non ha un indirizzo e-mail confermato e non può essere usato per accedere qui. Usi invece il link via e-mail.",
