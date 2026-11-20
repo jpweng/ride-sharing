@@ -42,7 +42,7 @@ def create_ride_request(payload: RideRequestCreate, user: Writer):
         raise api_error(400, "invalid_time", "requested_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
     now = notify.local_now()
     if asked < now + notify.REQUEST_MIN_AHEAD:
-        raise api_error(400, "request_too_soon", "A ride request must be at least 1 hour ahead")
+        raise api_error(400, "request_too_soon", "A ride request must be at least 15 minutes ahead")
     if asked > now + notify.REQUEST_MAX_AHEAD:
         raise api_error(400, "request_too_far", "A ride request can be at most 14 days ahead")
 

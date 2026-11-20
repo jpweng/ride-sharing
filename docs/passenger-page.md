@@ -27,8 +27,8 @@ passenger chose a time that is still ahead; the time shows with the results, whe
 changed. A search opened from a ride request keeps the request's time. Only the latest search's
 answer is shown.
 
-Asking drivers for a ride ("Ask drivers for this ride") still needs a time at least an hour ahead:
-for a search made for now, the API's `request_too_soon` message says so.
+Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15 minutes ahead
+(`notify.REQUEST_MIN_AHEAD`): for a search made for now, the API's `request_too_soon` message says so.
 
 ## Results
 

@@ -51,7 +51,7 @@ import search
 
 LOCAL_TZ = demo_drives.LOCAL_TZ
 
-REQUEST_MIN_AHEAD = timedelta(hours=1)
+REQUEST_MIN_AHEAD = timedelta(minutes=15)  # less, and no driver could make it
 REQUEST_MAX_AHEAD = timedelta(days=14)
 
 HISTORY_WEEKS = 13

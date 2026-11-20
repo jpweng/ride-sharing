@@ -42,7 +42,7 @@
   "errors.request_not_found": "Cette demande de trajet n'existe plus.",
   "errors.request_not_open": "Cette demande de trajet n'est plus ouverte : un autre conducteur l'a acceptée, ou elle a été annulée.",
   "errors.request_too_far": "Une demande de trajet peut être faite au plus 14 jours à l'avance.",
-  "errors.request_too_soon": "Une demande de trajet doit être faite au moins 1 heure à l'avance.",
+  "errors.request_too_soon": "Une demande de trajet doit être faite au moins 15 minutes à l'avance.",
   "errors.ride_not_over": "Ce trajet n'est pas encore terminé.",
   "errors.social_cancelled": "La connexion n'a pas été terminée. Réessayez ou utilisez le lien par e-mail.",
   "errors.social_email_unverified": "Ce compte n'a pas d'adresse e-mail confirmée et ne peut pas servir à la connexion ici. Utilisez plutôt le lien par e-mail.",

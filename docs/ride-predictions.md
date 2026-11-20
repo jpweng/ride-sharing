@@ -58,8 +58,8 @@ suggestions off.
 
 ## Ride requests and notifications
 
-A passenger posts a ride request for at least 1 h and at most 14 days ahead. Less than 1 h leaves no
-driver time to react; beyond 14 days, a driver can't know their plans.
+A passenger posts a ride request for at least 15 minutes and at most 14 days ahead. Less than that
+leaves no driver time to react; beyond 14 days, a driver can't know their plans.
 
 ### Who is told
 
