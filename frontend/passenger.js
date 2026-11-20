@@ -77,6 +77,7 @@ function searchSoon(delayMs = 50) {
       setDateTime("ride", new Date(Date.now() + (arriving ? ARRIVE_BY_DEFAULT_MS : 0)));
     }
     document.getElementById("ride-when").hidden = false;
+    rememberTrip();
     findRide();
   }, delayMs);
 }
@@ -85,8 +86,9 @@ window.addEventListener("point:set", (e) => {
   if (RIDE_ROLES.includes(e.detail.role)) searchSoon();
 });
 
-// Signed in or out: a search shows the drivers' names to a signed-in user.
-window.addEventListener("user:changed", () => searchSoon());
+// Signed in: the search again, now with the drivers' names. Signed out (or
+// the account deleted): the trip goes, from the page and from the browser.
+window.addEventListener("user:changed", () => (currentUser ? searchSoon() : clearTrip()));
 
 // Leave at / Arrive by: the same time now stands for the other end of the trip.
 document.getElementById("ride-time-kind").addEventListener("change", () => searchSoon());
@@ -97,3 +99,96 @@ document.getElementById("ride-time-kind").addEventListener("change", () => searc
     searchSoon(400); // the hour, then the minutes: one search
   });
 });
+
+// ---------------------------------------------------------------------
+// The last trip searched is remembered in this browser, on the device only,
+// for TRIP_KEPT_MS: the search page comes back with it after a reload, and
+// in the tab the emailed sign-in link opens. Signing out forgets it. The
+// privacy page says so.
+// ---------------------------------------------------------------------
+const TRIP_STORAGE_KEY = "rideandrail.trip";
+const TRIP_KEPT_MS = 24 * 60 * 60 * 1000;
+
+function rememberTrip() {
+  const [origin, destination] = RIDE_ROLES.map((role) => getPoint(role, `name-${role}`));
+  const trip = {
+    saved: Date.now(),
+    origin,
+    destination,
+    kind: document.getElementById("ride-time-kind").value,
+    time: rideTimeChosen ? getDateTime("ride") : null, // otherwise the search is for now
+  };
+  try {
+    localStorage.setItem(TRIP_STORAGE_KEY, JSON.stringify(trip));
+  } catch {
+    // storage unavailable (private window etc.): the trip just isn't remembered
+  }
+}
+
+function forgetTrip() {
+  try {
+    localStorage.removeItem(TRIP_STORAGE_KEY);
+  } catch {
+    // nothing was kept
+  }
+}
+
+// The trip remembered, if it is still fresh and looks like one.
+function rememberedTrip() {
+  const place = (p) => p && typeof p.name === "string" && p.name.length <= 200
+    && Number.isFinite(p.lat) && Math.abs(p.lat) <= 90 && Number.isFinite(p.lon) && Math.abs(p.lon) <= 180;
+  try {
+    const trip = JSON.parse(localStorage.getItem(TRIP_STORAGE_KEY));
+    if (trip && Date.now() - trip.saved < TRIP_KEPT_MS && place(trip.origin) && place(trip.destination)) return trip;
+  } catch {
+    // unreadable: as if there were none
+  }
+  forgetTrip();
+  return null;
+}
+
+// Into the empty search page: the trip remembered, which then searches.
+function restoreTrip() {
+  const inputs = RIDE_ROLES.map((role) => document.getElementById(`name-${role}`));
+  if (RIDE_ROLES.some((role) => points[role]) || inputs.some((input) => input.value.trim())) return;
+  const trip = rememberedTrip();
+  if (!trip) return;
+  document.getElementById("ride-time-kind").value = trip.kind === "arrive" ? "arrive" : "depart";
+  if (typeof trip.time === "string" && new Date(trip.time) > new Date()) {
+    setDateTime("ride", new Date(trip.time));
+    rideTimeChosen = true;
+  }
+  [trip.origin, trip.destination].forEach((p, i) => {
+    inputs[i].value = p.name;
+    setPointCoords(RIDE_ROLES[i], p.lat, p.lon, p.name, ["place", "address"].includes(p.kind) ? p.kind : "point");
+  });
+}
+
+// The search page as when first opened.
+function clearTrip() {
+  forgetTrip();
+  clearTimeout(rideSearchTimer);
+  RIDE_ROLES.forEach((role) => {
+    clearPoint(role);
+    document.getElementById(`name-${role}`).value = "";
+  });
+  rideTimeChosen = false;
+  document.getElementById("ride-time-kind").value = "depart";
+  searchNumber++; // an answer still on its way isn't shown
+  lastResults = null;
+  ["ride-when", "ride-results"].forEach((id) => (document.getElementById(id).hidden = true));
+  hideStatus("ride-status");
+  resultsLayer.clearLayers();
+}
+
+// Hooking into app.js's page: the remembered trip comes back when the search
+// page shows empty.
+{
+  const showRidePage = PAGES.ride.onShow;
+  PAGES.ride.onShow = (...args) => {
+    showRidePage(...args);
+    restoreTrip();
+  };
+  // app.js may have shown the page before this script ran.
+  if (document.getElementById("page-ride").classList.contains("active")) restoreTrip();
+}
