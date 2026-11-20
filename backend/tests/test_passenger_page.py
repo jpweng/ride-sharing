@@ -49,6 +49,16 @@ def test_the_map_is_out_of_the_way_in_passenger_mode():
     assert re.search(r"function revealMap\(\) \{\s*if \(passengerMode\(\)\) return openMap\(\);", app)
 
 
+def test_demo_rides_open_their_details_but_are_not_shown_on_the_map():
+    app = (FRONTEND / "app.js").read_text()
+    card = app[app.index('more.className = "link-btn match-more";'):app.index("if (m.route_geometry && m.route_geometry.length)")]
+    # "Details" is on every card, and nothing stops a demo card's click before it opens them.
+    assert "card.appendChild(more);" in card and "if (!m.is_demo) card.appendChild(more)" not in card
+    assert "if (m.is_demo) return choose();" not in card
+    # "Show on map" on a demo ride: the notice that it is fictional (choose).
+    assert 'if (e.target.closest(".match-on-map")) return !m.is_demo && selected === entry ? revealMap() : choose();' in card
+
+
 def test_texts_in_every_language():
     keys = {
         "map": {"map.close", "map.pickHint"},
