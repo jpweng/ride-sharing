@@ -18,6 +18,9 @@ from routes import inbox as inbox_routes
 from routes import match as match_routes
 from routes import ride_requests as request_routes
 
+# The matches are told apart by their drivers' names: search as a signed-in user.
+pytestmark = pytest.mark.usefixtures("names_shown")
+
 AIGLE_BERN = [
     [6.966930, 46.317162],  # Aigle
     [6.923530, 46.394032],  # Villeneuve

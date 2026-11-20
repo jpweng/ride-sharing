@@ -102,7 +102,13 @@ CARD_EXTRAS.push((kind, item, card) => {
 // signing in.
 function fillAsk(box, kind, item, sent = false) {
   box.innerHTML = "";
-  if (!item.bookable || !signedIn() || currentUser.is_demo || item.driver_name === currentUser.name) return;
+  if (!item.bookable) return;
+  if (!signedIn()) {
+    // Asking for a seat needs an account: the button leads to signing in.
+    if (item.seats_available > 0) box.appendChild(actionButton("booking.signInToAsk", "submit-btn secondary", goToSignIn));
+    return;
+  }
+  if (currentUser.is_demo || item.driver_name === currentUser.name) return;
   const mine = bookingsData.as_passenger.find((b) => b.drive_id === item.id);
   if (mine) {
     const text = sent ? t("booking.askSent") : myBookingText(mine.status);
@@ -418,7 +424,7 @@ function showAcceptRequest(request, actions, context) {
 // Hooking into app.js's pages: the bookings are loaded before the page's
 // own lists, whose cards wait for them (CARD_EXTRAS above).
 // ---------------------------------------------------------------------
-const BOOKING_PAGES = ["ride", "drive", "browse"];
+const BOOKING_PAGES = ["ride", "drive"];
 
 BOOKING_PAGES.forEach((page) => {
   const show = PAGES[page].onShow;

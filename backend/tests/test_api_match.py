@@ -14,8 +14,12 @@ from datetime import date, datetime, timedelta
 
 import database
 import pricing
+import pytest
 from routes import drives as drive_routes
 from routes import match as match_routes
+
+# The matches are told apart by their drivers' names: search as a signed-in user.
+pytestmark = pytest.mark.usefixtures("names_shown")
 
 # match_ride only considers upcoming drives (departure_time >= now), so all
 # dates are relative to today rather than hardcoded -- a fixed date would

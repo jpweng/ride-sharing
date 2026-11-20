@@ -84,6 +84,9 @@ function searchSoon(delayMs = 50) {
   });
 });
 
+// Signed in or out: a search shows the drivers' names to a signed-in user.
+window.addEventListener("user:changed", () => searchSoon());
+
 ["ride-date", "ride-hour", "ride-minute"].forEach((id) => {
   document.getElementById(id).addEventListener("change", () => {
     rideTimeChosen = true;

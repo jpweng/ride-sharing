@@ -41,6 +41,7 @@
   "booking.passengerNote": "Message de {name} : {note}",
   "booking.passengers": "Passagers et demandes",
   "booking.priceNote": "Rien n'est payé via l'application : vous réglez directement avec la personne au volant. Le prix baisse si d'autres passagers se joignent au trajet.",
+  "booking.signInToAsk": "Se connecter pour demander une place",
   "booking.statusAccepted": "Réservé",
   "booking.statusCancelledByDriver": "Annulé par la personne au volant",
   "booking.statusDeclined": "Refusé",

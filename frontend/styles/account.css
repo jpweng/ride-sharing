@@ -15,3 +15,12 @@
 #account-details p { margin: 4px 0; font-size: 14px; }
 nav.tabs .account a { color: var(--text); font-weight: 600; text-decoration: none; }
 nav.tabs .account a:hover { text-decoration: underline; }
+/* Signed out: the link to the sign-in page, looking like the buttons beside it. */
+nav.tabs .account a.account-signin {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+}
+nav.tabs .account a.account-signin:hover { text-decoration: none; background: var(--border); }

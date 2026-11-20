@@ -26,7 +26,8 @@ Rides:
 - `POST /api/drives` — may change; posts a drive as the signed-in driver, with `price_chf`: their
   price per passenger, for one passenger and the whole drive (optional: the default suggestion).
   Outside the band: 400 with code `price_too_high` / `price_too_low`
-- `GET  /api/drives?upcoming_only=true[&limit=…]` — public; browse drives.
+- `GET  /api/drives?upcoming_only=true[&limit=…]` — public; the upcoming drives. Without a signed-in
+  user, `driver_name` and `driver_id` are `null`, here and in the two below.
   `?mine=true` — signed in; the driver's own
 - `GET  /api/drives/{id}` — public; one drive with full route geometry
 - `DELETE /api/drives/{id}` — may change; cancels one's own drive (403 `not_your_drive`), telling

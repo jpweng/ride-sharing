@@ -344,7 +344,8 @@ def test_browsing_and_searching_stay_public(new_client, outbox):
 
     visitor = new_client()
     assert [d["id"] for d in visitor.get("/api/drives").json()] == [drive["id"]]
-    assert visitor.get(f"/api/drives/{drive['id']}").json()["driver_name"] == "Driver O."
+    # Who drives is for signed-in users (test_signed_out.py).
+    assert visitor.get(f"/api/drives/{drive['id']}").json()["driver_name"] is None
     r = visitor.post("/api/match", json={"origin": VEVEY, "destination": FRIBOURG, "requested_time": f"{TOMORROW}T18:00"})
     assert [m["id"] for m in r.json()["driver_matches"]] == [drive["id"]]
     with sqlite3.connect(db.DB_PATH) as conn:  # an anonymous search isn't kept

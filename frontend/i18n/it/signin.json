@@ -9,6 +9,7 @@
   "signin.emailPlaceholder": "nome@esempio.ch",
   "signin.hint": "Inserisca il suo indirizzo e-mail: le inviamo un link per accedere, senza password.",
   "signin.needEmail": "Inserisca il suo indirizzo e-mail.",
+  "signin.needed": "Acceda per richiedere un posto o per chiedere un passaggio ai conducenti.",
   "signin.sending": "Invio…",
   "signin.sent": "Un link di accesso è in arrivo a {email}. Lo apra entro 15 minuti, in questo o in un altro browser; funziona una volta sola. Se non arriva, controlli la cartella dello spam.",
   "signin.submit": "Ricevere un link di accesso",

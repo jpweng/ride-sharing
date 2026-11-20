@@ -51,7 +51,6 @@
 <nav class="tabs">
   <div class="tab-list">
     <a class="tab-link" href="#/ride" data-page="ride" data-mode="passenger" data-i18n="nav.ride">Find a ride</a>
-    <a class="tab-link" href="#/browse" data-page="browse" data-mode="passenger" data-i18n="nav.browse">Browse rides</a>
     <a class="tab-link" href="#/drive" data-page="drive" data-mode="driver" data-i18n="nav.drive">Your drives</a>
     <a class="tab-link" href="#/inbox" data-page="inbox"><span data-i18n="nav.inbox">Inbox</span> <span class="unread-count" id="unread-count" hidden></span></a>
   </div>
@@ -231,13 +230,6 @@
         <button type="button" class="submit-btn danger" id="account-delete" data-i18n="account.delete">Delete my account</button>
         <div class="status-msg" id="account-status"></div>
       </div>
-    </section>
-
-    <!-- BROWSE RIDES (public) -->
-    <section id="page-browse" class="page">
-      <div class="page-title" data-i18n="browse.title">Upcoming rides</div>
-      <button class="submit-btn secondary" id="browse-refresh" data-i18n="browse.refresh">Refresh</button>
-      <div class="drive-list" id="browse-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
     </section>
 
     <!-- PASSENGER PAGE: one card, From and To; the search runs once both are

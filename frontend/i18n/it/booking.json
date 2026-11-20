@@ -41,6 +41,7 @@
   "booking.passengerNote": "Messaggio di {name}: {note}",
   "booking.passengers": "Passeggeri e richieste",
   "booking.priceNote": "Nulla viene pagato tramite l'app: si accorda direttamente con chi guida. Il prezzo scende se si aggiungono altri passeggeri.",
+  "booking.signInToAsk": "Accedere per richiedere un posto",
   "booking.statusAccepted": "Prenotato",
   "booking.statusCancelledByDriver": "Annullato da chi guida",
   "booking.statusDeclined": "Rifiutato",

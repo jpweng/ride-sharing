@@ -70,7 +70,7 @@ passenger's name in their `details`, as the booking itself may be gone.
 In the browser, all of it is [frontend/bookings.js](../frontend/bookings.js), a script of its own
 loaded after `app.js`. It adds to the cards of drives and to the inbox through two lists `app.js`
 offers to such scripts: `CARD_EXTRAS` (functions called with each card of a drive: the driver's
-own, a search result, the public list), `NOTIFICATION_CARDS` (kind of notification → what fills
+own, a search result), `NOTIFICATION_CARDS` (kind of notification → what fills
 its card) and `REQUEST_EXTRAS` (functions called with each card of a ride request shown to a
 driver, for *Accept this ride*).
 

@@ -567,7 +567,31 @@ function setUser(user) {
   currentUser = user;
   if (user) hideStatus("signin-notice");
   renderAccount();
+  // For the scripts loaded after this one (passenger.js: a search shows more to a signed-in user).
+  window.dispatchEvent(new CustomEvent("user:changed"));
 }
+
+// Searching needs no account; asking for a seat or asking drivers does. The
+// sign-in page, saying why. The search stays in this tab's memory.
+function goToSignIn() {
+  goTo("signin");
+  showStatus("signin-notice", t("signin.needed"), true);
+}
+
+// The sign-in link opens in another tab: back in this one, the user is
+// signed in, and the page they came from is there again.
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState !== "visible" || currentUser) return;
+  let user = null;
+  try {
+    user = (await fetchJson("/api/auth/me")).user;
+  } catch {
+    return;
+  }
+  if (!user || currentUser) return;
+  setUser(user);
+  route();
+});
 
 const signedIn = () => !!currentUser?.profile_complete;
 
@@ -577,7 +601,7 @@ function renderAccount() {
   note.hidden = !currentUser?.is_demo;
   if (currentUser?.is_demo) note.textContent = t("demoView.note", { name: currentUser.name });
   if (!currentUser) {
-    el.innerHTML = "";
+    el.innerHTML = `<a class="account-signin" href="#/signin">${esc(t("signin.title"))}</a>`;
     return;
   }
   const name = currentUser.name
@@ -704,7 +728,7 @@ document.getElementById("account-delete").addEventListener("click", async () => 
   try {
     await fetchJson("/api/account", { method: "DELETE" });
     setUser(null);
-    goTo("ride");
+    goTo("signin");
     showStatus("signin-notice", t("signin.deleted"), true);
   } catch (err) {
     showStatus("account-status", err.message, false);
@@ -712,21 +736,20 @@ document.getElementById("account-delete").addEventListener("click", async () => 
 });
 
 // ---------------------------------------------------------------------
-// Pages: #/ride (passenger), #/browse (public), #/drive
-// (driver), #/inbox, #/account. Until signed in, the sign-in page shows
-// instead of those that need a user; until the profile is complete, the
-// profile page does (but the account page stays reachable, to delete it).
+// Pages: #/ride (passenger, public: searching needs no account), #/drive
+// (driver), #/inbox, #/account, #/signin. Until signed in, the sign-in page
+// shows instead of those that need a user; until the profile is complete,
+// the profile page does (but the account page stays reachable, to delete it).
 // ---------------------------------------------------------------------
 const PAGES = {
-  ride: { needsUser: true, onShow: () => { loadMyRequests(); loadRecentSearches(); } },
-  browse: { needsUser: false, onShow: loadBrowse },
+  ride: { needsUser: false, onShow: () => { loadMyRequests(); loadRecentSearches(); } },
   drive: { needsUser: true, onShow: loadMyDrives },
   inbox: { needsUser: true, onShow: loadInbox },
   account: { needsUser: true, beforeProfile: true, onShow: showAccount },
   signin: { onShow: loadDemoDrivers },
   profile: { onShow: showProfile },
 };
-const LINKED_PAGES = ["ride", "browse", "drive", "inbox", "account"];
+const LINKED_PAGES = ["ride", "drive", "inbox", "account", "signin"];
 
 // ---------------------------------------------------------------------
 // Two modes, passenger and driver, each with its own tabs (the inbox and
@@ -734,7 +757,7 @@ const LINKED_PAGES = ["ride", "browse", "drive", "inbox", "account"];
 // page of the other mode (a link, a button of the inbox) switches too. The
 // mode is remembered in this browser: the app opens where it was left.
 // ---------------------------------------------------------------------
-const MODE_OF_PAGE = { ride: "passenger", browse: "passenger", drive: "driver" };
+const MODE_OF_PAGE = { ride: "passenger", drive: "driver" };
 const MODE_HOME = { passenger: "ride", driver: "drive" };
 const MODE_STORAGE_KEY = "rideandrail.mode";
 
@@ -781,9 +804,12 @@ function route() {
   if (requested.startsWith("signin/")) return verifySignInLink(requested.slice("signin/".length));
   const page = LINKED_PAGES.includes(requested) ? requested : MODE_HOME[mode];
   if (MODE_OF_PAGE[page] && MODE_OF_PAGE[page] !== mode) setMode(MODE_OF_PAGE[page]);
+  // Signed in already: the sign-in page has nothing to offer.
+  if (page === "signin" && currentUser) return goTo(MODE_HOME[mode]);
   let shown = page;
   if (PAGES[page].needsUser && !currentUser) shown = "signin";
-  else if (PAGES[page].needsUser && !currentUser.profile_complete && !PAGES[page].beforeProfile) shown = "profile";
+  else if (currentUser && !currentUser.profile_complete && !PAGES[page].beforeProfile) shown = "profile";
+  if (shown !== "signin") hideStatus("signin-notice");
 
   document.querySelectorAll(".tab-link").forEach((a) => a.classList.toggle("active", a.dataset.page === page));
   document.querySelectorAll(".page").forEach((s) => s.classList.toggle("active", s.id === `page-${shown}`));
@@ -895,8 +921,7 @@ function driveCardHtml(d) {
 
 // Scripts loaded after this one (bookings.js) add to the cards of drives:
 // each function gets the kind of card ("mine": the driver's own, "match": a
-// search result, "browse": the public list), the drive or match, and the
-// card's element.
+// search result), the drive or match, and the card's element.
 const CARD_EXTRAS = [];
 
 function cardExtras(kind, item, card) {
@@ -1096,6 +1121,10 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
 let recentSearches = [];
 
 async function loadRecentSearches() {
+  if (!signedIn()) {
+    recentSearches = [];
+    return;
+  }
   try {
     recentSearches = await fetchJson("/api/ride_requests");
   } catch {
@@ -1295,7 +1324,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
       ${priceBadges(m)}
       ${m.wider ? `<span class="badge wider">${esc(t("match.wider"))}</span>` : ""}
       <div class="match-details" hidden>
-        <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
+        <div class="meta">${m.driver_name ? `${esc(t("common.driver", { name: m.driver_name }))} · ` : ""}${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
         ${onwardLine("pickup", m.pickup, passengerOrigin, null)}
         ${onwardLine("dropoff", m.dropoff, passengerDestination, m.dropoff.onward)}
         ${timeDiffBadge(m.time_diff_min)}
@@ -1339,7 +1368,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
       const latlngs = m.route_geometry.map(([lon, lat]) => [lat, lon]);
       entry.line = L.polyline(latlngs, { color, weight: 4, opacity: 0.7 })
         .addTo(resultsLayer)
-        .bindTooltip(`${esc(m.driver_name)}: ${esc(m.origin_name)} → ${esc(m.destination_name)}`, { sticky: true })
+        .bindTooltip(`${m.driver_name ? `${esc(m.driver_name)}: ` : ""}${esc(m.origin_name)} → ${esc(m.destination_name)}`, { sticky: true })
         .on("click", () => {
           if (m.is_demo) return choose();
           if (selected !== entry) select(entry);
@@ -1480,6 +1509,7 @@ function fmtTime(iso) {
 // Ride requests: ask the drivers who often make a trip (see notify.py)
 // ---------------------------------------------------------------------
 document.getElementById("ride-ask").addEventListener("click", async () => {
+  if (!signedIn()) return goToSignIn();
   const payload = rideFormPayload("ride-ask-status");
   if (!payload) return;
   const btn = document.getElementById("ride-ask");
@@ -1508,6 +1538,7 @@ async function loadMyRequests() {
     list.hidden = !shown;
     document.getElementById("ride-requests-title").hidden = !shown;
   };
+  if (!signedIn()) return show(false);
   try {
     const requests = await fetchJson("/api/requests");
     show(requests.length > 0); // the section is there when it has something
@@ -1770,48 +1801,8 @@ async function updateNotificationSettings(changes) {
 }
 
 // ---------------------------------------------------------------------
-// Browse rides (public)
+// A drive on the map (a booking's: bookings.js)
 // ---------------------------------------------------------------------
-document.getElementById("browse-refresh").addEventListener("click", loadBrowse);
-
-// The soonest rides only: with the demo network there are hundreds a week.
-const BROWSE_LIMIT = 100;
-
-async function loadBrowse() {
-  const list = document.getElementById("browse-list");
-  list.innerHTML = `<div class="empty-state">${esc(t("common.loading"))}</div>`;
-  resultsLayer.clearLayers();
-  try {
-    const drives = await fetchJson(`/api/drives?upcoming_only=true&limit=${BROWSE_LIMIT}`);
-    if (!drives.length) {
-      list.innerHTML = `<div class="empty-state">${esc(t("browse.empty"))}</div>`;
-      return;
-    }
-    list.innerHTML =
-      drives.length === BROWSE_LIMIT
-        ? `<div class="hint browse-limited">${esc(t("browse.limited", { count: BROWSE_LIMIT }))}</div>`
-        : "";
-    drives.forEach((d) => {
-      const card = document.createElement("div");
-      card.className = "drive-card clickable";
-      card.innerHTML = `${driveCardHtml(d)}<div class="meta">${esc(t("common.driver", { name: d.driver_name }))}</div>`;
-      card.addEventListener("click", () => showDriveOnMap(d));
-      list.appendChild(card);
-      cardExtras("browse", d, card);
-
-      L.circleMarker([d.origin_lat, d.origin_lon], { radius: 5, color: "#1a7f37" })
-        .addTo(resultsLayer)
-        .bindPopup(`${esc(d.driver_name)}: ${esc(d.origin_name)}`);
-      L.circleMarker([d.destination_lat, d.destination_lon], { radius: 5, color: "#d8232a" })
-        .addTo(resultsLayer)
-        .bindPopup(`${esc(d.driver_name)}: ${esc(d.destination_name)}`);
-    });
-    fitToResults();
-  } catch (err) {
-    list.innerHTML = `<div class="empty-state">${esc(t("browse.loadFailed", { error: err.message }))}</div>`;
-  }
-}
-
 // Lists come without route geometry (it's large); fetch it for the drive shown.
 async function showDriveOnMap(drive) {
   if (!drive.route_geometry) {
