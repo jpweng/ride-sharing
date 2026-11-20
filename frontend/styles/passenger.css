@@ -148,15 +148,17 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
 }
 .autocomplete-list li.action:first-child { border-top: none; }
 
+/* Leave at / Arrive by, the date and the time: on one line where they fit,
+   the date and time below otherwise. */
 .ride-when {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   margin-top: 16px;
 }
 .ride-when[hidden] { display: none; }
-.ride-when label { margin: 0; }
-.ride-when .datetime { flex: 1; }
+.ride-when .datetime { flex: 1 1 260px; min-width: 0; }
 
 /* A match: what matters on the card, the rest in its details. */
 .match-card.open { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14); }

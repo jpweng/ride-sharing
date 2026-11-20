@@ -61,6 +61,13 @@ suggestions off.
 A passenger posts a ride request for at least 15 minutes and at most 14 days ahead. Less than that
 leaves no driver time to react; beyond 14 days, a driver can't know their plans.
 
+The time is when the passenger wants to leave or, with `time_kind: "arrive"`, when they want to be
+there. A request to arrive by a time keeps `leave_by`: the time minus the road duration of the
+passenger's own trip, down to five minutes (`notify.leave_by`); it too must be 15 minutes ahead. A
+driver who takes the request as it is leaves then; one told for a trip they usually make is
+suggested a departure that reaches the drop-off by the time; the inbox, the list of requests in
+one's areas and the emails say "arrive by".
+
 ### Who is told
 
 Rules (in `backend/notify.py`):

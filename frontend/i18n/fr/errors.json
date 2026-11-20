@@ -4,6 +4,7 @@
   "errors.already_reported": "Vous avez déjà signalé ce trajet.",
   "errors.already_requested": "Vous avez déjà demandé une place sur ce trajet.",
   "errors.area_not_found": "Cette zone n'existe plus.",
+  "errors.arrival_too_soon": "Le trajet est trop long pour arriver à cette heure. Choisissez une heure plus tardive.",
   "errors.booking_not_found": "Cette réservation n'existe plus.",
   "errors.booking_not_open": "Cette réservation a déjà reçu une réponse ou a été annulée.",
   "errors.consent_required": "Confirmez que vous avez 18 ans ou plus et acceptez le code de conduite.",

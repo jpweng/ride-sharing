@@ -24,8 +24,10 @@ of what is typed, returning places or things to do).
 The search starts by itself as soon as both ends are set, and again when one of them or the time
 changes (`searchSoon` in `passenger.js`). It is for now, rounded up to five minutes, unless the
 passenger chose a time that is still ahead; the time shows with the results, where it can be
-changed. A search opened from a ride request keeps the request's time. Only the latest search's
-answer is shown.
+changed. Next to it, "Leave at" can be turned into "Arrive by" (see
+[Search limits](search-limits.md)); without a time chosen, that searches for arriving in an hour.
+A search opened from a ride request keeps the request's time and what it stands for. Only the
+latest search's answer is shown.
 
 Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15 minutes ahead
 (`notify.REQUEST_MIN_AHEAD`): for a search made for now, the API's `request_too_soon` message says so.

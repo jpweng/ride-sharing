@@ -258,7 +258,10 @@
 
       <!-- Shown once both ends are set -->
       <div class="ride-when" id="ride-when" hidden>
-        <label for="ride-date" data-i18n="ride.when">When</label>
+        <select id="ride-time-kind" class="auto-width" aria-label="Leave or arrive" data-i18n-aria-label="ride.timeKind">
+          <option value="depart" data-i18n="ride.leaveAt">Leave at</option>
+          <option value="arrive" data-i18n="ride.arriveBy">Arrive by</option>
+        </select>
         <div class="datetime">
           <input type="date" id="ride-date" />
           <select id="ride-hour" aria-label="Hour" data-i18n-aria-label="form.hour"></select>

@@ -1,4 +1,5 @@
 {
+  "ride.arriveBy": "Arrivée avant",
   "ride.ask": "Demander ce trajet aux conducteurs",
   "ride.askHint": "Rien qui vous convienne ? Demandez aux conducteurs qui font souvent ce trajet ou qui roulent dans le secteur. Quelques-uns sont prévenus, les conducteurs ayant une zone à cet endroit voient votre demande dans leur liste, et vos messages vous signalent quand un trajet qui convient est publié.",
   "ride.askSent.one": "Demande envoyée : {count} conducteur qui fait ce trajet ou roule dans le secteur a été prévenu. Vos messages vous signalent quand un trajet qui convient est publié.",
@@ -7,6 +8,7 @@
   "ride.askSentDemo.other": "Demande de démo : elle ne parvient qu'à des conducteurs de démo fictifs. {count} conducteurs ont été prévenus : {names}. Déconnectez-vous et continuez sous l'un de ces noms pour voir la demande arriver.",
   "ride.askSentNone": "Demande envoyée. Aucun conducteur utilisant l'application n'a fait ce trajet récemment ni ne roule dans le secteur (les conducteurs de démo sont fictifs et ne sont jamais sollicités), mais vos messages vous signalent quand un trajet qui convient est publié.",
   "ride.cancelRequest": "Annuler la demande",
+  "ride.leaveAt": "Départ",
   "ride.matchesTitle": "Conducteurs trouvés",
   "ride.needTime": "Choisissez quand vous voulez voyager.",
   "ride.noMatches": "Aucun conducteur trouvé pour ce trajet à cette heure. Faites une demande ci-dessous, ou voyez l'option en transports publics.",
@@ -16,8 +18,8 @@
   "ride.requestsTitle": "Vos demandes de trajet",
   "ride.searching": "Recherche…",
   "ride.swap": "Inverser départ et destination",
+  "ride.timeKind": "Départ ou arrivée",
   "ride.title": "Trouver un trajet",
   "ride.transitTitle": "Alternative en transports publics",
-  "ride.when": "Quand",
   "ride.widerNote": "Aucun trajet réservable ne passe à moins de {near} km de votre départ et de votre destination. Ceux marqués « plus loin » passent à moins de {far} km : voyez comment rejoindre la prise en charge et repartir de la dépose."
 }

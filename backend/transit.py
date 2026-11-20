@@ -316,10 +316,11 @@ def transit_option_for_trip(
     when_iso: str | None = None,
     origin_place: str | None = None,
     destination_place: str | None = None,
+    arrive_by: bool = False,
 ) -> dict | None:
     """
     Convenience wrapper: resolve both ends to stations and fetch
-    connections. origin_place / destination_place are the town names when
+    connections (with arrive_by, those that get there by `when_iso`). origin_place / destination_place are the town names when
     the user picked a town rather than an address (see resolve_station).
     The result's `fare` is the train fare between the two stations
     (fares.py: from OJP when configured, else the distance tariff).
@@ -331,7 +332,7 @@ def transit_option_for_trip(
     if not origin_station or not dest_station:
         return None
 
-    connections = get_connections(origin_station["name"], dest_station["name"], when_iso)
+    connections = get_connections(origin_station["name"], dest_station["name"], when_iso, arrive_by=arrive_by)
     if not connections:
         return None
 

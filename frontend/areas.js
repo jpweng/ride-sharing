@@ -184,7 +184,7 @@ function areaRequestCard(r) {
   card.className = "drive-card clickable area-request-card";
   card.innerHTML = `
     <div class="route">${esc(r.origin_name)} → ${esc(r.destination_name)}</div>
-    <div class="meta">${esc(r.passenger_name)} · ${fmtTime(r.requested_time)}</div>
+    <div class="meta">${esc(r.passenger_name)} · ${esc(requestTimeText(r))}</div>
     <div class="meta">${esc(requestInAreaText(r.area, r.ends))}</div>
   `;
   // Clicking the card shows the request on the map; clicking its buttons,

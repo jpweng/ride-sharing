@@ -1,4 +1,5 @@
 {
+  "email.notify.arriveBy": "arrive by {time}",
   "email.notify.bookingAccepted": "{name} accepted your request for a seat",
   "email.notify.bookingCancelledByDriver": "{name} cancelled your booking",
   "email.notify.bookingCancelledByPassenger": "{name} cancelled their seat on your drive",

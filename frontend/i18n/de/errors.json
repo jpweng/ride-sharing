@@ -4,6 +4,7 @@
   "errors.already_reported": "Sie haben diese Fahrt bereits gemeldet.",
   "errors.already_requested": "Sie haben für diese Fahrt bereits einen Platz angefragt.",
   "errors.area_not_found": "Dieses Gebiet gibt es nicht mehr.",
+  "errors.arrival_too_soon": "Die Fahrt dorthin dauert zu lange, um bis dann anzukommen. Wählen Sie eine spätere Zeit.",
   "errors.booking_not_found": "Diese Buchung gibt es nicht mehr.",
   "errors.booking_not_open": "Diese Buchung wurde bereits beantwortet oder storniert.",
   "errors.consent_required": "Bestätigen Sie, dass Sie 18 oder älter sind, und akzeptieren Sie den Verhaltenskodex.",

@@ -59,10 +59,13 @@ document.getElementById("ride-swap").addEventListener("click", () => {
 // ---------------------------------------------------------------------
 // The search starts by itself once both ends are set (and named: a point
 // picked on the map gets its name a moment later), and again when the time
-// is changed. It is for now, unless the passenger chose a time that is
-// still ahead.
+// or what it stands for is changed. It is for now (to arrive by a time: in
+// an hour), unless the passenger chose a time that is still ahead.
 // ---------------------------------------------------------------------
 let rideSearchTimer = null;
+
+// "Arrive by" without a time chosen: an hour from now (nobody arrives by now).
+const ARRIVE_BY_DEFAULT_MS = 60 * 60 * 1000;
 
 function searchSoon(delayMs = 50) {
   clearTimeout(rideSearchTimer);
@@ -71,7 +74,8 @@ function searchSoon(delayMs = 50) {
     if (!ready || !document.getElementById("page-ride").classList.contains("active")) return;
     if (!rideTimeChosen || !(new Date(getDateTime("ride")) > new Date())) {
       rideTimeChosen = false;
-      setDateTime("ride", new Date());
+      const arriving = document.getElementById("ride-time-kind").value === "arrive";
+      setDateTime("ride", new Date(Date.now() + (arriving ? ARRIVE_BY_DEFAULT_MS : 0)));
     }
     document.getElementById("ride-when").hidden = false;
     findRide();
@@ -86,6 +90,9 @@ function searchSoon(delayMs = 50) {
 
 // Signed in or out: a search shows the drivers' names to a signed-in user.
 window.addEventListener("user:changed", () => searchSoon());
+
+// Leave at / Arrive by: the same time now stands for the other end of the trip.
+document.getElementById("ride-time-kind").addEventListener("change", () => searchSoon());
 
 ["ride-date", "ride-hour", "ride-minute"].forEach((id) => {
   document.getElementById(id).addEventListener("change", () => {

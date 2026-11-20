@@ -33,15 +33,19 @@ Rides:
 - `DELETE /api/drives/{id}` — may change; cancels one's own drive (403 `not_your_drive`), telling
   passengers who were told about it
 - `GET  /api/ride_requests` — signed in; one's recent searches (deduplicated)
-- `POST /api/match` `{origin, destination, requested_time}` — public; finds rides; a signed-in
-  user's search is kept. The passenger chooses no distance and no flexibility: a search covers
+- `POST /api/match` `{origin, destination, requested_time[, time_kind]}` — public; finds rides; a
+  signed-in user's search is kept. `time_kind` says what the time is: `depart` (the default, when to
+  leave) or `arrive` (when to be there: the drop-off is not after it). The passenger chooses no distance and no flexibility: a search covers
   drives passing within 10 km of both ends, with a pickup within 4 hours of the time
   (`backend/search.py`); when none of those can be booked, it also takes the bookable drives
   passing within 30 km (`wider: true`). Returns the driver matches as one list, the closest in
   time and place first (`driver_matches`), public transport to the pickup and from the drop-off
   for the best ones where it makes sense (`first_mile_transit`, `last_mile_transit`; see
   [Search limits](search-limits.md)), and a pure public-transport alternative
-- `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`);
+- `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`),
+  at least 15 minutes and at most 14 days ahead (400 `request_too_soon`, `request_too_far`). To
+  arrive by a time, the request keeps `leave_by`, when the passenger's own trip has to start for
+  that (400 `arrival_too_soon` when that is less than 15 minutes ahead);
   returns the request and how many drivers were told (`drivers_told`: real drivers only, for a real
   passenger), and `demo_request`; a demo request (under a demo driver's name) also gets
   `demo_drivers_told`, the demo drivers' names

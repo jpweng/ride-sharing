@@ -430,8 +430,9 @@ def accept_request(request: dict, driver: dict, seats_available: int = DEFAULT_S
     is told (request_accepted), and so are the passengers of other open
     requests the drive fits, as for any posted drive.
 
-    The drive is the passenger's own trip at their time, or `trip`, the
-    driver's own ({"origin", "destination": {name, lat, lon},
+    The drive is the passenger's own trip at their time (for a time to
+    arrive by: leaving at the request's leave_by), or `trip`, the driver's
+    own ({"origin", "destination": {name, lat, lon},
     "departure_time"}: their usual trip, from the notification), which must
     serve the request as a search would find it. `seats_available`: the
     seats the driver offers in all, the passenger's included. The price is
@@ -449,7 +450,7 @@ def accept_request(request: dict, driver: dict, seats_available: int = DEFAULT_S
         "destination": {k: request[f"destination_{k}"] for k in ("name", "lat", "lon")},
     }
     origin, destination = (trip["origin"], trip["destination"]) if trip else (theirs["origin"], theirs["destination"])
-    departure = _iso(_naive(trip["departure_time"] if trip else request["requested_time"]))
+    departure = _iso(_naive(trip["departure_time"] if trip else request.get("leave_by") or request["requested_time"]))
     if _naive(departure) <= now:
         raise api_error(400, "drive_departed", "This drive would already have left")
     route = matching.route_with_fallback([(origin["lat"], origin["lon"]), (destination["lat"], destination["lon"])])
@@ -475,6 +476,7 @@ def accept_request(request: dict, driver: dict, seats_available: int = DEFAULT_S
             planned, (theirs["origin"]["lat"], theirs["origin"]["lon"]),
             (theirs["destination"]["lat"], theirs["destination"]["lon"]), request["requested_time"],
             request["pickup_radius_km"], request["dropoff_radius_km"], request["time_tolerance_min"],
+            time_kind=notify.time_kind(request),
         )
         if m is None:
             raise api_error(400, "not_on_route", "This drive doesn't serve the request: too far from it, or at another time")

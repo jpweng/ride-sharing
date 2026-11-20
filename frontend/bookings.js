@@ -370,7 +370,7 @@ function showAcceptRequest(request, actions, context) {
   const name = request.passenger_name;
   const text = trip
     ? t("booking.acceptRequestUsual", { name, from: trip.origin.name, to: trip.destination.name, time: fmtTime(trip.departure_time) })
-    : t("booking.acceptRequestTheirs", { name, from: request.origin_name, to: request.destination_name, time: fmtTime(request.requested_time) });
+    : t("booking.acceptRequestTheirs", { name, from: request.origin_name, to: request.destination_name, time: fmtTime(request.leave_by || request.requested_time) });
   const seats = [...Array(8).keys()]
     .map((i) => `<option${i + 1 === DEFAULT_SEATS_OFFERED ? " selected" : ""}>${i + 1}</option>`)
     .join("");
