@@ -18,7 +18,6 @@
   "booking.cancelPassengerConfirm": "Die Buchung von {name} stornieren? Die Plätze werden wieder frei.",
   "booking.decline": "Ablehnen",
   "booking.driverNote": "Nachricht der Person am Steuer: {note}",
-  "booking.empty": "Noch keine Buchungen. Suchen Sie eine Fahrt und fragen Sie einen Platz an.",
   "booking.fullForNow": "Die Fahrt ist im Moment ausgebucht.",
   "booking.inboxAccepted": "{name} hat Ihre Platzanfrage angenommen",
   "booking.inboxAnswer": "Bei Ihren Fahrten antworten",

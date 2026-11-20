@@ -223,13 +223,15 @@ async function renderMyBookings() {
   const list = myBookingsList();
   await bookingsLoaded;
   if (bookingsError) {
+    list.hidden = false;
+    document.getElementById("ride-bookings-title").hidden = false;
     list.innerHTML = `<div class="empty-state">${esc(t("booking.loadFailed", { error: bookingsError }))}</div>`;
     return;
   }
-  if (!bookingsData.as_passenger.length) {
-    list.innerHTML = `<div class="empty-state">${esc(t("booking.empty"))}</div>`;
-    return;
-  }
+  // The section is there when it has something.
+  const none = !bookingsData.as_passenger.length;
+  list.hidden = none;
+  document.getElementById("ride-bookings-title").hidden = none;
   list.innerHTML = "";
   bookingsData.as_passenger.forEach((b) => list.appendChild(myBookingCard(b)));
 }

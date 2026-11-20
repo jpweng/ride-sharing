@@ -28,6 +28,7 @@
 <link rel="stylesheet" href="styles/pwa.css" />
 <link rel="stylesheet" href="styles/inbox.css" />
 <link rel="stylesheet" href="styles/areas.css" />
+<link rel="stylesheet" href="styles/passenger.css" />
 </head>
 <body data-mode="passenger">
 <header>
@@ -239,46 +240,45 @@
       <div class="drive-list" id="browse-list"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
     </section>
 
-    <!-- PASSENGER PAGE -->
+    <!-- PASSENGER PAGE: one card, From and To; the search runs once both are
+         set, for now, and the time can then be changed (passenger.js). The map
+         stays out of the way in passenger mode: see styles/passenger.css. -->
     <section id="page-ride" class="page">
       <div class="page-title" data-i18n="ride.title">Find a ride</div>
 
-      <label data-i18n="form.from">From</label>
-      <div class="point-picker">
-        <button type="button" data-role="ride-origin" data-i18n="form.pickOnMap">Pick on map</button>
-        <div class="autocomplete">
-          <input type="text" id="name-ride-origin" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
-          <ul class="autocomplete-list" id="suggest-ride-origin"></ul>
+      <div class="trip-card">
+        <div class="trip-field">
+          <span class="trip-dot" aria-hidden="true"></span>
+          <div class="autocomplete">
+            <input type="text" id="name-ride-origin" placeholder="From" data-i18n-placeholder="form.from" aria-label="From" data-i18n-aria-label="form.from" autocomplete="off" />
+            <ul class="autocomplete-list" id="suggest-ride-origin"></ul>
+          </div>
+        </div>
+        <div class="trip-field">
+          <span class="trip-dot" aria-hidden="true"></span>
+          <div class="autocomplete">
+            <input type="text" id="name-ride-destination" placeholder="To" data-i18n-placeholder="form.to" aria-label="To" data-i18n-aria-label="form.to" autocomplete="off" />
+            <ul class="autocomplete-list" id="suggest-ride-destination"></ul>
+          </div>
+        </div>
+        <button type="button" class="trip-swap" id="ride-swap" aria-label="Swap start and destination" data-i18n-aria-label="ride.swap">&#8645;</button>
+      </div>
+
+      <!-- Shown once both ends are set -->
+      <div class="ride-when" id="ride-when" hidden>
+        <label for="ride-date" data-i18n="ride.when">When</label>
+        <div class="datetime">
+          <input type="date" id="ride-date" />
+          <select id="ride-hour" aria-label="Hour" data-i18n-aria-label="form.hour"></select>
+          <span>:</span>
+          <select id="ride-minute" aria-label="Minutes" data-i18n-aria-label="form.minute"></select>
         </div>
       </div>
-      <div class="coord-readout" id="readout-ride-origin">not set</div>
 
-      <label data-i18n="form.to">To</label>
-      <div class="point-picker">
-        <button type="button" data-role="ride-destination" data-i18n="form.pickOnMap">Pick on map</button>
-        <div class="autocomplete">
-          <input type="text" id="name-ride-destination" placeholder="type an address or place…" data-i18n-placeholder="form.placePlaceholder" autocomplete="off" />
-          <ul class="autocomplete-list" id="suggest-ride-destination"></ul>
-        </div>
-      </div>
-      <div class="coord-readout" id="readout-ride-destination">not set</div>
-
-      <label for="ride-date" data-i18n="ride.when">When</label>
-      <div class="datetime">
-        <input type="date" id="ride-date" />
-        <select id="ride-hour" aria-label="Hour" data-i18n-aria-label="form.hour"></select>
-        <span>:</span>
-        <select id="ride-minute" aria-label="Minutes" data-i18n-aria-label="form.minute"></select>
-      </div>
-
-      <div class="hint" data-i18n="ride.searchHint">We look for drivers who pass near your start and your destination around that time. The closest in time and place come first; you get to the pickup and from the drop-off on foot or by public transport.</div>
-
-      <button class="submit-btn" id="ride-submit" data-i18n="ride.submit">Find a ride</button>
       <div class="status-msg" id="ride-status"></div>
 
       <div id="ride-results" hidden>
         <div class="section-title" data-i18n="ride.matchesTitle">Driver matches</div>
-        <div class="hint" id="ride-matches-hint" data-i18n="ride.matchesHint">Click a match to see its route on the map.</div>
         <div id="ride-matches"></div>
 
         <div class="ask-box">
@@ -291,11 +291,9 @@
         <div id="ride-transit"></div>
       </div>
 
-      <div class="section-title" data-i18n="ride.requestsTitle">Your ride requests</div>
-      <div id="ride-requests"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
-
-      <div class="section-title" data-i18n="ride.recentTitle">Your recent searches</div>
-      <div id="ride-recent"><div class="empty-state" data-i18n="common.loading">Loading…</div></div>
+      <!-- Shown when there are any -->
+      <div class="section-title" id="ride-requests-title" hidden data-i18n="ride.requestsTitle">Your ride requests</div>
+      <div id="ride-requests" hidden></div>
     </section>
 
     <!-- INBOX: ride requests for drivers, new drives for passengers -->
@@ -384,6 +382,10 @@
   </div>
 
   <div id="map"></div>
+  <!-- In passenger mode the map opens over the page when asked for (app.js: openMap) -->
+  <div id="map-backdrop"></div>
+  <button type="button" class="submit-btn secondary" id="map-close" data-i18n="map.close">Close the map</button>
+  <div id="map-hint" data-i18n="map.pickHint">Tap the place on the map.</div>
 </main>
 
 <!-- A short notice over the page (app.js: showNotice), e.g. for a demo ride that can't be selected -->
@@ -396,6 +398,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
+<script src="passenger.js"></script>
 <script src="areas.js"></script>
 <script src="bookings.js"></script>
 <script src="request_preview.js"></script>

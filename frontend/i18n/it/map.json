@@ -1,7 +1,9 @@
 {
+  "map.close": "Chiudere la mappa",
   "map.destinationPopup": "Destinazione: {name}",
   "map.destinationTitle": "La sua destinazione",
   "map.dropoffPoint": "Discesa ~{time}",
+  "map.pickHint": "Tocchi il luogo sulla mappa.",
   "map.pickupPoint": "Salita ~{time}",
   "map.pickupPopup": "Partenza: {name}",
   "map.pickupTitle": "La sua partenza"

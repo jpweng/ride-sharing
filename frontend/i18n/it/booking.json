@@ -18,7 +18,6 @@
   "booking.cancelPassengerConfirm": "Annullare la prenotazione di {name}? I posti tornano liberi.",
   "booking.decline": "Rifiutare",
   "booking.driverNote": "Messaggio di chi guida: {note}",
-  "booking.empty": "Ancora nessuna prenotazione. Cerchi un passaggio e chieda un posto.",
   "booking.fullForNow": "Per ora il viaggio è al completo.",
   "booking.inboxAccepted": "{name} ha accettato la sua richiesta di un posto",
   "booking.inboxAnswer": "Rispondere nei suoi viaggi",

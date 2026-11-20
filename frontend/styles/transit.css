@@ -99,4 +99,4 @@
 .wider-note { margin-bottom: 8px; }
 
 /* "Directions" next to a match's pickup or drop-off (meetingPointLine in app.js). */
-.directions-link { white-space: nowrap; }
+.directions-link { white-space: nowrap; color: var(--accent-dark); }

@@ -87,6 +87,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   account deletion, email sending
 - [Driver areas](docs/driver-areas.md): the places a driver usually drives from or to, each with a
   radius they choose
+- [The passenger page](docs/passenger-page.md): two fields, a search that starts by itself, the map
+  only when asked for
 - [Ride requests on the driver's map](docs/request-preview.md): clicking a request in the inbox shows
   the passenger's trip and the driver's usual route on the map
 - [Sign-in with Google or Apple](docs/social-login.md): the optional buttons next to the email
@@ -152,6 +154,7 @@ frontend/
   app.js          Leaflet map, point picking, address autocomplete, API calls
   areas.js        driver areas: "Your areas" in the driver's profile, their requests on the Driver page (docs/driver-areas.md)
   request_preview.js  a ride request of the inbox on the map (docs/request-preview.md)
+  passenger.js    the passenger page: the From/To card, searching once both are set (docs/passenger-page.md)
   i18n.js         language choice and translation of the page (see docs/translations.md)
   bookings.js     bookings: asking for a seat, one's bookings, a drive's passengers (docs/booking.md)
   profiles.js     the account page's profile form and the "See profile" popup (docs/profiles.md)

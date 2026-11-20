@@ -18,7 +18,6 @@
   "booking.cancelPassengerConfirm": "Cancel {name}'s booking? Their seats become free again.",
   "booking.decline": "Decline",
   "booking.driverNote": "Message from the driver: {note}",
-  "booking.empty": "No bookings yet. Find a ride and ask its driver for a seat.",
   "booking.fullForNow": "The drive is full for now.",
   "booking.inboxAccepted": "{name} accepted your request for a seat",
   "booking.inboxAnswer": "Answer on your drives",

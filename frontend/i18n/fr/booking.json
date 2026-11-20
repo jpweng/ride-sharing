@@ -18,7 +18,6 @@
   "booking.cancelPassengerConfirm": "Annuler la réservation de {name}? Ses places redeviennent libres.",
   "booking.decline": "Refuser",
   "booking.driverNote": "Message de la personne au volant : {note}",
-  "booking.empty": "Aucune réservation pour l'instant. Cherchez un trajet et demandez une place.",
   "booking.fullForNow": "Le trajet est complet pour l'instant.",
   "booking.inboxAccepted": "{name} a accepté votre demande de place",
   "booking.inboxAnswer": "Répondre dans vos trajets",
