@@ -42,7 +42,8 @@ Rides:
   time and place first (`driver_matches`; `driver_photo` is set when the signed-in passenger may
   see the driver's photo, see [Profiles](profiles.md)), public transport to the pickup and from the drop-off
   for the best ones where it makes sense (`first_mile_transit`, `last_mile_transit`; see
-  [Search limits](search-limits.md)), and a pure public-transport alternative
+  [Search limits](search-limits.md)), trips that combine a ride with public transport
+  (`combined_matches`; see [A ride and public transport](combined-trips.md)), and a pure public-transport alternative
 - `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`),
   at least 15 minutes and at most 14 days ahead (400 `request_too_soon`, `request_too_far`). To
   arrive by a time, the request keeps `leave_by`, when the passenger's own trip has to start for

@@ -8,6 +8,9 @@ drop-off where that makes sense (transit_legs.py), and a pure-public-
 transport option is offered next to them (see transit.py). Matches say
 whether they're "bookable": demo drives aren't.
 
+Next to those, "combined_matches": a ride for part of the way with public
+transport for the rest (combined.py).
+
 Searching is public. Someone who isn't signed in gets the matches without
 their drivers' names (api.without_driver): the rating shows, the name and
 the profile come with signing in.
@@ -20,6 +23,7 @@ from pydantic import BaseModel
 
 import auth
 import bookings
+import combined
 import database as db
 import meeting_points
 import pricing
@@ -104,11 +108,26 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
         arrive_by=payload.time_kind == "arrive",
     )
 
+    # A ride for part of the way and public transport for the rest
+    # (combined.py), with the drives that don't pass near both ends.
+    combined_matches = combined.find(
+        payload.origin, payload.destination, payload.requested_time, payload.time_kind,
+        exclude_ids={m["id"] for m in driver_matches}, transit_option=transit_option,
+    )
+    bookings.with_seats_booked(combined_matches)
+    ratings.with_driver_ratings(combined_matches)
+    combined_matches = [search.with_bookable(pricing.with_ride_prices(m)) for m in combined_matches]
+    if viewer_id is not None:
+        profiles.allow_candidates(viewer_id, [m["driver_id"] for m in combined_matches if not m["is_demo"]])
+    profiles.with_driver_photos(combined_matches, viewer_id)
+
     if not is_member(found):
         driver_matches = [without_driver(m) for m in driver_matches]
+        combined_matches = [without_driver(m) for m in combined_matches]
 
     return {
         "driver_matches": driver_matches,
+        "combined_matches": combined_matches,
         "transit_option": transit_option,
         # For the page's sentence about drives found further away.
         "search_radius_km": search.SEARCH_RADIUS_KM,

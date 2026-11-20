@@ -203,7 +203,7 @@ function profileLink(userId) {
 }
 
 CARD_EXTRAS.push((kind, item, card) => {
-  if (kind !== "match" || item.is_demo || !signedIn() || currentUser.is_demo) return;
+  if (!["match", "combined"].includes(kind) || item.is_demo || !signedIn() || currentUser.is_demo) return;
   // The driver's photo, when they have one (the match's driver_photo), over
   // the initial in the card's circle; the initial stays if it can't be loaded.
   const avatar = card.querySelector(".avatar");

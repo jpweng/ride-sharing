@@ -1,0 +1,13 @@
+{
+  "combined.carFrom": "En voiture depuis {place}",
+  "combined.carTo": "En voiture jusqu'à {place}",
+  "combined.dropoffGap": "dépose à {km} km de votre destination",
+  "combined.noDirect": "Personne ne fait tout le trajet à cette heure. Une voiture peut vous emmener une partie du chemin, et les transports publics le reste :",
+  "combined.pickupGap": "prise en charge à {km} km de votre départ",
+  "combined.title": "Un trajet en voiture et les transports publics",
+  "combined.total": "{duration} en tout",
+  "combined.transitTo": "Transports publics jusqu'à {place}",
+  "combined.vsFaster": "{duration} de moins qu'en transports publics seuls",
+  "combined.vsSame": "aussi rapide qu'en transports publics seuls",
+  "combined.vsSlower": "{duration} de plus qu'en transports publics seuls"
+}
