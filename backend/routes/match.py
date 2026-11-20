@@ -17,6 +17,7 @@ from pydantic import BaseModel
 import auth
 import bookings
 import database as db
+import meeting_points
 import pricing
 import profiles
 import ratings
@@ -75,6 +76,9 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     # Public transport to the pickup and from the drop-off, where they're too
     # far to walk.
     transit_legs.add_to(driver_matches, payload.origin, payload.destination)
+
+    # Names for the pickup and drop-off points, and the way on from the drop-off.
+    meeting_points.add_to(driver_matches, payload.origin, payload.destination)
 
     # Pure public-transport alternative, origin to final destination, for comparison.
     transit_option = transit.transit_option_for_trip(

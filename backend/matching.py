@@ -190,6 +190,46 @@ def osrm_route(points: list[tuple[float, float]]) -> dict | None:
         return None
 
 
+def osrm_table(sources: list[tuple[float, float]], target: tuple[float, float]) -> list[tuple[float, float] | None] | None:
+    """
+    One OSRM `table` call: the driving distance and duration from each of
+    `sources` (lat, lon) to `target`, as [(distance_m, duration_s) or None
+    for a point with no road to it, ...] in the order of `sources`. None
+    when the request fails for any reason, or failed repeatedly just before
+    (see _CircuitBreaker). Same timeouts and retries as osrm_route().
+    """
+    if not sources or not _breaker.allow():
+        return None
+    points = list(sources) + [target]
+    coord_str = ";".join(f"{lon:.6f},{lat:.6f}" for lat, lon in points)
+    url = f"{OSRM_URL}/table/v1/driving/{coord_str}"
+    try:
+        resp = _session.get(
+            url,
+            params={
+                "sources": ";".join(str(i) for i in range(len(sources))),
+                "destinations": str(len(sources)),
+                "annotations": "duration,distance",
+            },
+            timeout=(OSRM_CONNECT_TIMEOUT_S, OSRM_READ_TIMEOUT_S),
+        )
+        if resp.status_code == 429 or resp.status_code >= 500:
+            _breaker.record(False)
+            return None
+        data = resp.json()
+        _breaker.record(True)
+        if data.get("code") != "Ok":
+            return None
+        result = []
+        for distance_row, duration_row in zip(data["distances"], data["durations"]):
+            distance, duration = distance_row[0], duration_row[0]
+            result.append((distance, duration) if distance is not None and duration is not None else None)
+        return result if len(result) == len(sources) else None
+    except (requests.RequestException, ValueError, KeyError, TypeError, IndexError):
+        _breaker.record(False)
+        return None
+
+
 def route_with_fallback(points: list[tuple[float, float]]) -> dict:
     """
     Try OSRM; if it fails, fall back to straight-line segments summed up.

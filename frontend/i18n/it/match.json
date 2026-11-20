@@ -1,13 +1,19 @@
 {
   "match.demoText": "Questo viaggio è fittizio: mostra come funziona l'app e non può essere selezionato. I viaggi offerti da conducenti reali non hanno l'etichetta «Demo».",
   "match.demoTitle": "Viaggio demo",
+  "match.directions": "Percorso",
   "match.dropoff": "Discesa ~{time}, a {km} km dalla sua destinazione",
+  "match.dropoffAt": "Discesa ~{time} vicino a {place}, a {km} km dalla sua destinazione",
   "match.earlier": "{duration} prima",
   "match.firstMile": "Fino alla salita:",
   "match.lastMile": "Dalla discesa:",
   "match.later": "{duration} più tardi",
   "match.onTime": "puntuale",
+  "match.onwardCar": "{duration} in auto",
+  "match.onwardTransit": "{duration} con i trasporti pubblici",
+  "match.onwardWalk": "{duration} a piedi",
   "match.pickup": "Salita ~{time}, a {km} km dalla sua partenza",
+  "match.pickupAt": "Salita ~{time} vicino a {place}, a {km} km dalla sua partenza",
   "match.rideKm": "{km} km insieme",
   "match.wider": "più lontano"
 }
