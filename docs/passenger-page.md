@@ -1,7 +1,9 @@
 # The passenger page
 
-"Find a ride" (`#/ride`) is one card with two fields, From and To, in a centred column. There is
-no search button, no map on the page and nothing to read first. The code is
+"Find a ride" (`#/ride`) is one card with two fields, From and To, straight on the page, above a
+centred column of results. On a wide screen (980 px and more) the card is one bar, wider than the
+column: From, To and when, in a row. There is no search button, no map on the page and nothing to
+read first. The code is
 [frontend/passenger.js](../frontend/passenger.js) and
 [frontend/styles/passenger.css](../frontend/styles/passenger.css), on top of the search and the
 map in [frontend/app.js](../frontend/app.js).
@@ -23,8 +25,8 @@ of what is typed, returning places or things to do).
 
 The search starts by itself as soon as both ends are set, and again when one of them or the time
 changes (`searchSoon` in `passenger.js`). It is for now, rounded up to five minutes, unless the
-passenger chose a time that is still ahead; the time shows with the results, where it can be
-changed. Next to it, "Leave at" can be turned into "Arrive by" (see
+passenger chose a time that is still ahead; the time shows with the results (on a wide screen it
+is in the bar from the start), where it can be changed. Next to it, "Leave at" can be turned into "Arrive by" (see
 [Search limits](search-limits.md)); without a time chosen, that searches for arriving in an hour.
 A search opened from a ride request keeps the request's time and what it stands for. Only the
 latest search's answer is shown.
@@ -34,18 +36,29 @@ Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15
 
 ## Results
 
-A card says when and where the passenger gets in and out, and the price. A click opens its
-details: the driver and the departure, the way to the pickup and from the drop-off (see
+A card starts with who drives: their photo if they have one (the match's `driver_photo`, see
+[Profiles](profiles.md)), else the first letter of their name, then their name and rating, and
+their drive below it. Then when and where the passenger gets in and out, and the price. A click
+opens its details: the departure, the way to the pickup and from the drop-off (see
 [Search limits](search-limits.md)), public transport legs, the driver's profile and "Show on map".
 Demo rides open their details like any ride; they can't be booked, and "Show on map" says they are
 fictional instead of showing them.
+
+When no ride is found, the page says so with a small picture
+([icons/no-rides.svg](../frontend/icons/no-rides.svg)), and "Ask drivers for this ride" is the one
+filled button. With rides found it is an outlined button under them.
+
+Public transport for the same trip is one line under that ("3 connections from 12:27 · 3 h 55
+min"), opened on a click: the stations, the ticket's price, and a row per connection, as plain
+text (times, transfers, the lines and who runs them) with a link to its tickets. The page shows no
+operator's logo.
 
 The passenger's bookings and ride requests are listed below the search only when there are any.
 
 ## Without an account
 
 The page is public: a visitor searches and sees the rides, their prices and the drivers' ratings.
-The drivers' names and profiles come with signing in (see [Sign-in and accounts](sign-in.md)); on a
+The drivers' names, photos and profiles come with signing in (see [Sign-in and accounts](sign-in.md)); on a
 card, "Sign in to request a seat" replaces "Request a seat", and it and "Ask drivers for this ride"
 lead to the sign-in page. The recent places, bookings and ride requests are a signed-in user's.
 

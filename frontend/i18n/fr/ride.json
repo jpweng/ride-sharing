@@ -11,7 +11,7 @@
   "ride.leaveAt": "Départ",
   "ride.matchesTitle": "Conducteurs trouvés",
   "ride.needTime": "Choisissez quand vous voulez voyager.",
-  "ride.noMatches": "Aucun conducteur trouvé pour ce trajet à cette heure. Faites une demande ci-dessous, ou voyez l'option en transports publics.",
+  "ride.noMatches": "Personne ne fait encore ce trajet à cette heure.",
   "ride.noTransit": "Aucune correspondance directe en transports publics.",
   "ride.recentPlace": "Recherche récente",
   "ride.requestsLoadFailed": "Impossible de charger vos demandes : {error}",
@@ -20,6 +20,6 @@
   "ride.swap": "Inverser départ et destination",
   "ride.timeKind": "Départ ou arrivée",
   "ride.title": "Trouver un trajet",
-  "ride.transitTitle": "Alternative en transports publics",
+  "ride.transitTitle": "En transports publics",
   "ride.widerNote": "Aucun trajet réservable ne passe à moins de {near} km de votre départ et de votre destination. Ceux marqués « plus loin » passent à moins de {far} km : voyez comment rejoindre la prise en charge et repartir de la dépose."
 }

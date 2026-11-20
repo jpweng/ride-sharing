@@ -3,6 +3,7 @@
   "match.demoTitle": "Viaggio demo",
   "match.details": "Dettagli",
   "match.directions": "Percorso",
+  "match.driver": "Conducente",
   "match.dropoff": "Discesa ~{time}, a {km} km dalla sua destinazione",
   "match.dropoffAt": "Discesa ~{time} vicino a {place}, a {km} km dalla sua destinazione",
   "match.earlier": "{duration} prima",

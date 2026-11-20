@@ -3,6 +3,7 @@
   "match.demoTitle": "Trajet de démo",
   "match.details": "Détails",
   "match.directions": "Itinéraire",
+  "match.driver": "Conductrice ou conducteur",
   "match.dropoff": "Dépose ~{time}, à {km} km de votre destination",
   "match.dropoffAt": "Dépose ~{time} près de l'arrêt {place}, à {km} km de votre destination",
   "match.earlier": "{duration} plus tôt",

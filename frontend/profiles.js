@@ -204,6 +204,17 @@ function profileLink(userId) {
 
 CARD_EXTRAS.push((kind, item, card) => {
   if (kind !== "match" || item.is_demo || !signedIn() || currentUser.is_demo) return;
+  // The driver's photo, when they have one (the match's driver_photo), over
+  // the initial in the card's circle; the initial stays if it can't be loaded.
+  const avatar = card.querySelector(".avatar");
+  if (avatar && item.driver_photo) {
+    const img = document.createElement("img");
+    img.alt = "";
+    img.loading = "lazy";
+    img.addEventListener("error", () => img.remove());
+    img.src = photoUrl({ user_id: item.driver_id, photo_version: item.driver_photo });
+    avatar.appendChild(img);
+  }
   if (item.driver_name === currentUser.name) return;
   card.appendChild(profileLink(item.driver_id));
 });

@@ -11,7 +11,7 @@
   "ride.leaveAt": "Partenza",
   "ride.matchesTitle": "Conducenti trovati",
   "ride.needTime": "Scelga quando vuole viaggiare.",
-  "ride.noMatches": "Nessun conducente trovato per questo tragitto a quell'ora. Faccia una richiesta qui sotto, oppure veda l'opzione con i trasporti pubblici.",
+  "ride.noMatches": "Nessuno fa ancora questo tragitto a quell'ora.",
   "ride.noTransit": "Nessun collegamento diretto con i trasporti pubblici.",
   "ride.recentPlace": "Ricerca recente",
   "ride.requestsLoadFailed": "Impossibile caricare le sue richieste: {error}",
@@ -20,6 +20,6 @@
   "ride.swap": "Invertire partenza e destinazione",
   "ride.timeKind": "Partenza o arrivo",
   "ride.title": "Trovare un passaggio",
-  "ride.transitTitle": "Alternativa con i trasporti pubblici",
+  "ride.transitTitle": "Con i trasporti pubblici",
   "ride.widerNote": "Nessun viaggio prenotabile passa a meno di {near} km dalla sua partenza e dalla sua destinazione. Quelli contrassegnati «più lontano» passano entro {far} km: verifichi come raggiungere il punto di salita e proseguire da quello di discesa."
 }

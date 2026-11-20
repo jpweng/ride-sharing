@@ -51,9 +51,13 @@ def _shown(user: dict, row: dict | None) -> dict:
     for field in CAR:
         profile[field] = row.get(field)
     profile["has_photo"] = bool(row.get("photo_key")) and photos.enabled()
-    # Changes with the photo, so a browser never shows an old one.
-    profile["photo_version"] = (row.get("photo_key") or "")[-20:-4] or None
+    profile["photo_version"] = _photo_version(row.get("photo_key"))
     return profile
+
+
+def _photo_version(photo_key: str | None) -> str | None:
+    """Changes with the photo, so a browser never shows an old one."""
+    return (photo_key or "")[-20:-4] or None
 
 
 def own(user: dict) -> dict:
@@ -157,6 +161,32 @@ def allow_candidates(viewer_id: int, driver_ids: list[int]) -> None:
             """,
             [(viewer_id, driver_id) for driver_id in driver_ids],
         )
+
+
+def with_driver_photos(matches: list[dict], viewer_id: int | None) -> list[dict]:
+    """The matches, each with driver_photo: the photo_version of its
+    driver's photo, for a viewer whose search found them (allow_candidates),
+    else None -- no photo, a demo drive, photos switched off, or a viewer
+    who doesn't get to see profiles (viewer_id None)."""
+    for match in matches:
+        match["driver_photo"] = None
+    driver_ids = sorted({m["driver_id"] for m in matches if not m.get("is_demo") and m.get("driver_id")})
+    if viewer_id is None or not driver_ids or not photos.enabled():
+        return matches
+    with db.get_conn() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT p.user_id, p.photo_key FROM profiles p JOIN users u ON u.id = p.user_id
+            WHERE p.photo_key IS NOT NULL AND u.banned_at IS NULL
+              AND p.user_id IN ({", ".join("?" * len(driver_ids))})
+            """,
+            driver_ids,
+        ).fetchall()
+    versions = {row["user_id"]: _photo_version(row["photo_key"]) for row in rows}
+    for match in matches:
+        if not match.get("is_demo"):
+            match["driver_photo"] = versions.get(match["driver_id"])
+    return matches
 
 
 def may_see(viewer_id: int, subject_id: int) -> bool:

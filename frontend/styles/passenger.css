@@ -79,21 +79,16 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
   white-space: nowrap;
 }
 
-/* The passenger page: a band in the brand's colour, the trip card on it. */
-@supports selector(:has(*)) {
-  body[data-mode="passenger"] main:has(#page-ride.active) {
-    background: linear-gradient(var(--accent) 0, var(--accent) 128px, transparent 128px);
-    background-attachment: local;
-  }
-  #page-ride .page-title { color: #fff; }
-}
+/* The passenger page: the trip card straight on the page. */
+#page-ride .page-title { margin-bottom: 12px; font-size: 22px; }
 
 .trip-card {
   position: relative;
   padding: 2px 60px 2px 16px;
+  border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--panel);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .trip-field {
@@ -139,6 +134,7 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
   cursor: pointer;
 }
 .trip-swap:hover { background: var(--bg); }
+.trip-swap svg { display: block; margin: auto; }
 
 /* A field's own entries (pick on the map), after the places found. */
 .autocomplete-list li.action {
@@ -160,8 +156,123 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
 .ride-when[hidden] { display: none; }
 .ride-when .datetime { flex: 1 1 260px; min-width: 0; }
 
-/* A match: what matters on the card, the rest in its details. */
+/* Wide screens: one bar, From, To and when, wider than the column of
+   results below it. The time is there from the start (it is for now). */
+@media (min-width: 980px) {
+  body[data-mode="passenger"] #page-ride { --bar-out: 150px; }
+  body[data-mode="passenger"] #page-ride .page-title { margin-left: calc(4px - var(--bar-out)); }
+  body[data-mode="passenger"] .trip-bar {
+    display: flex;
+    align-items: center;
+    margin: 0 calc(-1 * var(--bar-out));
+    padding: 4px 10px 4px 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--panel);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+  body[data-mode="passenger"] .trip-bar .trip-card {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  body[data-mode="passenger"] .trip-bar .trip-field { flex: 1 1 0; min-width: 0; }
+  body[data-mode="passenger"] .trip-bar .trip-field + .trip-field { order: 3; border-top: none; }
+  body[data-mode="passenger"] .trip-bar .trip-swap {
+    position: static;
+    order: 2;
+    flex: none;
+    margin: 0 12px;
+    transform: none;
+  }
+  body[data-mode="passenger"] .trip-bar .trip-swap svg { transform: rotate(90deg); }
+  body[data-mode="passenger"] .trip-bar .ride-when,
+  body[data-mode="passenger"] .trip-bar .ride-when[hidden] {
+    display: flex;
+    flex: none;
+    flex-wrap: nowrap;
+    gap: 4px;
+    margin: 0 0 0 12px;
+    padding-left: 10px;
+    border-left: 1px solid var(--border);
+  }
+  body[data-mode="passenger"] .trip-bar .ride-when .datetime { flex: none; }
+  body[data-mode="passenger"] .trip-bar .ride-when .datetime input[type=date] { flex: none; width: auto; }
+  /* Part of the bar: no boxes of their own until pointed at. */
+  body[data-mode="passenger"] .trip-bar .ride-when select,
+  body[data-mode="passenger"] .trip-bar .ride-when input {
+    border-color: transparent;
+    background-color: transparent;
+  }
+  body[data-mode="passenger"] .trip-bar .ride-when select:hover,
+  body[data-mode="passenger"] .trip-bar .ride-when input:hover { background-color: var(--bg); }
+}
+@media (min-width: 1100px) {
+  body[data-mode="passenger"] #page-ride { --bar-out: 200px; }
+}
+
+/* A match: who drives first, then what matters, the rest in its details. */
 .match-card.open { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14); }
+.match-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.match-who { min-width: 0; }
+.match-who .meta { margin-top: 2px; }
+.match-name { font-size: 16px; font-weight: 700; }
+.avatar {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 18px;
+  font-weight: 700;
+}
+.avatar svg { width: 26px; height: 26px; fill: currentColor; opacity: 0.7; }
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* No ride found: a picture, a sentence, and asking the drivers as the one
+   filled button (app.js: renderMatches). */
+.no-rides { padding: 20px 0 4px; text-align: center; }
+.no-rides img { display: block; margin: 0 auto 12px; }
+.no-rides-text { font-size: 16px; font-weight: 600; }
+#ride-results.no-matches .matches-title { display: none; }
+#ride-results.no-matches .ask-box {
+  margin-bottom: 20px;
+  padding: 0;
+  border: none;
+  text-align: center;
+}
+#ride-results.no-matches .ask-box .hint { font-size: 13px; }
+#ride-results.no-matches .ask-box .submit-btn {
+  margin-top: 14px;
+  padding: 13px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+#ride-results.no-matches .ask-box .status-msg { text-align: left; }
+#ride-transit { margin-top: 14px; }
 .match-details {
   margin-top: 8px;
   padding-top: 8px;

@@ -1,7 +1,9 @@
 {
   "transit.fare": "Ticket, 2nd class: CHF {full} (half fare CHF {half})",
   "transit.fareApprox": "Ticket, 2nd class: about CHF {full} (half fare about CHF {half})",
-  "transit.tickets": "Tickets<br>on SBB",
+  "transit.summary.one": "{count} connection at {time} · {duration}",
+  "transit.summary.other": "{count} connections from {time} · {duration}",
+  "transit.tickets": "Tickets on SBB",
   "transit.transfers.one": "{count} transfer",
   "transit.transfers.other": "{count} transfers"
 }

@@ -23,6 +23,58 @@ def test_the_form_is_two_fields_and_a_swap_button():
         assert gone not in RIDE, gone
 
 
+def test_the_trip_card_is_on_the_page_and_one_bar_on_a_wide_screen():
+    css = (FRONTEND / "styles" / "passenger.css").read_text()
+    # No band of colour behind the card.
+    assert "linear-gradient" not in css and "main:has(#page-ride" not in css
+    # From, To and when are in one element, a row on a wide screen, where
+    # the time shows from the start.
+    bar = re.search(r'<div class="trip-bar">(.*)<div class="status-msg" id="ride-status">', RIDE, re.S).group(1)
+    assert 'class="trip-card"' in bar and 'id="ride-when"' in bar
+    wide = css[css.index("@media (min-width: 980px)"):css.index("@media (min-width: 1100px)")]
+    assert re.search(r"\.trip-bar \.ride-when\[hidden\] \{\s*display: flex", wide)
+    assert re.search(r"\.trip-bar \.trip-swap svg \{ transform: rotate\(90deg\)", wide)
+
+
+def test_a_match_starts_with_who_drives():
+    app = (FRONTEND / "app.js").read_text()
+    card = app[app.index("card.innerHTML = `"):app.index("container.appendChild(card);")]
+    head = card[card.index('<div class="match-head">'):card.index('${meetingPointSentence("pickup"')]
+    # The circle (initial or photo), the name, then the drive.
+    assert head.index("${driverAvatar(m)}") < head.index('class="match-name"') < head.index("m.origin_name")
+    assert 't("match.driver")' in head  # signed out: no name
+    # The rating goes next to the name, the photo into the circle.
+    assert 'card.querySelector(".match-name, .route")' in (FRONTEND / "ratings.js").read_text()
+    profiles = (FRONTEND / "profiles.js").read_text()
+    assert "item.driver_photo" in profiles and 'card.querySelector(".avatar")' in profiles
+
+
+def test_without_a_ride_asking_the_drivers_leads():
+    app = (FRONTEND / "app.js").read_text()
+    # The button is the filled one when nothing was found, the outlined one under rides.
+    assert 'getElementById("ride-ask").classList.toggle("secondary", matches.length > 0)' in app
+    assert 'classList.toggle("no-matches", !matches.length)' in app
+    assert '<img src="icons/no-rides.svg" alt=""' in app
+    assert (FRONTEND / "icons" / "no-rides.svg").is_file()
+
+
+def test_public_transport_is_one_line_of_plain_rows():
+    app = (FRONTEND / "app.js").read_text()
+    option = app[app.index("function renderTransitOption(transit) {"):app.index("function renderFare(fare) {")]
+    assert "<details" in option and 't("transit.summary"' in option
+    # No title of its own above it.
+    assert "ride.transitTitle" not in RIDE
+    # No operator's logo, and the tickets are a link in the text's colours.
+    assert "logo_url" not in app and "pt-logo" not in app
+    css = (FRONTEND / "styles" / "transit.css").read_text()
+    assert "pt-logo" not in css
+    book = re.search(r"\.pt-book \{(.*?)\}", css, re.S).group(1)
+    assert "background" not in book
+    for lang in ("en", "de", "fr", "it"):
+        texts = json.loads((FRONTEND / "i18n" / lang / "transit.json").read_text())
+        assert "<" not in texts["transit.tickets"], lang
+
+
 def test_the_time_and_the_lists_show_only_when_there_is_something():
     for hidden in ("ride-when", "ride-results", "ride-requests-title", "ride-requests"):
         assert re.search(rf'<div[^>]*\bid="{hidden}"[^>]*\bhidden\b', RIDE), hidden
