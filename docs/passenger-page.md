@@ -66,6 +66,18 @@ The drivers' names, photos and profiles come with signing in (see [Sign-in and a
 card, "Sign in to request a seat" replaces "Request a seat", and it and "Ask drivers for this ride"
 lead to the sign-in page. The recent places, bookings and ride requests are a signed-in user's.
 
+## The last trip is remembered
+
+When a search starts, its start, destination, "Leave at" or "Arrive by" and the time (when the
+passenger chose one) are kept in the browser's local storage (`rideandrail.trip`), on the device
+only, for 24 hours. The search page that shows with empty fields takes the trip back and searches
+again: after a reload, on the next visit that day, and in the tab the emailed sign-in link opens,
+where the rides then show with what a signed-in user sees. Signing out, deleting the account or a
+session that has ended clear the page and forget the trip (a shared computer doesn't show the last
+person's search). A time that has passed isn't restored: the search is for now. The
+[privacy page](../frontend/privacy.html) says what is kept. `rememberTrip`, `restoreTrip` and
+`clearTrip` in `passenger.js`.
+
 ## The map
 
 In passenger mode (every page: the search, the inbox, the account) the map is

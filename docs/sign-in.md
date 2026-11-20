@@ -28,7 +28,8 @@ instead of the link is in [Sign-in with Google or Apple](social-login.md)):
   answer with `driver_name` and `driver_id` set to `null` (`api.without_driver`), and profiles need
   a session anyway. Asking for a seat and asking drivers lead to the sign-in page (`#/signin`); the
   search stays in the tab, which notices the sign-in made in another tab (the emailed link's) when
-  it is looked at again. A signed-in user's searches are kept for the places their fields offer. Posting, cancelling and reading one's own drives, searches,
+  it is looked at again, and the link's own tab takes the trip back from the browser (see
+  [The passenger page](passenger-page.md)). A signed-in user's searches are kept for the places their fields offer. Posting, cancelling and reading one's own drives, searches,
   requests and inbox need a signed-in user with a complete profile, and use only the session's
   user: the API takes no names.
 - **View as a demo driver**: a read-only session (1 day) as one of the fictional drivers, without
