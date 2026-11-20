@@ -1347,8 +1347,8 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
 
     const entry = { match: m, card, color, line: null };
     shown.push(entry);
-    // A demo ride is fictional: it's shown, but clicking it says so instead
-    // of opening it.
+    // A demo ride is fictional: its details open like any ride's, but it
+    // can't be shown on the map (or booked): asking for that says so instead.
     const choose = () => (m.is_demo ? showNotice(t("match.demoTitle"), t("match.demoText")) : select(entry));
     if (m.is_demo) card.classList.add("demo");
     const details = card.querySelector(".match-details");
@@ -1361,12 +1361,11 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     more.textContent = t("match.details");
     more.setAttribute("aria-expanded", "false");
     // Below the price: the booking's button (bookings.js), "Details", the details.
-    if (!m.is_demo) card.appendChild(more);
+    card.appendChild(more);
     card.appendChild(details);
     card.addEventListener("click", (e) => {
       if (e.target.closest("a")) return; // directions, ticket and operator links
-      if (m.is_demo) return choose();
-      if (e.target.closest(".match-on-map")) return selected === entry ? revealMap() : select(entry);
+      if (e.target.closest(".match-on-map")) return !m.is_demo && selected === entry ? revealMap() : choose();
       details.hidden = !details.hidden;
       card.classList.toggle("open", !details.hidden);
       more.setAttribute("aria-expanded", String(!details.hidden));

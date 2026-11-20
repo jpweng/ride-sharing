@@ -37,7 +37,8 @@ Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15
 A card says when and where the passenger gets in and out, and the price. A click opens its
 details: the driver and the departure, the way to the pickup and from the drop-off (see
 [Search limits](search-limits.md)), public transport legs, the driver's profile and "Show on map".
-Demo rides don't open: a click says they are fictional, as before.
+Demo rides open their details like any ride; they can't be booked, and "Show on map" says they are
+fictional instead of showing them.
 
 The passenger's bookings and ride requests are listed below the search only when there are any.
 
