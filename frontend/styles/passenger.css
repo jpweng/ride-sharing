@@ -1,0 +1,185 @@
+/* Passenger mode (docs/passenger-page.md): one centred column, and the map
+   out of the way until it's asked for. Driver mode keeps the form beside
+   the map (style.css). */
+body[data-mode="passenger"] main {
+  display: block;
+  overflow-y: auto;
+}
+
+body[data-mode="passenger"] .panel {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+  border-right: none;
+  background: transparent;
+  overflow: visible;
+}
+
+/* On the page's grey, cards are white. */
+body[data-mode="passenger"] .drive-card,
+body[data-mode="passenger"] .match-card {
+  background: var(--panel);
+}
+
+/* The map keeps its size while hidden, so routes can be drawn and framed on
+   it (app.js: openMap); shown, it lies over the page. */
+body[data-mode="passenger"] #map {
+  position: fixed;
+  inset: 5vh 5vw;
+  width: auto;
+  height: auto;
+  z-index: 1500;
+  visibility: hidden;
+  pointer-events: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+}
+
+body[data-mode="passenger"].map-open #map {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#map-backdrop, #map-close, #map-hint { display: none; }
+
+body[data-mode="passenger"].map-open #map-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+body[data-mode="passenger"].map-open #map-close {
+  display: block;
+  position: fixed;
+  top: calc(5vh + 12px);
+  right: calc(5vw + 12px);
+  z-index: 1600;
+  width: auto;
+  margin: 0;
+  padding: 8px 14px;
+  background: var(--panel);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* While a place is being picked on it, the map says what to do. */
+body[data-mode="passenger"].map-open.map-picking #map-hint {
+  display: block;
+  position: fixed;
+  bottom: calc(5vh + 28px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* The passenger page: a band in the brand's colour, the trip card on it. */
+@supports selector(:has(*)) {
+  body[data-mode="passenger"] main:has(#page-ride.active) {
+    background: linear-gradient(var(--accent) 0, var(--accent) 128px, transparent 128px);
+    background-attachment: local;
+  }
+  #page-ride .page-title { color: #fff; }
+}
+
+.trip-card {
+  position: relative;
+  padding: 2px 60px 2px 16px;
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+}
+
+.trip-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.trip-field + .trip-field { border-top: 1px solid var(--border); }
+.trip-field:focus-within { box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* The colours of the two pins on the map. */
+.trip-dot {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 3px solid #1a7f37;
+}
+.trip-field + .trip-field .trip-dot { border-color: #d8232a; }
+
+.trip-card input[type=text] {
+  width: 100%;
+  padding: 16px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 17px;
+}
+
+.trip-swap {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.trip-swap:hover { background: var(--bg); }
+
+/* A field's own entries (pick on the map), after the places found. */
+.autocomplete-list li.action {
+  border-top: 1px solid var(--border);
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+.autocomplete-list li.action:first-child { border-top: none; }
+
+.ride-when {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.ride-when[hidden] { display: none; }
+.ride-when label { margin: 0; }
+.ride-when .datetime { flex: 1; }
+
+/* A match: what matters on the card, the rest in its details. */
+.match-card.open { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14); }
+.match-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.match-more, .match-on-map { color: var(--accent-dark); font-size: 13px; }
+.match-more { display: block; margin-top: 10px; }
+.match-card.open .match-more { font-weight: 600; }
+.match-on-map { display: block; margin-top: 10px; }
+
+/* Phones: the map takes the whole screen. */
+@media (max-width: 760px) {
+  body[data-mode="passenger"] .panel { padding: 16px 16px 32px; }
+  body[data-mode="passenger"] #map {
+    inset: 0;
+    min-height: 0;
+    max-height: none;
+    border-bottom: none;
+    border-radius: 0;
+  }
+  body[data-mode="passenger"].map-open #map-close { top: 12px; right: 12px; }
+  body[data-mode="passenger"].map-open.map-picking #map-hint { bottom: 40px; }
+}

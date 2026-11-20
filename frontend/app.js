@@ -4,16 +4,53 @@
 // Map setup
 // ---------------------------------------------------------------------
 const map = L.map("map").setView([46.8182, 8.2275], 8); // Switzerland
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+const mapTiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors",
   maxZoom: 19,
-}).addTo(map);
+});
+
+// In passenger mode the map stays out of the way (styles/passenger.css): it
+// keeps its size, so everything can still be drawn and framed on it, but it
+// isn't shown until it's asked for (openMap), and then lies over the page.
+// Its tiles are only loaded while it can be seen. In driver mode it is
+// beside the page (above it on phones) all the time.
+const passengerMode = () => document.body.dataset.mode === "passenger";
+const mapIsOpen = () => document.body.classList.contains("map-open");
+
+// After the mode changed, or the map opened or closed.
+function syncMap() {
+  map.invalidateSize();
+  if (!passengerMode() || mapIsOpen()) mapTiles.addTo(map);
+  else map.removeLayer(mapTiles);
+}
+
+function openMap() {
+  if (!passengerMode() || mapIsOpen()) return;
+  document.body.classList.add("map-open");
+  syncMap();
+}
+
+function closeMap() {
+  if (!mapIsOpen()) return;
+  document.body.classList.remove("map-open");
+  // Closing it gives up picking a point on it.
+  activePickRole = null;
+  setPicking(null);
+  syncMap();
+}
+
+document.getElementById("map-close").addEventListener("click", closeMap);
+document.getElementById("map-backdrop").addEventListener("click", closeMap);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeMap();
+});
 
 // On phones the map is a band at the top of a scrolling page (see style.css),
 // so it can be out of sight when something is shown on it or picked from it.
 const PHONE_LAYOUT = window.matchMedia("(max-width: 760px)");
 
 function revealMap() {
+  if (passengerMode()) return openMap();
   if (!PHONE_LAYOUT.matches) return;
   const box = map.getContainer().getBoundingClientRect();
   if (box.top < 0 || box.bottom > window.innerHeight) {
@@ -46,13 +83,21 @@ function setPicking(role) {
   document.querySelectorAll(".point-picker button[data-role]").forEach((btn) => {
     btn.classList.toggle("picking", btn.dataset.role === role && activePickRole === role);
   });
+  document.body.classList.toggle("map-picking", !!role); // passenger mode: the map says what to do
+}
+
+// The next click on the map sets `role`'s point.
+function startPicking(role) {
+  activePickRole = role;
+  setPicking(role);
+  revealMap();
 }
 
 document.querySelectorAll(".point-picker button[data-role]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    activePickRole = activePickRole === btn.dataset.role ? null : btn.dataset.role;
-    setPicking(activePickRole);
-    if (activePickRole) revealMap();
+    if (activePickRole !== btn.dataset.role) return startPicking(btn.dataset.role);
+    activePickRole = null;
+    setPicking(null);
   });
 });
 
@@ -64,6 +109,7 @@ map.on("click", async (e) => {
   setPointCoords(role, lat, lng, null);
   activePickRole = null;
   setPicking(null);
+  closeMap(); // passenger mode: back to the page
   revealOnPhone(document.getElementById(`name-${role}`));
 
   const name = await reverseGeocode(lat, lng);
@@ -71,6 +117,8 @@ map.on("click", async (e) => {
     points[role].name = name;
     const nameInput = document.getElementById(`name-${role}`);
     if (nameInput && !nameInput.value.trim()) nameInput.value = name;
+    // For the scripts loaded after this one (passenger.js): the point has its name.
+    window.dispatchEvent(new CustomEvent("point:named", { detail: { role } }));
   }
 });
 
@@ -340,6 +388,16 @@ async function searchPlaces(query) {
     : [...shownPlaces, ...shownPois, ...shownAddresses];
 }
 
+// Scripts loaded after this one (passenger.js) add entries to a field's
+// list: role -> (query) => [items]. An item is a place ({label, detail, lat,
+// lon, kind}) or something to do ({label, detail, action}). They come after
+// the places found, and alone while there is nothing to search for yet.
+const FIELD_SUGGESTIONS = {};
+
+function fieldSuggestions(role, query) {
+  return FIELD_SUGGESTIONS[role] ? FIELD_SUGGESTIONS[role](query) : [];
+}
+
 function setupAutocomplete(role) {
   const input = document.getElementById(`name-${role}`);
   const list = document.getElementById(`suggest-${role}`);
@@ -360,7 +418,7 @@ function setupAutocomplete(role) {
     list.innerHTML = items
       .map(
         (it, i) =>
-          `<li data-index="${i}" class="${i === activeIndex ? "active" : ""}">${esc(it.label)}${
+          `<li data-index="${i}" class="${i === activeIndex ? "active" : ""}${it.action ? " action" : ""}">${esc(it.label)}${
             it.detail ? `<span class="suggest-detail">${esc(it.detail)}</span>` : ""
           }</li>`
       )
@@ -369,6 +427,10 @@ function setupAutocomplete(role) {
   }
 
   function selectItem(it) {
+    if (it.action) {
+      closeList();
+      return it.action();
+    }
     input.value = it.label;
     setPointCoords(role, it.lat, it.lon, it.label, it.kind);
     closeList();
@@ -379,16 +441,28 @@ function setupAutocomplete(role) {
     const search = ++searchCount;
     if (query.trim().length < 3) {
       closeList();
+      showOwnEntries();
       return;
     }
     const found = await searchPlaces(query);
     if (search !== searchCount) return; // a newer search has started
-    items = found;
+    items = [...found, ...fieldSuggestions(role, query)];
     activeIndex = -1;
     renderList();
   }, 300);
 
+  // Nothing to search for yet: what the field offers by itself, if anything.
+  function showOwnEntries() {
+    if (document.activeElement !== input) return;
+    items = fieldSuggestions(role, input.value);
+    activeIndex = -1;
+    renderList();
+  }
+
   input.addEventListener("input", () => runSearch(input.value));
+  input.addEventListener("focus", () => {
+    if (input.value.trim().length < 3) showOwnEntries();
+  });
 
   input.addEventListener("keydown", (e) => {
     if (!items.length) return;
@@ -675,10 +749,13 @@ function savedMode() {
 
 let mode = savedMode() || "passenger";
 document.body.dataset.mode = mode;
+syncMap();
 
 function setMode(next) {
   mode = next;
   document.body.dataset.mode = next; // style.css shows that mode's tabs
+  document.body.classList.remove("map-open");
+  syncMap(); // the map is beside the page for drivers, out of the way for passengers
   try {
     localStorage.setItem(MODE_STORAGE_KEY, next);
   } catch {
@@ -710,7 +787,8 @@ function route() {
 
   document.querySelectorAll(".tab-link").forEach((a) => a.classList.toggle("active", a.dataset.page === page));
   document.querySelectorAll(".page").forEach((s) => s.classList.toggle("active", s.id === `page-${shown}`));
-  document.getElementById("picker-hint").hidden = !(shown === "ride" || shown === "drive");
+  document.getElementById("picker-hint").hidden = shown !== "drive";
+  closeMap();
 
   // Only show the picked origin/destination pins that belong to this page.
   activePickRole = null;
@@ -1010,42 +1088,33 @@ document.getElementById("drive-submit").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------------
-// Passenger page: find a ride + your recent searches
+// Passenger page: find a ride. The page's own behaviour (the From/To card,
+// searching once both ends are set, the time) is in passenger.js.
 // ---------------------------------------------------------------------
+// The passenger's recent searches: their places are offered under the empty
+// From and To fields (passenger.js).
+let recentSearches = [];
+
 async function loadRecentSearches() {
-  const list = document.getElementById("ride-recent");
   try {
-    const searches = await fetchJson("/api/ride_requests");
-    if (!searches.length) {
-      list.innerHTML = `<div class="empty-state">${esc(t("ride.recentEmpty"))}</div>`;
-      return;
-    }
-    list.innerHTML = "";
-    searches.forEach((r) => {
-      const card = document.createElement("div");
-      card.className = "drive-card clickable";
-      card.innerHTML = `
-        <div class="route">${esc(r.origin_name)} → ${esc(r.destination_name)}</div>
-        <div class="meta">${esc(t("ride.recentItem", { time: fmtTime(r.requested_time) }))}</div>
-      `;
-      card.addEventListener("click", () => repeatSearch(r));
-      list.appendChild(card);
-    });
-  } catch (err) {
-    list.innerHTML = `<div class="empty-state">${esc(t("ride.recentLoadFailed", { error: err.message }))}</div>`;
+    recentSearches = await fetchJson("/api/ride_requests");
+  } catch {
+    recentSearches = []; // they're a convenience: the fields work without
   }
 }
 
+// Whether the passenger chose the time themselves; otherwise a search is
+// for now (passenger.js).
+let rideTimeChosen = false;
+
+// Both ends of a past search or request, in the form: passenger.js then
+// searches, as for any trip whose two ends are set.
 function repeatSearch(r) {
-  setPointCoords("ride-origin", r.origin_lat, r.origin_lon, r.origin_name);
-  setPointCoords("ride-destination", r.destination_lat, r.destination_lon, r.destination_name);
   document.getElementById("name-ride-origin").value = r.origin_name;
   document.getElementById("name-ride-destination").value = r.destination_name;
-  // Keep the time field as-is: the original requested time is likely in the past now.
-  findRide();
+  setPointCoords("ride-origin", r.origin_lat, r.origin_lon, r.origin_name);
+  setPointCoords("ride-destination", r.destination_lat, r.destination_lon, r.destination_name);
 }
-
-document.getElementById("ride-submit").addEventListener("click", findRide);
 
 // The passenger form as an API payload (search or ride request), or null
 // after showing what's missing in `statusId`.
@@ -1070,34 +1139,33 @@ async function findRide() {
   if (!payload) return;
   const { origin, destination } = payload;
 
-  const btn = document.getElementById("ride-submit");
-  btn.disabled = true;
-  btn.textContent = t("ride.searching");
+  const search = ++searchNumber;
   hideStatus("ride-status");
   hideStatus("ride-ask-status");
   document.getElementById("ride-results").hidden = false;
   const searching = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
   document.getElementById("ride-matches").innerHTML = searching;
-  document.getElementById("ride-matches-hint").hidden = true;
   document.getElementById("ride-transit").innerHTML = searching;
   resultsLayer.clearLayers();
   lastResults = null;
 
   try {
     const data = await postJson("/api/match", payload);
+    if (search !== searchNumber) return; // a newer search has started
     lastResults = { data, origin, destination };
     renderResults();
     loadRecentSearches();
   } catch (err) {
+    if (search !== searchNumber) return;
     showStatus("ride-status", err.message, false);
     document.getElementById("ride-matches").innerHTML = "";
     document.getElementById("ride-transit").innerHTML = "";
     document.getElementById("ride-results").hidden = true;
-  } finally {
-    btn.disabled = false;
-    btn.textContent = t("ride.submit");
   }
 }
+
+// Searches start by themselves (passenger.js): only the latest one's answer is shown.
+let searchNumber = 0;
 
 // The last search's results, kept to re-render them in another language.
 let lastResults = null;
@@ -1108,44 +1176,46 @@ function renderResults() {
   renderTransitOption(data.transit_option);
 }
 
-// A match's pickup or drop-off line: the time, its place name when we have
-// one, the gap to the passenger's own start or destination and, further
-// than that, how long the way takes (the pickup: on foot; the drop-off: on
-// foot, by car and by public transport) with a Google Maps directions link
-// (its plain URL scheme: no API, no key). `onward` is the API's structured
-// data; the walking time is an estimate, not a route, and left out beyond
-// MAX_WALK_SHOWN_MIN. A point practically at the passenger's own start or
-// destination has neither times nor link.
+// A match's pickup or drop-off in one sentence: the time, the place's name
+// when we have one, and how far it is from the passenger's own start or
+// destination.
+function meetingPointSentence(kind, point) {
+  const params = { time: fmtClock(point.time), km: fmtNumber(point.gap_km), place: point.name };
+  return `<div class="meta">${esc(t(point.name ? `match.${kind}At` : `match.${kind}`, params))}</div>`;
+}
+
+// For a match's details: the way between the passenger's own point and the
+// pickup or drop-off, how long it takes (to the pickup: on foot; from the
+// drop-off: on foot, by car and by public transport) and a Google Maps
+// directions link (its plain URL scheme: no API, no key). `onward` is the
+// API's structured data; the walking time is an estimate, not a route, and
+// left out beyond MAX_WALK_SHOWN_MIN. "" for a point practically at the
+// passenger's own.
 const MAX_WALK_SHOWN_MIN = 60;
 
-function meetingPointLine(kind, point, passengerPoint, onward) {
-  const params = { time: fmtClock(point.time), km: fmtNumber(point.gap_km), place: point.name };
-  const sentence = t(point.name ? `match.${kind}At` : `match.${kind}`, params);
+function onwardLine(kind, point, passengerPoint, onward) {
+  if (!(kind === "pickup" ? point.walk_min : onward)) return "";
   const minutes = kind === "pickup"
     ? [["match.onwardWalk", point.walk_min]]
-    : onward
-      ? [["match.onwardWalk", onward.walk_min], ["match.onwardCar", onward.car_min], ["match.onwardTransit", onward.transit_min]]
-      : [];
+    : [["match.onwardWalk", onward.walk_min], ["match.onwardCar", onward.car_min], ["match.onwardTransit", onward.transit_min]];
   // A walk of more than an hour isn't proposed: by car or public transport then.
   const shown = minutes.filter(([key, min]) => min && !(key === "match.onwardWalk" && min > MAX_WALK_SHOWN_MIN));
-  const parts = [sentence, ...shown.map(([key, min]) => t(key, { duration: fmtMinutes(min) }))];
-  let link = "";
-  if (kind === "pickup" ? point.walk_min : onward) {
-    // The way between the passenger's own point and the meeting point.
-    const [from, to] = kind === "pickup" ? [passengerPoint, point] : [point, passengerPoint];
-    const url = "https://www.google.com/maps/dir/?api=1"
-      + `&origin=${from.lat},${from.lon}&destination=${to.lat},${to.lon}`;
-    link = ` <a class="directions-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(t("match.directions"))}</a>`;
-  }
-  return `<div class="meta">${parts.map(esc).join(" · ")}${link}</div>`;
+  const [from, to] = kind === "pickup" ? [passengerPoint, point] : [point, passengerPoint];
+  const url = "https://www.google.com/maps/dir/?api=1"
+    + `&origin=${from.lat},${from.lon}&destination=${to.lat},${to.lon}`;
+  const label = t(kind === "pickup" ? "match.firstMile" : "match.lastMile");
+  const times = shown.map(([key, min]) => esc(t(key, { duration: fmtMinutes(min) }))).join(" · ");
+  return `<div class="meta">${esc(label)} ${times}
+    <a class="directions-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(t("match.directions"))}</a></div>`;
 }
 
 // The drives that serve the trip, the best first (see backend/search.py).
-// `limits`: the search's answer, for its two distances.
+// `limits`: the search's answer, for its two distances. A card says when
+// and where the passenger gets in and out, and the price; a click opens its
+// details, and "Show on map" there opens the map on that drive's route.
 function renderMatches(matches, passengerOrigin, passengerDestination, limits = {}) {
   const container = document.getElementById("ride-matches");
   container.classList.remove("has-selection");
-  document.getElementById("ride-matches-hint").hidden = !matches.length;
   if (!matches.length) {
     container.innerHTML = `<div class="empty-state">${esc(t("ride.noMatches"))}</div>`;
     return;
@@ -1175,8 +1245,8 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
   let selected = null;
   let meetingMarkers = [];
 
-  // Clicking a match highlights its route, with where you'd get in and out,
-  // and fades the others; clicking it again shows them all as before.
+  // Showing a match on the map highlights its route, with where you'd get in
+  // and out, and fades the others; again, and they all show as before.
   function select(entry) {
     selected = selected === entry ? null : entry;
     meetingMarkers.forEach((marker) => resultsLayer.removeLayer(marker));
@@ -1220,15 +1290,20 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     card.style.borderLeftColor = color;
     card.innerHTML = `
       <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}${demoBadge(m)}</div>
-      <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
-      ${meetingPointLine("pickup", m.pickup, passengerOrigin, null)}
-      ${meetingPointLine("dropoff", m.dropoff, passengerDestination, m.dropoff.onward)}
+      ${meetingPointSentence("pickup", m.pickup)}
+      ${meetingPointSentence("dropoff", m.dropoff)}
       ${priceBadges(m)}
-      ${timeDiffBadge(m.time_diff_min)}
-      <span class="badge">${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</span>
       ${m.wider ? `<span class="badge wider">${esc(t("match.wider"))}</span>` : ""}
-      ${renderTransitLeg("match.firstMile", m.first_mile_transit)}
-      ${renderTransitLeg("match.lastMile", m.last_mile_transit)}
+      <div class="match-details" hidden>
+        <div class="meta">${esc(t("common.driver", { name: m.driver_name }))} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
+        ${onwardLine("pickup", m.pickup, passengerOrigin, null)}
+        ${onwardLine("dropoff", m.dropoff, passengerDestination, m.dropoff.onward)}
+        ${timeDiffBadge(m.time_diff_min)}
+        <span class="badge">${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</span>
+        ${renderTransitLeg("match.firstMile", m.first_mile_transit)}
+        ${renderTransitLeg("match.lastMile", m.last_mile_transit)}
+        <button type="button" class="link-btn match-on-map">${esc(t("match.showOnMap"))}</button>
+      </div>
     `;
     container.appendChild(card);
     cardExtras("match", m, card);
@@ -1236,12 +1311,28 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     const entry = { match: m, card, color, line: null };
     shown.push(entry);
     // A demo ride is fictional: it's shown, but clicking it says so instead
-    // of selecting it.
+    // of opening it.
     const choose = () => (m.is_demo ? showNotice(t("match.demoTitle"), t("match.demoText")) : select(entry));
     if (m.is_demo) card.classList.add("demo");
+    const details = card.querySelector(".match-details");
+    // The driver's profile belongs to the details; "Details" closes the card.
+    const profile = card.querySelector(":scope > .profile-link-box");
+    if (profile) details.appendChild(profile);
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "link-btn match-more";
+    more.textContent = t("match.details");
+    more.setAttribute("aria-expanded", "false");
+    // Below the price: the booking's button (bookings.js), "Details", the details.
+    if (!m.is_demo) card.appendChild(more);
+    card.appendChild(details);
     card.addEventListener("click", (e) => {
-      if (e.target.closest("a")) return; // ticket and operator links
-      choose();
+      if (e.target.closest("a")) return; // directions, ticket and operator links
+      if (m.is_demo) return choose();
+      if (e.target.closest(".match-on-map")) return selected === entry ? revealMap() : select(entry);
+      details.hidden = !details.hidden;
+      card.classList.toggle("open", !details.hidden);
+      more.setAttribute("aria-expanded", String(!details.hidden));
     });
 
     if (m.route_geometry && m.route_geometry.length) {
@@ -1413,12 +1504,13 @@ document.getElementById("ride-ask").addEventListener("click", async () => {
 
 async function loadMyRequests() {
   const list = document.getElementById("ride-requests");
+  const show = (shown) => {
+    list.hidden = !shown;
+    document.getElementById("ride-requests-title").hidden = !shown;
+  };
   try {
     const requests = await fetchJson("/api/requests");
-    if (!requests.length) {
-      list.innerHTML = `<div class="empty-state">${esc(t("ride.requestsEmpty"))}</div>`;
-      return;
-    }
+    show(requests.length > 0); // the section is there when it has something
     list.innerHTML = "";
     requests.forEach((r) => {
       const card = document.createElement("div");
@@ -1441,6 +1533,7 @@ async function loadMyRequests() {
       list.appendChild(card);
     });
   } catch (err) {
+    show(true);
     list.innerHTML = `<div class="empty-state">${esc(t("ride.requestsLoadFailed", { error: err.message }))}</div>`;
   }
 }
@@ -1449,6 +1542,7 @@ async function loadMyRequests() {
 function searchForRequest(r) {
   goTo("ride");
   setDateTime("ride", new Date(r.requested_time));
+  rideTimeChosen = true;
   repeatSearch(r);
 }
 
@@ -1771,15 +1865,16 @@ function getDateTime(prefix) {
   return `${date}T${document.getElementById(`${prefix}-hour`).value}:${document.getElementById(`${prefix}-minute`).value}`;
 }
 
-// Default to "in 2 hours" so the demo has a sensible starting point.
-["drive", "ride"].forEach((prefix) => {
-  setupDateTime(prefix);
-  setDateTime(prefix, new Date(Date.now() + 2 * 60 * 60 * 1000));
-});
+// A drive is offered for "in 2 hours" unless changed; a search is for now
+// (passenger.js sets it again when the search starts).
+["drive", "ride"].forEach(setupDateTime);
+setDateTime("drive", new Date(Date.now() + 2 * 60 * 60 * 1000));
+setDateTime("ride", new Date());
 
 function translateUnsetReadouts() {
   Object.keys(PICK_COLORS).forEach((role) => {
-    if (!points[role]) document.getElementById(`readout-${role}`).textContent = t("form.notSet");
+    const readout = document.getElementById(`readout-${role}`);
+    if (readout && !points[role]) readout.textContent = t("form.notSet");
   });
 }
 
