@@ -23,7 +23,47 @@
 
 .transit-box .conn:first-of-type { border-top: none; }
 
-/* Public transport connections, flight-search style (see renderConnections) */
+/* The public transport alternative: one line, opened on a click
+   (renderTransitOption). */
+details.transit-box { padding: 0; border-radius: 10px; font-size: 13px; }
+details.transit-box > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+details.transit-box > summary::-webkit-details-marker { display: none; }
+details.transit-box > summary::after {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin: 0 4px 3px auto;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+}
+details.transit-box[open] > summary::after { margin-bottom: -3px; transform: rotate(-135deg); }
+details.transit-box > :not(summary) { margin-left: 14px; margin-right: 14px; }
+details.transit-box > :last-child:not(summary) { margin-bottom: 8px; }
+.pt-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pt-title { font-weight: 600; }
+.pt-summary { color: var(--muted); }
+.pt-stations { font-weight: 600; }
+
+/* One connection per row, as plain text (see renderConnections) */
 .pt-conn {
   display: flex;
   align-items: center;
@@ -33,60 +73,19 @@
 }
 .pt-conn:first-of-type { border-top: none; }
 
-.pt-logos {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 0 0 28px;
-  align-items: center;
-}
-.pt-logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: white;
-  text-decoration: none;
-}
-.pt-logo img { width: 20px; height: 20px; }
-.pt-code {
-  font-size: 8px;
-  font-weight: 700;
-  color: var(--text);
-  overflow: hidden;
-}
-
 .pt-body { flex: 1; min-width: 0; }
-.pt-times { font-size: 14px; font-weight: 600; }
-.pt-meta { color: var(--muted); }
-.pt-legs { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 3px; }
-.pt-leg {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: #eef0f3;
-  color: var(--text);
-}
-.pt-ops { margin-top: 3px; color: var(--muted); }
-.pt-ops a { color: var(--muted); }
+.pt-times { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+.pt-clock { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.pt-meta { font-size: 12px; color: var(--muted); }
+.pt-lines { margin-top: 2px; font-size: 12px; color: var(--muted); }
 
+/* The tickets: a link, not a button. */
 .pt-book {
   flex: 0 0 auto;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: var(--accent);
-  color: white;
-  font-weight: 600;
-  font-size: 11px;
-  line-height: 1.25;
-  text-align: center;
-  text-decoration: none;
+  font-size: 12px;
+  color: var(--accent-dark);
+  white-space: nowrap;
 }
-.pt-book:hover { background: var(--accent-dark); }
 
 /* A drive found further away than a search usually looks (search.py), and
    the sentence above the results that says so. */

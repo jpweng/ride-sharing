@@ -20,7 +20,8 @@ function ratingBadge(rating, role) {
 // On search results and the list of drives: the driver's rating.
 CARD_EXTRAS.push((kind, item, card) => {
   if (kind === "mine" || !item.driver_rating) return;
-  card.querySelector(".route")?.insertAdjacentHTML("beforeend", ratingBadge(item.driver_rating, "driver"));
+  // Next to the driver's name on a match, to the route on a drive.
+  card.querySelector(".match-name, .route")?.insertAdjacentHTML("beforeend", ratingBadge(item.driver_rating, "driver"));
 });
 
 // On a booking: the other side's rating, and "Report a problem".

@@ -11,7 +11,7 @@
   "ride.leaveAt": "Leave at",
   "ride.matchesTitle": "Driver matches",
   "ride.needTime": "Choose when you want to travel.",
-  "ride.noMatches": "No drivers found for this trip around that time. Ask the drivers below, or see the public transport option.",
+  "ride.noMatches": "Nobody is driving this way around that time yet.",
   "ride.noTransit": "No direct public transport option found.",
   "ride.recentPlace": "Recent search",
   "ride.requestsLoadFailed": "Failed to load your requests: {error}",
@@ -20,6 +20,6 @@
   "ride.swap": "Swap start and destination",
   "ride.timeKind": "Leave or arrive",
   "ride.title": "Find a ride",
-  "ride.transitTitle": "Public transport alternative",
+  "ride.transitTitle": "Public transport",
   "ride.widerNote": "No ride you can book passes within {near} km of your start and destination. The ones marked “further away” pass within {far} km: see how you would get to the pickup and from the drop-off."
 }

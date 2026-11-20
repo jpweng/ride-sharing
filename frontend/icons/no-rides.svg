@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 112" role="img" aria-label="">
+  <!-- No ride found: a car on its way, with a free seat. The logo's colours. -->
+  <ellipse cx="100" cy="94" rx="92" ry="9" fill="#e4f2ef"/>
+  <path d="M8 80h30" fill="none" stroke="#b9c9c5" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 10"/>
+  <path d="M52 82V66a8 8 0 0 1 6-7.7l15-4 13-16.5a10 10 0 0 1 7.9-3.8h25.7a10 10 0 0 1 8.3 4.4l10.6 15.9 10.6 2.9a8 8 0 0 1 5.9 7.7V82a4 4 0 0 1-4 4H56a4 4 0 0 1-4-4z" fill="#0f6e5f"/>
+  <path d="M81 55l10-12.700a4 4 0 0 1 3.100-1.500H104V55z" fill="#e4f2ef"/>
+  <path d="M110 40.800h9.700a4 4 0 0 1 3.300 1.800L131.300 55H110z" fill="#ffffff"/>
+  <circle cx="120" cy="49" r="2" fill="#f06b45"/>
+  <path d="M155 68h6v6h-6z" fill="#f06b45"/>
+  <circle cx="78" cy="86" r="12" fill="#1e2235"/>
+  <circle cx="78" cy="86" r="5" fill="#ffffff"/>
+  <circle cx="134" cy="86" r="12" fill="#1e2235"/>
+  <circle cx="134" cy="86" r="5" fill="#ffffff"/>
+  <path d="M172 34a9 9 0 0 1 9 9c0 6.500-9 16-9 16s-9-9.500-9-16a9 9 0 0 1 9-9z" fill="#f06b45"/>
+  <circle cx="172" cy="43" r="3.500" fill="#ffffff"/>
+</svg>

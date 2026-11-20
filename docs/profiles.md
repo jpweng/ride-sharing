@@ -35,7 +35,9 @@ Nothing here is public, and signing in is not enough:
   names only.
 
 Everyone else gets 404 `profile_not_found`, the same as for a profile that doesn't exist, as do
-demo drivers (who have none) and banned accounts. *See profile* appears where the rules allow it:
+demo drivers (who have none) and banned accounts. A search result shows its driver's photo to the
+passenger whose search found it (`driver_photo` on the match: the photo's version, or `null`).
+*See profile* appears where the rules allow it:
 on a search result, on a booking (both sides) and on a ride request in the inbox.
 
 A profile, its photo and what others were allowed to see are deleted with the account.

@@ -1173,9 +1173,8 @@ async function findRide() {
   hideStatus("ride-status");
   hideStatus("ride-ask-status");
   document.getElementById("ride-results").hidden = false;
-  const searching = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
-  document.getElementById("ride-matches").innerHTML = searching;
-  document.getElementById("ride-transit").innerHTML = searching;
+  document.getElementById("ride-matches").innerHTML = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
+  document.getElementById("ride-transit").innerHTML = "";
   resultsLayer.clearLayers();
   lastResults = null;
 
@@ -1246,15 +1245,31 @@ function onwardLine(kind, point, passengerPoint, onward) {
     <a class="directions-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(t("match.directions"))}</a></div>`;
 }
 
+// Who drives, in a circle: the first letter of their name (profiles.js puts
+// their photo over it), or a figure when the name isn't shown (signed out).
+const PERSON_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0z"/></svg>';
+
+function driverAvatar(m) {
+  const initial = (m.driver_name || "").trim().charAt(0).toUpperCase();
+  return `<span class="avatar" aria-hidden="true">${initial ? esc(initial) : PERSON_ICON}</span>`;
+}
+
 // The drives that serve the trip, the best first (see backend/search.py).
-// `limits`: the search's answer, for its two distances. A card says when
-// and where the passenger gets in and out, and the price; a click opens its
-// details, and "Show on map" there opens the map on that drive's route.
+// `limits`: the search's answer, for its two distances. A card says who
+// drives, when and where the passenger gets in and out, and the price; a
+// click opens its details, and "Show on map" there opens the map on that
+// drive's route. Without any, asking the drivers is what the page proposes:
+// its button is then the filled one (styles/passenger.css: .no-matches).
 function renderMatches(matches, passengerOrigin, passengerDestination, limits = {}) {
   const container = document.getElementById("ride-matches");
   container.classList.remove("has-selection");
+  document.getElementById("ride-results").classList.toggle("no-matches", !matches.length);
+  document.getElementById("ride-ask").classList.toggle("secondary", matches.length > 0);
   if (!matches.length) {
-    container.innerHTML = `<div class="empty-state">${esc(t("ride.noMatches"))}</div>`;
+    container.innerHTML = `<div class="no-rides">
+      <img src="icons/no-rides.svg" alt="" width="150" height="84" />
+      <div class="no-rides-text">${esc(t("ride.noMatches"))}</div>
+    </div>`;
     return;
   }
   container.innerHTML = "";
@@ -1326,13 +1341,19 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     const color = routeColors[idx % routeColors.length];
     card.style.borderLeftColor = color;
     card.innerHTML = `
-      <div class="route">${esc(m.origin_name)} → ${esc(m.destination_name)}${demoBadge(m)}</div>
+      <div class="match-head">
+        ${driverAvatar(m)}
+        <div class="match-who">
+          <div class="match-name">${esc(m.driver_name || t("match.driver"))}${demoBadge(m)}</div>
+          <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)}</div>
+        </div>
+      </div>
       ${meetingPointSentence("pickup", m.pickup)}
       ${meetingPointSentence("dropoff", m.dropoff)}
       ${priceBadges(m)}
       ${m.wider ? `<span class="badge wider">${esc(t("match.wider"))}</span>` : ""}
       <div class="match-details" hidden>
-        <div class="meta">${m.driver_name ? `${esc(t("common.driver", { name: m.driver_name }))} · ` : ""}${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
+        <div class="meta">${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
         ${onwardLine("pickup", m.pickup, passengerOrigin, null)}
         ${onwardLine("dropoff", m.dropoff, passengerDestination, m.dropoff.onward)}
         ${timeDiffBadge(m.time_diff_min)}
@@ -1364,7 +1385,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     card.appendChild(more);
     card.appendChild(details);
     card.addEventListener("click", (e) => {
-      if (e.target.closest("a")) return; // directions, ticket and operator links
+      if (e.target.closest("a")) return; // directions and ticket links
       if (e.target.closest(".match-on-map")) return !m.is_demo && selected === entry ? revealMap() : choose();
       details.hidden = !details.hidden;
       card.classList.toggle("open", !details.hidden);
@@ -1410,15 +1431,26 @@ function renderTransitLeg(labelKey, leg) {
   )}${renderConnections(leg.connections)}</div>`;
 }
 
+// Public transport for the whole trip, under the rides: one line (how many
+// connections, the first one's time and duration), opened on a click.
+const TRANSIT_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="3.5" width="13" height="13" rx="3"/><path d="M5.5 10.5h13M9 13.6h.01M15 13.6h.01M8.5 16.5l-2 4M15.5 16.5l2 4"/></svg>';
+
 function renderTransitOption(transit) {
   const container = document.getElementById("ride-transit");
-  if (!transit) {
+  if (!transit || !transit.connections.length) {
     container.innerHTML = `<div class="empty-state">${esc(t("ride.noTransit"))}</div>`;
     return;
   }
-  container.innerHTML = `<div class="transit-box alt"><strong>${esc(transit.from_station)} → ${esc(
-    transit.to_station
-  )}</strong>${renderFare(transit.fare)}${renderConnections(transit.connections)}</div>`;
+  const open = container.querySelector("details")?.open; // stays open when the language changes
+  const first = transit.connections[0];
+  const summary = t("transit.summary", {
+    count: transit.connections.length, time: fmtClock(first.departure), duration: fmtDuration(first.duration),
+  });
+  container.innerHTML = `<details class="transit-box alt"${open ? " open" : ""}>
+    <summary>${TRANSIT_ICON}<span class="pt-title">${esc(t("ride.transitTitle"))}</span><span class="pt-summary">${esc(summary)}</span></summary>
+    <div class="pt-stations">${esc(transit.from_station)} → ${esc(transit.to_station)}</div>
+    ${renderFare(transit.fare)}${renderConnections(transit.connections)}
+  </details>`;
 }
 
 // The train ticket's price, 2nd class (see fares.py): from the SBB price
@@ -1429,52 +1461,31 @@ function renderFare(fare) {
   return `<div class="pt-fare">${esc(t(key, { full: fmtChf(fare.full_chf), half: fmtChf(fare.half_chf) }))}</div>`;
 }
 
-// One row per connection, flight-search style: operator logos, times,
-// duration/transfers, the lines taken, and a link to book it on SBB (one
+// One row per connection: times, duration and transfers, the lines taken
+// and who runs them, as plain text, and a link to its tickets on SBB (one
 // ticket covers every Swiss operator on the journey).
 function renderConnections(connections) {
   return connections
     .map((c) => {
-      const ops = c.operators || [];
-      const logos = ops.map(operatorLogo).join("");
-      const legs = (c.legs || [])
-        .map((l) => `<span class="pt-leg">${esc([l.category, l.number].filter(Boolean).join(" ") || l.operator?.code || "?")}</span>`)
-        .join("");
-      const opNames = ops
-        .map((o) =>
-          o.url
-            ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.name)}</a>`
-            : esc(o.name)
-        )
+      const lines = (c.legs || [])
+        .map((l) => [l.category, l.number].filter(Boolean).join(" ") || l.operator?.code || "?")
         .join(" · ");
-      const transfers = esc(t("transit.transfers", { count: c.transfers }));
+      const operators = (c.operators || []).map((o) => o.name).join(", ");
+      const transfers = t("transit.transfers", { count: c.transfers });
       return `
         <div class="pt-conn">
-          <div class="pt-logos">${logos}</div>
           <div class="pt-body">
-            <div class="pt-times">${fmtClock(c.departure)} → ${fmtClock(c.arrival)}</div>
-            <div class="pt-meta">${fmtDuration(c.duration)} · ${transfers}</div>
-            <div class="pt-legs">${legs}</div>
-            ${opNames ? `<div class="pt-ops">${opNames}</div>` : ""}
+            <div class="pt-times"><span class="pt-clock">${fmtClock(c.departure)} → ${fmtClock(c.arrival)}</span><span class="pt-meta">${esc(fmtDuration(c.duration))} · ${esc(transfers)}</span></div>
+            <div class="pt-lines">${esc(lines)}${operators ? ` (${esc(operators)})` : ""}</div>
           </div>
           ${
             c.booking_url
-              ? `<a class="pt-book" href="${esc(sbbUrl(c.booking_url))}" target="_blank" rel="noopener">${t("transit.tickets")}</a>`
+              ? `<a class="pt-book" href="${esc(sbbUrl(c.booking_url))}" target="_blank" rel="noopener">${esc(t("transit.tickets"))}</a>`
               : ""
           }
         </div>`;
     })
     .join("");
-}
-
-function operatorLogo(o) {
-  // Fall back to the operator's code as a text badge if the logo can't load.
-  const inner = o.logo_url
-    ? `<img src="${esc(o.logo_url)}" alt="${esc(o.code)}" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="pt-code" hidden>${esc(o.code)}</span>`
-    : `<span class="pt-code">${esc(o.code)}</span>`;
-  return o.url
-    ? `<a class="pt-logo" href="${esc(o.url)}" target="_blank" rel="noopener" title="${esc(o.name)}">${inner}</a>`
-    : `<span class="pt-logo" title="${esc(o.name)}">${inner}</span>`;
 }
 
 // SBB's site in the visitor's language: the backend links to /en.

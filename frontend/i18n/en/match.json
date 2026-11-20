@@ -3,6 +3,7 @@
   "match.demoTitle": "Demo ride",
   "match.details": "Details",
   "match.directions": "Directions",
+  "match.driver": "Driver",
   "match.dropoff": "Drop-off ~{time}, {km} km from your destination",
   "match.dropoffAt": "Drop-off ~{time} near {place}, {km} km from your destination",
   "match.earlier": "{duration} earlier",

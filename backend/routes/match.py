@@ -79,9 +79,13 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     ratings.with_driver_ratings(driver_matches)
     driver_matches = [pricing.with_ride_prices(m) for m in driver_matches]
     # The real drivers found are candidates for this ride: a signed-in
-    # passenger may see their profiles (profiles.py).
+    # passenger may see their profiles (profiles.py), and their photos show
+    # on the matches.
+    viewer_id = None
     if user and auth.profile_complete(user) and not (user["is_demo"] or found["session"]["is_demo"]):
         profiles.allow_candidates(user["id"], [m["driver_id"] for m in driver_matches if not m["is_demo"]])
+        viewer_id = user["id"]
+    profiles.with_driver_photos(driver_matches, viewer_id)
 
     # Public transport to the pickup and from the drop-off, where they're too
     # far to walk.

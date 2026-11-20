@@ -261,6 +261,30 @@ def test_a_photo_is_seen_by_those_who_may_see_the_profile(users, client):
     assert signed_out.status_code == 401
 
 
+def test_a_match_says_whether_its_driver_has_a_photo(users, client, monkeypatch):
+    jean, marie, paul = users["jean"], users["marie"], users["paul"]
+    _drive(jean)
+    _drive(paul, at="08:10")
+    client(jean).put("/api/profile/photo", content=JPEG)
+    version = client(jean).get("/api/profile").json()["photo_version"]
+    assert version
+    # The photo's version, for its address; None for a driver without one.
+    assert {m["driver_id"]: m["driver_photo"] for m in _search(marie)} == {jean["id"]: version, paul["id"]: None}
+    # Not for someone who isn't signed in, nor for a demo session: they see no profiles.
+    signed_out = match_routes.match_ride(
+        match_routes.MatchRequest(origin=LAUSANNE, destination=GENEVE, requested_time=f"{TOMORROW}T08:00"), None,
+    )["driver_matches"]
+    assert [m["driver_photo"] for m in signed_out] == [None, None]
+    demo = match_routes.match_ride(
+        match_routes.MatchRequest(origin=LAUSANNE, destination=GENEVE, requested_time=f"{TOMORROW}T08:00"),
+        {"user": marie, "session": {"is_demo": 1}, "extended": False},
+    )["driver_matches"]
+    assert [m["driver_photo"] for m in demo] == [None, None]
+    # Nor once photos are switched off.
+    monkeypatch.delenv("PHOTO_DIR")
+    assert [m["driver_photo"] for m in _search(marie)] == [None, None]
+
+
 def test_without_storage_there_are_no_photos(users, client, monkeypatch):
     monkeypatch.delenv("PHOTO_DIR")
     jean = client(users["jean"])

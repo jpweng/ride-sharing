@@ -11,7 +11,7 @@
   "ride.leaveAt": "Abfahrt",
   "ride.matchesTitle": "Passende Fahrten",
   "ride.needTime": "Wählen Sie, wann Sie reisen wollen.",
-  "ride.noMatches": "Für diese Strecke wurde um diese Zeit niemand gefunden. Fragen Sie unten eine Fahrt an oder sehen Sie sich die ÖV-Verbindung an.",
+  "ride.noMatches": "Um diese Zeit fährt noch niemand diese Strecke.",
   "ride.noTransit": "Keine direkte ÖV-Verbindung gefunden.",
   "ride.recentPlace": "Kürzlich gesucht",
   "ride.requestsLoadFailed": "Ihre Anfragen konnten nicht geladen werden: {error}",
@@ -20,6 +20,6 @@
   "ride.swap": "Start und Ziel tauschen",
   "ride.timeKind": "Abfahrt oder Ankunft",
   "ride.title": "Mitfahrt finden",
-  "ride.transitTitle": "Alternative mit dem ÖV",
+  "ride.transitTitle": "Mit dem ÖV",
   "ride.widerNote": "Keine buchbare Fahrt führt näher als {near} km an Ihrem Start und Ihrem Ziel vorbei. Die mit «weiter entfernt» markierten führen innerhalb von {far} km vorbei: Prüfen Sie, wie Sie zum Einstieg und vom Ausstieg weiterkommen."
 }
