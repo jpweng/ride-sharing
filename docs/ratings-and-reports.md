@@ -14,7 +14,7 @@ have the rules; in short:
   `rate_ride` kind), with the five stars to click. A ride can be rated until its booking is
   deleted with the drive, 30 days after the departure.
 - **What is shown:** a person's average and number of ratings, separately as a driver and as a
-  passenger: next to the driver on search results, in the list of drives and on the passenger's
+  passenger: next to the driver on search results and on the passenger's
   bookings (`driver_rating`), and next to the passenger on the driver's requests and passengers
   (`passenger_rating`): `{average, count}`, or nothing without ratings yet. Nobody sees who gave
   which rating.

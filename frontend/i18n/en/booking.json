@@ -41,6 +41,7 @@
   "booking.passengerNote": "Message from {name}: {note}",
   "booking.passengers": "Passengers and requests",
   "booking.priceNote": "Nothing is paid through the app: you settle with the driver. The price falls if more passengers join.",
+  "booking.signInToAsk": "Sign in to request a seat",
   "booking.statusAccepted": "Booked",
   "booking.statusCancelledByDriver": "Cancelled by the driver",
   "booking.statusDeclined": "Declined",

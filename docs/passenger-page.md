@@ -39,12 +39,19 @@ Demo rides don't open: a click says they are fictional, as before.
 
 The passenger's bookings and ride requests are listed below the search only when there are any.
 
+## Without an account
+
+The page is public: a visitor searches and sees the rides, their prices and the drivers' ratings.
+The drivers' names and profiles come with signing in (see [Sign-in and accounts](sign-in.md)); on a
+card, "Sign in to request a seat" replaces "Request a seat", and it and "Ask drivers for this ride"
+lead to the sign-in page. The recent places, bookings and ride requests are a signed-in user's.
+
 ## The map
 
-In passenger mode (every page: the search, the list of rides, the inbox, the account) the map is
+In passenger mode (every page: the search, the inbox, the account) the map is
 not on the page. It keeps its size while hidden (`visibility: hidden`, not `display: none`), so
 routes are drawn and framed on it as before, and it opens over the page when something is shown
-on it: "Show on map" on a match, a click on a listed ride, a booking or a ride request, "Pick on
+on it: "Show on map" on a match, a click on a booking or a ride request, "Pick on
 map" in a field. `revealMap()` in `app.js` does that (`openMap`); the button, a click beside the
 map and Escape close it (`closeMap`), and so does a change of page. On phones it takes the whole
 screen. Its tiles are only loaded while it can be seen.

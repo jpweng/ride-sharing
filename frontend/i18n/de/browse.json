@@ -1,7 +1,0 @@
-{
-  "browse.empty": "Noch keine kommenden Fahrten.",
-  "browse.limited": "Hier sind die nächsten {count} Fahrten. Für Ihre Reise suchen Sie am besten unter «Mitfahren».",
-  "browse.loadFailed": "Fahrten konnten nicht geladen werden: {error}",
-  "browse.refresh": "Aktualisieren",
-  "browse.title": "Kommende Fahrten"
-}

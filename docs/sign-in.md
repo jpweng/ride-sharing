@@ -22,8 +22,13 @@ instead of the link is in [Sign-in with Google or Apple](social-login.md)):
   `Origin` (or, without it, `Sec-Fetch-Site`) says they come from the site itself. Requests with
   neither header don't come from a browser, so they carry no victim's cookie. No CSRF tokens are
   needed this way, and the frontend stays plain `fetch` calls.
-- **Who may do what**: browsing drives and searching are public (a signed-in user's searches are
-  kept for their "recent searches"). Posting, cancelling and reading one's own drives, searches,
+- **Who may do what**: searching is public: the passenger page works without an account, and shows
+  the rides with their prices and the drivers' ratings. Who drives is for signed-in users: without
+  a session (or before the profile is complete) `/api/match`, `/api/drives` and `/api/drives/{id}`
+  answer with `driver_name` and `driver_id` set to `null` (`api.without_driver`), and profiles need
+  a session anyway. Asking for a seat and asking drivers lead to the sign-in page (`#/signin`); the
+  search stays in the tab, which notices the sign-in made in another tab (the emailed link's) when
+  it is looked at again. A signed-in user's searches are kept for the places their fields offer. Posting, cancelling and reading one's own drives, searches,
   requests and inbox need a signed-in user with a complete profile, and use only the session's
   user: the API takes no names.
 - **View as a demo driver**: a read-only session (1 day) as one of the fictional drivers, without

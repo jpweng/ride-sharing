@@ -86,6 +86,21 @@ Member = Annotated[dict, Depends(member)]
 Writer = Annotated[dict, Depends(writer)]
 
 
+def is_member(found: dict | None) -> bool:
+    """Whether a public route's request comes from a signed-in user with a
+    complete profile (a demo driver's session counts), as member() requires."""
+    return bool(found) and auth.profile_complete(found["user"])
+
+
+def without_driver(drive: dict) -> dict:
+    """A drive or a match as someone who isn't signed in gets it: without who
+    drives. The driver's rating stays; the name (and with it the profile)
+    comes with signing in."""
+    drive["driver_name"] = None
+    drive["driver_id"] = None
+    return drive
+
+
 # ---------------------------------------------------------------------
 # Request bodies shared by several routes
 # ---------------------------------------------------------------------

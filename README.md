@@ -1,8 +1,8 @@
 # Ride and Rail
 
 A demo of a ride-sharing app for Switzerland that combines car rides with public transport, live at
-<https://rideandrail.ch>. Drivers post drives; passengers either browse them or ask for a match based
-on route corridor matching (drivers whose route passes near the passenger's start and destination,
+<https://rideandrail.ch>. Drivers post drives; passengers search for one, without an account, by
+route corridor matching (drivers whose route passes near the passenger's start and destination,
 around their time; the passenger gives only those three, and the closest come first), with a
 public-transport comparison, and public transport to the pickup and from the drop-off where they are
 too far to walk, via [transport.opendata.ch](https://transport.opendata.ch).
@@ -24,13 +24,13 @@ fare next to each ride and on the public-transport option. Nothing is charged in
 the train fares: the official national distance tariff (T601), or the real fare from
 opentransportdata.swiss when `OJP_API_KEY` is set (see [Train fares](docs/train-fares.md)).
 
-**Booking:** a passenger asks for seats on a drive, from a search result or the list of drives,
+**Booking:** a passenger asks for seats on a drive, from a search result,
 with a short message; the driver accepts or declines, and either can cancel afterwards. Accepting
 takes the seats from the drive, and each step lands in the other one's inbox. A driver can also
 accept a passenger's ride request directly: the drive is posted and the passenger booked in one
 step, and the first driver to accept gets it. See [Booking](docs/booking.md).
 
-**Two modes:** the app is either in passenger mode (find a ride, browse rides) or in driver mode
+**Two modes:** the app is either in passenger mode (find a ride) or in driver mode
 (your drives), each with its own tabs; a button switches between them, the inbox is in both, and
 the browser remembers the mode.
 
@@ -146,8 +146,8 @@ backend/
   maintenance.py  hourly upkeep: demo drives refresh, 30-day data retention
   demo_drives.py  rolling week of fictional demo drives
 frontend/
-  index.html      pages: #/ride and #/browse (public) in passenger mode, #/drive in driver mode, #/inbox,
-                  #/account; sign-in, #/signin/<token> (opening a link) and first-sign-in profile
+  index.html      pages: #/ride (public) in passenger mode, #/drive in driver mode, #/inbox, #/account;
+                  #/signin, #/signin/<token> (opening a link) and first-sign-in profile
   privacy.html    privacy notice, linked from the demo banner
   conduct.html    code of conduct (draft for legal review), accepted at first sign-in
   offline.html    shown by the service worker for an uncached page while offline

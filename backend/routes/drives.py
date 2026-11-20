@@ -26,7 +26,7 @@ import notify
 import pricing
 import ratings
 import search
-from api import LatLon, Writer, api_error, current_session, member, signed_in
+from api import api_error, current_session, is_member, LatLon, member, signed_in, without_driver, Writer
 
 router = APIRouter()
 
@@ -105,16 +105,19 @@ def get_drives(
         include_demo=demo_drives.enabled(),
     )
     drives = ratings.with_driver_ratings(bookings.with_seats_booked(drives))
-    return [search.with_bookable(pricing.with_prices(d)) for d in drives]
+    drives = [search.with_bookable(pricing.with_prices(d)) for d in drives]
+    # Public, but who drives is for signed-in users.
+    return drives if is_member(found) else [without_driver(d) for d in drives]
 
 
 @router.get("/api/drives/{drive_id}")
-def get_drive(drive_id: int):
+def get_drive(drive_id: int, found: Annotated[dict | None, Depends(current_session)] = None):
     drive = db.get_drive(drive_id)
     if not drive or (drive["is_demo"] and not demo_drives.enabled()):
         raise api_error(404, "drive_not_found", "Drive not found")
     drive = ratings.with_driver_ratings(bookings.with_seats_booked([drive]))[0]
-    return search.with_bookable(pricing.with_prices(drive))
+    drive = search.with_bookable(pricing.with_prices(drive))
+    return drive if is_member(found) else without_driver(drive)
 
 
 @router.delete("/api/drives/{drive_id}")

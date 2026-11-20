@@ -3,7 +3,7 @@
 At startup and then every hour, the app runs [backend/maintenance.py](../backend/maintenance.py):
 
 - **Demo drives**: [backend/demo_drives.py](../backend/demo_drives.py) keeps a rolling week of fictional
-  drives (about 33,000 by some 4,000 drivers) so "Browse rides" and the Passenger page always have
+  drives (about 33,000 by some 4,000 drivers) so the Passenger page always has
   something to show. They form a network over the whole country, from the cities down to small
   towns, denser in Ticino and Graubünden: weekday commutes, midday
   drives on the busy corridors and weekend trips, with departures spread over the day so a search

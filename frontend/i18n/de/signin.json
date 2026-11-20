@@ -9,6 +9,7 @@
   "signin.emailPlaceholder": "name@beispiel.ch",
   "signin.hint": "Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Anmelden, ganz ohne Passwort.",
   "signin.needEmail": "Geben Sie Ihre E-Mail-Adresse ein.",
+  "signin.needed": "Melden Sie sich an, um einen Platz anzufragen oder Fahrerinnen und Fahrer um eine Fahrt zu bitten.",
   "signin.sending": "Wird gesendet…",
   "signin.sent": "Ein Anmeldelink ist unterwegs an {email}. Öffnen Sie ihn innerhalb von 15 Minuten, in diesem oder einem anderen Browser; er funktioniert einmal. Falls er nicht ankommt, sehen Sie im Spam-Ordner nach.",
   "signin.submit": "Anmeldelink senden",

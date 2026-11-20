@@ -7,6 +7,10 @@ none of them can be booked, also the bookable ones passing further away
 drop-off where that makes sense (transit_legs.py), and a pure-public-
 transport option is offered next to them (see transit.py). Matches say
 whether they're "bookable": demo drives aren't.
+
+Searching is public. Someone who isn't signed in gets the matches without
+their drivers' names (api.without_driver): the rating shows, the name and
+the profile come with signing in.
 """
 from datetime import datetime
 from typing import Annotated
@@ -24,7 +28,7 @@ import ratings
 import search
 import transit
 import transit_legs
-from api import LatLon, api_error, current_session
+from api import LatLon, api_error, current_session, is_member, without_driver
 
 router = APIRouter()
 
@@ -88,6 +92,9 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
         origin_place=origin_place,
         destination_place=destination_place,
     )
+
+    if not is_member(found):
+        driver_matches = [without_driver(m) for m in driver_matches]
 
     return {
         "driver_matches": driver_matches,

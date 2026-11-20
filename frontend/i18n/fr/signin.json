@@ -9,6 +9,7 @@
   "signin.emailPlaceholder": "nom@exemple.ch",
   "signin.hint": "Saisissez votre adresse e-mail : nous vous envoyons un lien pour vous connecter, sans mot de passe.",
   "signin.needEmail": "Saisissez votre adresse e-mail.",
+  "signin.needed": "Connectez-vous pour demander une place ou pour demander un trajet aux conducteurs.",
   "signin.sending": "Envoi…",
   "signin.sent": "Un lien de connexion est en route vers {email}. Ouvrez-le dans les 15 minutes, dans ce navigateur ou un autre ; il ne fonctionne qu'une fois. S'il n'arrive pas, regardez dans vos courriers indésirables.",
   "signin.submit": "Recevoir un lien de connexion",

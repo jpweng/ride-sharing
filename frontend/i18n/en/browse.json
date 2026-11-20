@@ -1,7 +1,0 @@
-{
-  "browse.empty": "No upcoming rides posted yet.",
-  "browse.limited": "Showing the next {count} rides. To find one for your trip, use Find a ride on the Passenger page.",
-  "browse.loadFailed": "Failed to load rides: {error}",
-  "browse.refresh": "Refresh",
-  "browse.title": "Upcoming rides"
-}

@@ -41,6 +41,7 @@
   "booking.passengerNote": "Nachricht von {name}: {note}",
   "booking.passengers": "Mitfahrende und Anfragen",
   "booking.priceNote": "Über die App wird nichts bezahlt: Sie rechnen direkt mit der Person am Steuer ab. Der Preis sinkt, wenn weitere Personen mitfahren.",
+  "booking.signInToAsk": "Anmelden, um einen Platz anzufragen",
   "booking.statusAccepted": "Gebucht",
   "booking.statusCancelledByDriver": "Vom Fahrer oder der Fahrerin storniert",
   "booking.statusDeclined": "Abgelehnt",

@@ -61,6 +61,20 @@ def force_haversine(monkeypatch):
     tests are modeled on).
     """
     monkeypatch.setattr(matching, "osrm_route", lambda points: None)
+    # The same for the table of driving times (meeting_points.py): estimates.
+    monkeypatch.setattr(matching, "osrm_table", lambda sources, target: None)
+
+
+@pytest.fixture
+def names_shown(monkeypatch):
+    """
+    Search as a signed-in user does: with the drivers' names. Tests about
+    which drives match name them by their driver, and call the route without
+    a session; a search without one hides the names (test_signed_out.py).
+    """
+    from routes import match as match_routes
+
+    monkeypatch.setattr(match_routes, "is_member", lambda found: True)
 
 
 class FakeTransit:

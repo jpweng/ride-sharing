@@ -17,6 +17,9 @@ from routes import bookings as booking_routes
 from routes import drives as drive_routes
 from routes import match as match_routes
 
+# The matches are told apart by their drivers' names: search as a signed-in user.
+pytestmark = pytest.mark.usefixtures("names_shown")
+
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()
 
 LAUSANNE = {"name": "Lausanne", "lat": 46.5197, "lon": 6.6323}
