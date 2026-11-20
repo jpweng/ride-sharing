@@ -4,6 +4,7 @@
   "errors.already_reported": "You have already reported this ride.",
   "errors.already_requested": "You have already asked for a seat on this drive.",
   "errors.area_not_found": "This area no longer exists.",
+  "errors.arrival_too_soon": "The drive there takes too long to arrive by then. Choose a later time.",
   "errors.booking_not_found": "This booking no longer exists.",
   "errors.booking_not_open": "This booking was already answered or cancelled.",
   "errors.consent_required": "Confirm that you are 18 or older and accept the code of conduct.",

@@ -125,6 +125,21 @@ def _round_to_5_min(dt: datetime) -> datetime:
     return dt - timedelta(minutes=dt.minute % 5) + (timedelta(minutes=5) if dt.minute % 5 >= 3 else timedelta())
 
 
+def time_kind(request: dict) -> str:
+    """What a request's time is: "depart" (when to leave) or "arrive" (when
+    to be there), see matching.py."""
+    return request.get("time_kind") or "depart"
+
+
+def leave_by(origin, destination, arrive_by: datetime) -> datetime:
+    """When a drive from `origin` to `destination` (each with .lat and .lon)
+    has to start to be there by `arrive_by`: its road duration earlier (a
+    straight-line estimate without the routing server), down to 5 minutes."""
+    route = matching.route_with_fallback([(origin.lat, origin.lon), (destination.lat, destination.lon)])
+    start = (arrive_by - timedelta(seconds=route["duration_s"])).replace(second=0, microsecond=0)
+    return start - timedelta(minutes=start.minute % 5)
+
+
 # ---------------------------------------------------------------------
 # Drivers' history
 # ---------------------------------------------------------------------
@@ -240,6 +255,7 @@ def _candidates(request: dict, now: datetime) -> list[dict]:
         m = matching.match_drive(
             drive, origin, destination, request["requested_time"],
             request["pickup_radius_km"], request["dropoff_radius_km"], HISTORY_TIME_TOLERANCE_MIN,
+            time_kind=time_kind(request),
         )
         if m is None:
             continue
@@ -356,10 +372,17 @@ def _area_candidates(request: dict) -> list[dict]:
 
 def _trip_details(candidate: dict, request: dict) -> dict:
     """What a driver who made the trip is shown: their usual trip, and a
-    departure that reaches the pickup at the requested time."""
+    departure that reaches the pickup at the requested time (or, for a time
+    to arrive by, the drop-off by then: never rounded to later)."""
     trip, m = candidate["trip"], candidate["match"]
-    lead = datetime.fromisoformat(m["pickup"]["time"]) - datetime.fromisoformat(m["departure_time"])
-    departure = _round_to_5_min(datetime.fromisoformat(request["requested_time"]) - lead)
+    arrive = time_kind(request) == "arrive"
+    lead = datetime.fromisoformat(m["dropoff" if arrive else "pickup"]["time"]) - datetime.fromisoformat(m["departure_time"])
+    departure = datetime.fromisoformat(request["requested_time"]) - lead
+    if arrive:
+        departure = departure.replace(second=0, microsecond=0)
+        departure -= timedelta(minutes=departure.minute % 5)
+    else:
+        departure = _round_to_5_min(departure)
     return {
         "trip": {
             "origin": {"name": trip["origin_name"], "lat": trip["origin_lat"], "lon": trip["origin_lon"]},
@@ -393,7 +416,7 @@ def notify_drivers(request: dict, limit: int = DRIVERS_PER_REQUEST, exclude: set
         m["driver_name"] for m in search.upcoming_matches(
             origin, destination, request["requested_time"],
             request["pickup_radius_km"], request["dropoff_radius_km"], request["time_tolerance_min"],
-            max_results=10**6,
+            max_results=10**6, time_kind=time_kind(request),
         )
     }
 
@@ -445,6 +468,7 @@ def tell_passengers(drive: dict, now: datetime | None = None) -> int:
         m = matching.match_drive(
             drive, (r["origin_lat"], r["origin_lon"]), (r["destination_lat"], r["destination_lon"]),
             r["requested_time"], r["pickup_radius_km"], r["dropoff_radius_km"], r["time_tolerance_min"],
+            time_kind=time_kind(r),
         )
         if m is None:
             continue
@@ -508,7 +532,7 @@ def run_extra_rounds(now: datetime | None = None) -> int:
 _REQUEST_SHOWN = (
     "id", "passenger_id", "passenger_name", "origin_name", "origin_lat", "origin_lon", "destination_name",
     "destination_lat", "destination_lon", "requested_time", "pickup_radius_km", "dropoff_radius_km",
-    "time_tolerance_min", "status",
+    "time_tolerance_min", "status", "time_kind", "leave_by",
 )
 
 

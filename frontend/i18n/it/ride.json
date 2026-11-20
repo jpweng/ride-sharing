@@ -1,4 +1,5 @@
 {
+  "ride.arriveBy": "Arrivo entro",
   "ride.ask": "Chiedere questo passaggio ai conducenti",
   "ride.askHint": "Niente che le vada bene? Chieda ai conducenti che fanno spesso questo tragitto o che guidano nella zona. Alcuni vengono avvisati, i conducenti con una zona lì vedono la sua richiesta nel loro elenco, e i suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
   "ride.askSent.one": "Richiesta inviata: {count} conducente che fa questo tragitto o guida nella zona è stato avvisato. I suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
@@ -7,6 +8,7 @@
   "ride.askSentDemo.other": "Richiesta demo: raggiunge solo conducenti demo fittizi. {count} conducenti sono stati avvisati: {names}. Si disconnetta e continui con uno di questi nomi per vedere arrivare la richiesta.",
   "ride.askSentNone": "Richiesta inviata. Nessun conducente che usa l'app ha fatto questo tragitto di recente o guida nella zona (i conducenti demo sono fittizi e non vengono mai contattati), ma i suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
   "ride.cancelRequest": "Annullare la richiesta",
+  "ride.leaveAt": "Partenza",
   "ride.matchesTitle": "Conducenti trovati",
   "ride.needTime": "Scelga quando vuole viaggiare.",
   "ride.noMatches": "Nessun conducente trovato per questo tragitto a quell'ora. Faccia una richiesta qui sotto, oppure veda l'opzione con i trasporti pubblici.",
@@ -16,8 +18,8 @@
   "ride.requestsTitle": "Le sue richieste di passaggio",
   "ride.searching": "Ricerca in corso…",
   "ride.swap": "Invertire partenza e destinazione",
+  "ride.timeKind": "Partenza o arrivo",
   "ride.title": "Trovare un passaggio",
   "ride.transitTitle": "Alternativa con i trasporti pubblici",
-  "ride.when": "Quando",
   "ride.widerNote": "Nessun viaggio prenotabile passa a meno di {near} km dalla sua partenza e dalla sua destinazione. Quelli contrassegnati «più lontano» passano entro {far} km: verifichi come raggiungere il punto di salita e proseguire da quello di discesa."
 }

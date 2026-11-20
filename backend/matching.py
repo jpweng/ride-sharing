@@ -17,6 +17,11 @@ the pickup, not at the driver's start: a Lausanne -> Zurich drive leaving at
 7:00 reaches Bern around 8:00, which is what a passenger in Bern cares about.
 Drives whose pickup is within the passenger's time tolerance are kept.
 
+A passenger can instead say when they want to arrive (time_kind "arrive"):
+then the drop-off is what is compared with their time, and it must not be
+after it. Drives that drop them off up to the time tolerance earlier are
+kept, the latest first.
+
 Matches are ranked by the time the passenger loses: minutes between the
 pickup and the time they asked for, plus the distance to the pickup and from
 the drop-off at walking pace (MINUTES_PER_GAP_KM).
@@ -349,12 +354,16 @@ def match_drive(
     dropoff_radius_km: float = DEFAULT_DROPOFF_RADIUS_KM,
     time_tolerance_min: float = DEFAULT_TIME_TOLERANCE_MIN,
     route: list[tuple[float, float, float]] | None = None,
+    time_kind: str = "depart",
 ) -> dict | None:
     """
     How `drive` serves this passenger, or None if it doesn't: the drive with
     its pickup and drop-off points, the ride's length, the minutes between
     the pickup and the requested time, and the ranking score. `route`: the
     drive's route from prepare_route, when the caller already has it.
+    `time_kind`: "depart" (the requested time is when they want to leave:
+    the pickup is compared with it) or "arrive" (when they want to be
+    there: the drop-off is, and may not be after it).
     """
     if drive.get("seats_available", 0) <= 0:
         return None
@@ -387,9 +396,17 @@ def match_drive(
         return departure + timedelta(seconds=duration_s * share)
 
     pickup_time = time_at(pickup["route_km"])
-    time_diff_min = (pickup_time - _naive(requested_time)).total_seconds() / 60.0
-    if abs(time_diff_min) > time_tolerance_min:
-        return None
+    dropoff_time = time_at(dropoff["route_km"])
+    if time_kind == "arrive":
+        time_diff_min = (dropoff_time - _naive(requested_time)).total_seconds() / 60.0
+        # Not after the time asked for (times show to the minute), and not
+        # earlier than the tolerance.
+        if time_diff_min >= 1.0 or -time_diff_min > time_tolerance_min:
+            return None
+    else:
+        time_diff_min = (pickup_time - _naive(requested_time)).total_seconds() / 60.0
+        if abs(time_diff_min) > time_tolerance_min:
+            return None
 
     score = abs(time_diff_min) + MINUTES_PER_GAP_KM * (pickup["gap_km"] + dropoff["gap_km"])
     return {
@@ -407,7 +424,7 @@ def match_drive(
             "lat": round(dropoff["lat"], 6),
             "lon": round(dropoff["lon"], 6),
             "gap_km": round(dropoff["gap_km"], 1),
-            "time": _iso(time_at(dropoff["route_km"])),
+            "time": _iso(dropoff_time),
         },
         "ride_km": round(dropoff["route_km"] - pickup["route_km"], 1),
         "time_diff_min": round(time_diff_min),
@@ -424,6 +441,7 @@ def find_matches(
     dropoff_radius_km: float = DEFAULT_DROPOFF_RADIUS_KM,
     time_tolerance_min: float = DEFAULT_TIME_TOLERANCE_MIN,
     max_results: int = MAX_RESULTS,
+    time_kind: str = "depart",
 ) -> list[dict]:
     """
     The drives that serve this passenger (see match_drive), best first.
@@ -443,7 +461,7 @@ def find_matches(
             route = prepared[id(geometry)]
         m = match_drive(
             drive, passenger_origin, passenger_destination, requested_time,
-            pickup_radius_km, dropoff_radius_km, time_tolerance_min, route,
+            pickup_radius_km, dropoff_radius_km, time_tolerance_min, route, time_kind,
         )
         if m is not None:
             matches.append(m)

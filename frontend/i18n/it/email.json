@@ -1,4 +1,5 @@
 {
+  "email.notify.arriveBy": "arrivo entro {time}",
   "email.notify.bookingAccepted": "{name} ha accettato la sua richiesta di un posto",
   "email.notify.bookingCancelledByDriver": "{name} ha annullato la sua prenotazione",
   "email.notify.bookingCancelledByPassenger": "{name} ha annullato il posto sul suo viaggio",

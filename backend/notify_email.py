@@ -137,6 +137,10 @@ def _sentence(n: dict, language: str) -> tuple[str, str]:
     drive = details.get("drive") or {}
     request = db.get_open_request(n["request_id"]) or {}
     request_trip = _trip(request.get("origin_name"), request.get("destination_name"), request.get("requested_time"))
+    if request.get("time_kind") == "arrive" and request.get("origin_name"):
+        # The request's time is when the passenger wants to be there.
+        request_trip = ", ".join((f"{request['origin_name']} → {request['destination_name']}",
+                                  t("arriveBy", time=_when(request.get("requested_time")))))
     drive_trip = _trip(drive.get("origin_name"), drive.get("destination_name"), drive.get("departure_time"))
     kind = n["kind"]
     if kind == "request_for_driver":

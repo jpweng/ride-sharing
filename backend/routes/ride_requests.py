@@ -45,12 +45,22 @@ def create_ride_request(payload: RideRequestCreate, user: Writer):
         raise api_error(400, "request_too_soon", "A ride request must be at least 15 minutes ahead")
     if asked > now + notify.REQUEST_MAX_AHEAD:
         raise api_error(400, "request_too_far", "A ride request can be at most 14 days ahead")
+    # To arrive by a time: when the passenger's own trip has to start for
+    # that. A driver who takes the request as it is leaves then, and drivers
+    # need the same notice as for a time to leave at.
+    leave_by = None
+    if payload.time_kind == "arrive":
+        leave_by = notify.leave_by(payload.origin, payload.destination, asked)
+        if leave_by < now + notify.REQUEST_MIN_AHEAD:
+            raise api_error(400, "arrival_too_soon", "The drive there takes too long to arrive by then")
 
     request = db.create_open_request(
         user["name"], payload.origin.model_dump(), payload.destination.model_dump(),
         asked.isoformat(timespec="minutes"),
         # As a search: the limits aren't the passenger's to choose.
         search.SEARCH_RADIUS_KM, search.SEARCH_RADIUS_KM, search.SEARCH_TIME_TOLERANCE_MIN,
+        time_kind=payload.time_kind,
+        leave_by=leave_by.isoformat(timespec="minutes") if leave_by else None,
     )
     told = notify.notify_drivers(request)
     # A real passenger's request only reaches real drivers, so the count is

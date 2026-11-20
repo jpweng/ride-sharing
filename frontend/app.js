@@ -1160,6 +1160,7 @@ function rideFormPayload(statusId) {
     origin,
     destination,
     requested_time: requestedTime,
+    time_kind: document.getElementById("ride-time-kind").value, // when to leave, or when to be there
   };
 }
 
@@ -1195,6 +1196,13 @@ async function findRide() {
 
 // Searches start by themselves (passenger.js): only the latest one's answer is shown.
 let searchNumber = 0;
+
+// A ride request's time in words: when the passenger wants to leave, or
+// "arrive by ..." when it is when they want to be there (time_kind).
+function requestTimeText(r) {
+  const time = fmtTime(r.requested_time);
+  return r.time_kind === "arrive" ? t("common.arriveBy", { time }) : time;
+}
 
 // The last search's results, kept to re-render them in another language.
 let lastResults = null;
@@ -1548,7 +1556,7 @@ async function loadMyRequests() {
       card.className = "drive-card clickable";
       card.innerHTML = `
         <div class="route">${esc(r.origin_name)} → ${esc(r.destination_name)}</div>
-        <div class="meta">${fmtTime(r.requested_time)}</div>
+        <div class="meta">${esc(requestTimeText(r))}</div>
         <button type="button" class="link-btn">${esc(t("ride.cancelRequest"))}</button>
       `;
       card.addEventListener("click", () => searchForRequest(r));
@@ -1573,6 +1581,7 @@ async function loadMyRequests() {
 function searchForRequest(r) {
   goTo("ride");
   setDateTime("ride", new Date(r.requested_time));
+  document.getElementById("ride-time-kind").value = r.time_kind === "arrive" ? "arrive" : "depart";
   rideTimeChosen = true;
   repeatSearch(r);
 }
@@ -1655,7 +1664,7 @@ function notificationCard(n) {
     return card;
   }
   const r = n.request;
-  const trip = r ? `<div class="meta">${esc(r.origin_name)} → ${esc(r.destination_name)} · ${fmtTime(r.requested_time)}</div>` : "";
+  const trip = r ? `<div class="meta">${esc(r.origin_name)} → ${esc(r.destination_name)} · ${esc(requestTimeText(r))}</div>` : "";
   const open = r && r.status === "open" && new Date(r.requested_time) > new Date();
 
   if (n.kind === "request_for_driver") {
@@ -1773,12 +1782,13 @@ function fillDriveForm(origin, destination, departure) {
   document.getElementById("drive-submit").scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
-// The Driver form with a passenger's ride request: their trip and time.
+// The Driver form with a passenger's ride request: their trip and time (for
+// a time to arrive by: when the trip has to start, the request's leave_by).
 function fillDriveFormForRequest(r) {
   fillDriveForm(
     { name: r.origin_name, lat: r.origin_lat, lon: r.origin_lon },
     { name: r.destination_name, lat: r.destination_lat, lon: r.destination_lon },
-    r.requested_time,
+    r.leave_by || r.requested_time,
   );
 }
 
@@ -1877,7 +1887,8 @@ window.addEventListener("i18n:change", () => {
   translateUnsetReadouts();
   renderPriceBand();
   route();
-  if (lastResults && location.hash === "#/ride") renderResults();
+  // The search page is also what the site opens on, without "#/ride".
+  if (lastResults && document.getElementById("page-ride").classList.contains("active")) renderResults();
 });
 
 I18N.ready.then(async () => {

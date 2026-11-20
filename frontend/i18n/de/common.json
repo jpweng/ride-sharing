@@ -1,4 +1,5 @@
 {
+  "common.arriveBy": "Ankunft bis {time}",
   "common.driver": "Am Steuer: {name}",
   "common.loading": "Wird geladen…",
   "common.ok": "OK",

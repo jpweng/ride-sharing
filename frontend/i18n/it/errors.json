@@ -4,6 +4,7 @@
   "errors.already_reported": "Ha già segnalato questo viaggio.",
   "errors.already_requested": "Ha già chiesto un posto su questo viaggio.",
   "errors.area_not_found": "Questa zona non esiste più.",
+  "errors.arrival_too_soon": "Il viaggio è troppo lungo per arrivare entro quell'ora. Scelga un orario successivo.",
   "errors.booking_not_found": "Questa prenotazione non esiste più.",
   "errors.booking_not_open": "Questa prenotazione ha già ricevuto una risposta o è stata annullata.",
   "errors.consent_required": "Confermi di avere 18 anni o più e accetti il codice di condotta.",

@@ -1,6 +1,7 @@
 # Search limits
 
-A passenger gives a start, a destination and a time. How far a drive may pass from them, and what
+A passenger gives a start, a destination and a time: when they want to leave, or when they want to
+be there. How far a drive may pass from them, and what
 is proposed for the rest of the way, is decided by the app:
 [backend/search.py](../backend/search.py) and [backend/transit_legs.py](../backend/transit_legs.py).
 
@@ -14,6 +15,18 @@ is proposed for the rest of the way, is decided by the app:
 - **Never further than the trip is worth:** as in every search, the way to the pickup and the
   way from the drop-off together must be shorter than the trip itself (`matching.match_drive`),
   so a 30 km detour is only proposed for a long trip.
+
+## Leave at, or arrive by
+
+The time is one of two things (`time_kind`, `matching.match_drive`):
+
+- **`depart`** (the default): when the passenger wants to leave. The pickup is compared with it,
+  up to 4 hours either way.
+- **`arrive`**: when they want to be there. The drop-off is compared with it: never after it
+  (times show to the minute), and up to 4 hours before; the latest arrival in time comes first. It
+  is the car's drop-off that is in time, not the passenger at their destination: the card says how
+  far the drop-off is from it and how long the rest takes (below). The public transport
+  alternative is asked for connections that arrive by that time too.
 
 The results stay one list, the best first (closest in time and place), at most 20. Above them,
 the page says when it looked further, and those drives carry a "further away" label. A drive

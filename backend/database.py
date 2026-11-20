@@ -342,6 +342,7 @@ def save_ride_request(
     destination_lat: float,
     destination_lon: float,
     requested_time: str,
+    time_kind: str = "depart",
 ) -> int:
     with get_conn() as conn:
         passenger_id = _get_or_create_user(conn, passenger_name)
@@ -350,13 +351,13 @@ def save_ride_request(
             INSERT INTO ride_requests (
                 passenger_id, passenger_name, origin_name, origin_lat, origin_lon,
                 destination_name, destination_lat, destination_lon,
-                requested_time, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                requested_time, time_kind, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 passenger_id, passenger_name, origin_name, origin_lat, origin_lon,
                 destination_name, destination_lat, destination_lon,
-                requested_time, now_iso(),
+                requested_time, time_kind, now_iso(),
             ),
         )
         return cur.lastrowid
@@ -418,7 +419,11 @@ def delete_inactive_users() -> int:
 # Ride requests and notifications (see notify.py)
 # ---------------------------------------------------------------------
 def create_open_request(passenger_name: str, origin: dict, destination: dict, requested_time: str,
-                        pickup_radius_km: float, dropoff_radius_km: float, time_tolerance_min: int) -> dict:
+                        pickup_radius_km: float, dropoff_radius_km: float, time_tolerance_min: int,
+                        time_kind: str = "depart", leave_by: str | None = None) -> dict:
+    """`time_kind`: what `requested_time` is, "depart" or "arrive" (see
+    matching.py). `leave_by`: for a time to arrive by, when the passenger's
+    own trip has to start to be there by then."""
     with get_conn() as conn:
         passenger_id = _get_or_create_user(conn, passenger_name)
         cur = conn.execute(
@@ -426,13 +431,13 @@ def create_open_request(passenger_name: str, origin: dict, destination: dict, re
             INSERT INTO open_requests (
                 passenger_id, passenger_name, origin_name, origin_lat, origin_lon,
                 destination_name, destination_lat, destination_lon, requested_time,
-                pickup_radius_km, dropoff_radius_km, time_tolerance_min, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pickup_radius_km, dropoff_radius_km, time_tolerance_min, time_kind, leave_by, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 passenger_id, passenger_name, origin["name"], origin["lat"], origin["lon"],
                 destination["name"], destination["lat"], destination["lon"], requested_time,
-                pickup_radius_km, dropoff_radius_km, time_tolerance_min, now_iso(),
+                pickup_radius_km, dropoff_radius_km, time_tolerance_min, time_kind, leave_by, now_iso(),
             ),
         )
         request_id = cur.lastrowid

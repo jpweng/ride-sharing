@@ -1,4 +1,5 @@
 {
+  "common.arriveBy": "arrivée avant {time}",
   "common.driver": "Au volant : {name}",
   "common.loading": "Chargement…",
   "common.ok": "OK",

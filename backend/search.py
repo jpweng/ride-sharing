@@ -4,7 +4,8 @@ reach the pickup in the time window, and their routes only for those that
 can pass near both ends, then matches them (see matching.py). Used by
 /api/match and by ride requests (notify.py).
 
-The passenger gives a start, a destination and a time, nothing else: how
+The passenger gives a start, a destination and a time (when to leave, or
+when to arrive: time_kind, see matching.py), nothing else: how
 far a drive may pass from each end and how far from their time it may be
 are fixed here (SEARCH_RADIUS_KM, SEARCH_TIME_TOLERANCE_MIN), wide enough
 to show what there is. The results are one list, the best first: the
@@ -65,6 +66,7 @@ def upcoming_matches(
     time_tolerance_min: float = SEARCH_TIME_TOLERANCE_MIN,
     max_results: int = matching.MAX_RESULTS,
     include_demo: bool = True,
+    time_kind: str = "depart",
 ) -> list[dict]:
     """The upcoming drives that serve the trip, the best first; by default
     within a search's fixed limits (a ride request passes its own, kept
@@ -72,7 +74,7 @@ def upcoming_matches(
     with _search_slots:
         return _upcoming_matches(
             origin, destination, requested_time,
-            pickup_radius_km, dropoff_radius_km, time_tolerance_min, max_results, include_demo,
+            pickup_radius_km, dropoff_radius_km, time_tolerance_min, max_results, include_demo, time_kind,
         )
 
 
@@ -80,12 +82,13 @@ def matches_for_search(
     origin: tuple[float, float],
     destination: tuple[float, float],
     requested_time: str,
+    time_kind: str = "depart",
 ) -> list[dict]:
     """A passenger's search: the drives within SEARCH_RADIUS_KM, the best
     first, each marked "wider": False. When none of them can be booked, the
     bookable drives passing further away, within WIDER_RADIUS_KM, are added
     ("wider": True), in the same order of merit."""
-    matches = upcoming_matches(origin, destination, requested_time)
+    matches = upcoming_matches(origin, destination, requested_time, time_kind=time_kind)
     for m in matches:
         m["wider"] = False
     if any(m["bookable"] for m in matches):
@@ -95,6 +98,7 @@ def matches_for_search(
     wider = upcoming_matches(
         origin, destination, requested_time,
         pickup_radius_km=WIDER_RADIUS_KM, dropoff_radius_km=WIDER_RADIUS_KM, include_demo=False,
+        time_kind=time_kind,
     )
     for m in wider:
         m["wider"] = True
@@ -105,10 +109,11 @@ def matches_for_search(
 def _upcoming_matches(
     origin, destination, requested_time,
     pickup_radius_km, dropoff_radius_km, time_tolerance_min, max_results, include_demo=True,
+    time_kind="depart",
 ) -> list[dict]:
-    # Only drives that can reach the pickup near the requested time
-    # (matching filters on the pickup time exactly): there are tens of
-    # thousands of demo drives a week.
+    # Only drives that can reach the pickup (or, for a time to arrive by,
+    # the drop-off) near the requested time (matching filters on that time
+    # exactly): there are tens of thousands of demo drives a week.
     asked = datetime.fromisoformat(requested_time).replace(tzinfo=None)
     tolerance = timedelta(minutes=time_tolerance_min + 1)
     drives = db.list_drives(
@@ -134,4 +139,5 @@ def _upcoming_matches(
         dropoff_radius_km=dropoff_radius_km,
         time_tolerance_min=time_tolerance_min,
         max_results=max_results,
+        time_kind=time_kind,
     )]

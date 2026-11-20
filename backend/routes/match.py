@@ -13,7 +13,7 @@ their drivers' names (api.without_driver): the rating shows, the name and
 the profile come with signing in.
 """
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -36,6 +36,9 @@ class MatchRequest(BaseModel):
     origin: LatLon
     destination: LatLon
     requested_time: str  # ISO 8601
+    # What the time is: when the passenger wants to leave, or when they want
+    # to be there (see matching.py).
+    time_kind: Literal["depart", "arrive"] = "depart"
 
 
 @router.post("/api/match")
@@ -58,6 +61,7 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
             destination_lat=payload.destination.lat,
             destination_lon=payload.destination.lon,
             requested_time=payload.requested_time,
+            time_kind=payload.time_kind,
         )
 
     passenger_origin = (payload.origin.lat, payload.origin.lon)
@@ -65,7 +69,9 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     origin_place = payload.origin.name if payload.origin.kind == "place" else None
     destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
-    driver_matches = search.matches_for_search(passenger_origin, passenger_destination, payload.requested_time)
+    driver_matches = search.matches_for_search(
+        passenger_origin, passenger_destination, payload.requested_time, payload.time_kind,
+    )
 
     # What the passenger pays for their part of the drive, given the seats
     # already booked, and the train fare for it (see pricing.py).
@@ -91,6 +97,7 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
         payload.requested_time,
         origin_place=origin_place,
         destination_place=destination_place,
+        arrive_by=payload.time_kind == "arrive",
     )
 
     if not is_member(found):
