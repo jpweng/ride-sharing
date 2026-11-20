@@ -95,7 +95,7 @@ def test_the_time_and_the_lists_show_only_when_there_is_something():
 
 def test_the_search_starts_by_itself():
     script = (FRONTEND / "passenger.js").read_text()
-    assert '"point:set", "point:named"' in script and "findRide()" in script
+    assert 'window.addEventListener("point:set"' in script and "findRide()" in script
     # Loaded after app.js, whose map, points and search it uses.
     scripts = re.findall(r'<script src="([^"]+)"', HTML)
     assert scripts.index("passenger.js") > scripts.index("app.js")

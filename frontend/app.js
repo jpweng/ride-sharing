@@ -34,8 +34,7 @@ function closeMap() {
   if (!mapIsOpen()) return;
   document.body.classList.remove("map-open");
   // Closing it gives up picking a point on it.
-  activePickRole = null;
-  setPicking(null);
+  stopPicking();
   syncMap();
 }
 
@@ -86,41 +85,161 @@ function setPicking(role) {
   document.body.classList.toggle("map-picking", !!role); // passenger mode: the map says what to do
 }
 
-// The next click on the map sets `role`'s point.
+// Clicks on the map now propose places for `role`'s point (see below).
 function startPicking(role) {
   activePickRole = role;
   setPicking(role);
   revealMap();
 }
 
+function stopPicking() {
+  activePickRole = null;
+  setPicking(null);
+  pickLookup++; // drop the answer to a lookup still running
+  map.closePopup();
+}
+
 document.querySelectorAll(".point-picker button[data-role]").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (activePickRole !== btn.dataset.role) return startPicking(btn.dataset.role);
-    activePickRole = null;
-    setPicking(null);
+    stopPicking();
   });
 });
+
+// ---------------------------------------------------------------------
+// Picking a place on the map. A click doesn't set the point at once: the
+// app looks up what is there (a restaurant, a shop, a stop, a park, a
+// company..., else the address) and proposes it in a small card on the
+// map, with what else is right next to it; "Use this place" takes it, a
+// click elsewhere proposes another. Zoomed out too far to tell places
+// apart, the click proposes the town.
+//
+// The places come from Photon's reverse search on OpenStreetMap data (free,
+// no key), like the places of the address fields (searchPhoton below).
+// ---------------------------------------------------------------------
+const PHOTON_REVERSE_URL = "https://photon.komoot.io/reverse";
+// From this zoom on, a click is precise enough to mean a place (a pixel is
+// then under about 20 m).
+const PICK_PLACE_ZOOM = 13;
+const PICK_OTHERS_SHOWN = 3;
+const PICK_STATION_VALUES = new Set(["station", "halt", "stop"]);
+let pickLookup = 0;
+
+function metersPerPixel(lat) {
+  return (40075016.686 * Math.cos((lat * Math.PI) / 180)) / 2 ** (map.getZoom() + 8);
+}
+
+// The places at and right next to a point of the map, the one meant first:
+// [{label, detail, lat, lon, kind}]. A named place within a finger's width
+// of the click is the one meant; otherwise the nearest address, then the
+// named places around. [] when nothing is known there (or Photon can't be
+// reached).
+async function placesAt(lat, lon) {
+  const mpp = metersPerPixel(lat);
+  const reach = Math.min(300, Math.max(40, 40 * mpp)); // metres around the click
+  const finger = Math.min(150, Math.max(15, 15 * mpp));
+  try {
+    const resp = await fetch(
+      `${PHOTON_REVERSE_URL}?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&limit=12&radius=${(reach / 1000).toFixed(3)}&lang=${photonLang()}`
+    );
+    if (!resp.ok) throw new Error("place lookup failed");
+    const named = [];
+    const addresses = [];
+    for (const f of (await resp.json()).features || []) {
+      const p = f.properties || {};
+      const [flon, flat] = f.geometry?.coordinates || [];
+      if (typeof flat !== "number") continue;
+      const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+      const town = [p.postcode, p.city].filter(Boolean).join(" ");
+      const place = { lat: flat, lon: flon, kind: "address", meters: map.distance([lat, lon], [flat, flon]) };
+      // A stop is a place to meet, though a "highway" for OpenStreetMap.
+      if (p.name && (!PHOTON_SKIPPED_KEYS.has(p.osm_key) || p.osm_value === "bus_stop")) {
+        place.label = p.city && p.city !== p.name ? `${p.name}, ${p.city}` : p.name;
+        // A railway station is named after its town: say which of the two it is.
+        if (p.osm_key === "railway" && PICK_STATION_VALUES.has(p.osm_value)) place.label = t("map.station", { name: p.name });
+        place.detail = [street, town].filter(Boolean).join(", ");
+        if (!named.some((q) => q.label === place.label)) named.push(place);
+      } else if (p.street && p.housenumber) {
+        place.label = [street, town].filter(Boolean).join(", ");
+        place.detail = "";
+        if (!addresses.some((q) => q.label === place.label)) addresses.push(place);
+      }
+    }
+    const byDistance = (a, b) => a.meters - b.meters;
+    named.sort(byDistance);
+    addresses.sort(byDistance);
+    const meant = named[0] && named[0].meters <= finger ? named.shift() : addresses.shift() || named.shift();
+    return meant ? [meant, ...addresses.slice(0, 1), ...named].slice(0, 1 + PICK_OTHERS_SHOWN) : [];
+  } catch {
+    return [];
+  }
+}
 
 map.on("click", async (e) => {
   if (!activePickRole) return;
   const role = activePickRole;
   const { lat, lng } = e.latlng;
+  const lookup = ++pickLookup;
+  const popup = L.popup({ className: "pick-popup", minWidth: 190, maxWidth: 270, autoPanPadding: [16, 76] })
+    .setLatLng(e.latlng)
+    .setContent(`<div class="pick-detail">${esc(t("common.loading"))}</div>`)
+    .openOn(map);
+  // The place proposed, marked on the map while its card is open.
+  const marker = L.circleMarker(e.latlng, {
+    radius: 9, weight: 3, color: PICK_COLORS[role] || "#333", fillColor: "#fff", fillOpacity: 1, interactive: false,
+  }).addTo(map);
+  popup.on("remove", () => map.removeLayer(marker));
 
-  setPointCoords(role, lat, lng, null);
-  activePickRole = null;
-  setPicking(null);
-  closeMap(); // passenger mode: back to the page
-  revealOnPhone(document.getElementById(`name-${role}`));
-
-  const name = await reverseGeocode(lat, lng);
-  if (points[role]) {
-    points[role].name = name;
-    const nameInput = document.getElementById(`name-${role}`);
-    if (nameInput && !nameInput.value.trim()) nameInput.value = name;
-    // For the scripts loaded after this one (passenger.js): the point has its name.
-    window.dispatchEvent(new CustomEvent("point:named", { detail: { role } }));
+  let places = map.getZoom() >= PICK_PLACE_ZOOM ? await placesAt(lat, lng) : [];
+  if (!places.length && lookup === pickLookup) {
+    // Nothing known there, or zoomed out: the town, at the point clicked.
+    places = [{ label: await reverseGeocode(lat, lng), detail: "", lat, lon: lng, kind: "point" }];
   }
+  if (lookup !== pickLookup || activePickRole !== role) return; // another click, or picking was given up
+  proposePlace(role, popup, marker, places);
 });
+
+// The card of a place proposed: its name, "Use this place", and the other
+// places next to it (a click on one proposes it instead).
+function proposePlace(role, popup, marker, places) {
+  const [place, ...others] = places;
+  const card = document.createElement("div");
+  card.className = "pick-card";
+  card.innerHTML = `
+    <div class="pick-name">${esc(place.label)}</div>
+    ${place.detail ? `<div class="pick-detail">${esc(place.detail)}</div>` : ""}
+  `;
+  card.appendChild(actionButton("map.useThisPlace", "submit-btn", () => setTimeout(() => usePlace(role, place), 0)));
+  if (others.length) {
+    const list = document.createElement("div");
+    list.className = "pick-others";
+    list.innerHTML = `<div class="pick-detail">${esc(t("map.nearby"))}</div>`;
+    others.forEach((other) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "link-btn";
+      button.textContent = other.label;
+      // Once the click is over: the map takes a click on a button that has
+      // left the card meanwhile for a click on the map itself.
+      button.addEventListener("click", () => setTimeout(
+        () => proposePlace(role, popup, marker, [other, place, ...others.filter((o) => o !== other)]), 0,
+      ));
+      list.appendChild(button);
+    });
+    card.appendChild(list);
+  }
+  marker.setLatLng([place.lat, place.lon]);
+  popup.setLatLng([place.lat, place.lon]).setContent(card);
+}
+
+function usePlace(role, place) {
+  const input = document.getElementById(`name-${role}`);
+  if (input) input.value = place.label;
+  stopPicking();
+  setPointCoords(role, place.lat, place.lon, place.label, place.kind);
+  closeMap(); // passenger mode: back to the page
+  revealOnPhone(input);
+}
 
 // kind: "place" (a town picked by name -- public transport then starts/ends at
 // its train station), "address", or "point" (clicked on the map).
@@ -325,13 +444,15 @@ const PHOTON_SKIPPED_KEYS = new Set([
   "place", "highway", "boundary", "landuse", "natural", "waterway", "emergency", "power", "man_made",
 ]);
 const MAX_POI_SUGGESTIONS = 4;
+// Photon answers in these languages only, and refuses the others (Italian).
+const photonLang = () => (["en", "de", "fr"].includes(I18N.lang()) ? I18N.lang() : "default");
 
 async function searchPhoton(query) {
   try {
     // Places near where the map is looking first.
     const center = map.getCenter();
     const resp = await fetch(
-      `${PHOTON_URL}?q=${encodeURIComponent(query)}&limit=12&lang=${I18N.lang()}&bbox=${PHOTON_BBOX}&lat=${center.lat.toFixed(4)}&lon=${center.lng.toFixed(4)}`
+      `${PHOTON_URL}?q=${encodeURIComponent(query)}&limit=12&lang=${photonLang()}&bbox=${PHOTON_BBOX}&lat=${center.lat.toFixed(4)}&lon=${center.lng.toFixed(4)}`
     );
     if (!resp.ok) throw new Error("place search failed");
     const data = await resp.json();
@@ -817,8 +938,7 @@ function route() {
   closeMap();
 
   // Only show the picked origin/destination pins that belong to this page.
-  activePickRole = null;
-  setPicking(null);
+  stopPicking();
   pickerLayer.clearLayers();
   Object.entries(points).forEach(([role, p]) => {
     if (!role.startsWith(`${shown}-`)) return;

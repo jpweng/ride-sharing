@@ -57,8 +57,7 @@ document.getElementById("ride-swap").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------------
-// The search starts by itself once both ends are set (and named: a point
-// picked on the map gets its name a moment later), and again when the time
+// The search starts by itself once both ends are set, and again when the time
 // or what it stands for is changed. It is for now (to arrive by a time: in
 // an hour), unless the passenger chose a time that is still ahead.
 // ---------------------------------------------------------------------
@@ -70,7 +69,7 @@ const ARRIVE_BY_DEFAULT_MS = 60 * 60 * 1000;
 function searchSoon(delayMs = 50) {
   clearTimeout(rideSearchTimer);
   rideSearchTimer = setTimeout(() => {
-    const ready = RIDE_ROLES.every((role) => points[role] && points[role].name != null);
+    const ready = RIDE_ROLES.every((role) => points[role]);
     if (!ready || !document.getElementById("page-ride").classList.contains("active")) return;
     if (!rideTimeChosen || !(new Date(getDateTime("ride")) > new Date())) {
       rideTimeChosen = false;
@@ -82,10 +81,8 @@ function searchSoon(delayMs = 50) {
   }, delayMs);
 }
 
-["point:set", "point:named"].forEach((event) => {
-  window.addEventListener(event, (e) => {
-    if (RIDE_ROLES.includes(e.detail.role)) searchSoon();
-  });
+window.addEventListener("point:set", (e) => {
+  if (RIDE_ROLES.includes(e.detail.role)) searchSoon();
 });
 
 // Signed in or out: a search shows the drivers' names to a signed-in user.
