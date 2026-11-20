@@ -1,0 +1,33 @@
+/* A ride for part of the way, public transport for the rest (combined.js):
+   the cards under the drives that make the whole trip. */
+.hint.no-direct { margin: 4px 0 8px; font-size: 14px; }
+/* No drive for the whole way: the combined trips' own title is enough. */
+#ride-results.no-direct .matches-title { display: none; }
+
+.combined-steps { margin: 8px 0 6px; }
+.combined-step {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 14px;
+}
+.combined-time { flex: none; min-width: 108px; font-weight: 700; white-space: nowrap; }
+.combined-what { display: flex; gap: 6px; align-items: baseline; min-width: 0; }
+.combined-what .pt-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  align-self: center;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.combined-gap { display: block; font-size: 12px; color: var(--muted); }
+.combined-total { margin-bottom: 6px; }
+
+@media (max-width: 520px) {
+  .combined-step { flex-direction: column; gap: 0; }
+}

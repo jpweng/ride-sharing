@@ -138,6 +138,8 @@ function showAskForm(box, kind, item) {
     // From a search: the passenger's own start and destination, so the
     // driver knows where to meet them. From the list: the whole drive.
     if (kind === "match" && lastResults) Object.assign(body, { origin: lastResults.origin, destination: lastResults.destination });
+    // A combined trip (combined.js): the car's part of it, to or from the stop where the passenger changes.
+    if (kind === "combined") Object.assign(body, { origin: item.ride_from, destination: item.ride_to });
     send.disabled = true;
     try {
       await postJson(`/api/drives/${item.id}/bookings`, body);

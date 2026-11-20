@@ -1,0 +1,13 @@
+{
+  "combined.carFrom": "In auto da {place}",
+  "combined.carTo": "In auto fino a {place}",
+  "combined.dropoffGap": "discesa a {km} km dalla sua destinazione",
+  "combined.noDirect": "Nessuno fa tutto il tragitto a quell'ora. Un'auto può portarla per una parte del percorso, e i trasporti pubblici per il resto:",
+  "combined.pickupGap": "salita a {km} km dalla sua partenza",
+  "combined.title": "Un passaggio in auto e i trasporti pubblici",
+  "combined.total": "{duration} in tutto",
+  "combined.transitTo": "Trasporti pubblici fino a {place}",
+  "combined.vsFaster": "{duration} in meno che con i soli trasporti pubblici",
+  "combined.vsSame": "veloce quanto i soli trasporti pubblici",
+  "combined.vsSlower": "{duration} in più che con i soli trasporti pubblici"
+}

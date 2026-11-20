@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="styles/inbox.css" />
 <link rel="stylesheet" href="styles/areas.css" />
 <link rel="stylesheet" href="styles/passenger.css" />
+<link rel="stylesheet" href="styles/combined.css" />
 </head>
 <body data-mode="passenger">
 <header>
@@ -281,6 +282,8 @@
       <div id="ride-results" hidden>
         <div class="section-title matches-title" data-i18n="ride.matchesTitle">Driver matches</div>
         <div id="ride-matches"></div>
+        <!-- A ride for part of the way, public transport for the rest (combined.js) -->
+        <div id="ride-combined"></div>
 
         <div class="ask-box">
           <div class="hint" data-i18n="ride.askHint">Nothing that suits you? Ask the drivers who often make this trip or drive around there. A few of them are told, drivers with an area there see your request in their list, and your inbox tells you when a drive that fits is posted.</div>
@@ -400,6 +403,7 @@
 <script src="i18n.js"></script>
 <script src="app.js"></script>
 <script src="passenger.js"></script>
+<script src="combined.js"></script>
 <script src="areas.js"></script>
 <script src="bookings.js"></script>
 <script src="request_preview.js"></script>

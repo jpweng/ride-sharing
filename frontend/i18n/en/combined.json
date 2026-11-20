@@ -1,0 +1,13 @@
+{
+  "combined.carFrom": "By car from {place}",
+  "combined.carTo": "By car to {place}",
+  "combined.dropoffGap": "drop-off {km} km from your destination",
+  "combined.noDirect": "Nobody is driving the whole way around that time. A ride can take you part of the way, and public transport the rest:",
+  "combined.pickupGap": "pickup {km} km from your start",
+  "combined.title": "A ride and public transport",
+  "combined.total": "{duration} in all",
+  "combined.transitTo": "Public transport to {place}",
+  "combined.vsFaster": "{duration} quicker than public transport alone",
+  "combined.vsSame": "as quick as public transport alone",
+  "combined.vsSlower": "{duration} longer than public transport alone"
+}

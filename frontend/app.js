@@ -1294,6 +1294,7 @@ async function findRide() {
   hideStatus("ride-ask-status");
   document.getElementById("ride-results").hidden = false;
   document.getElementById("ride-matches").innerHTML = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
+  document.getElementById("ride-combined").innerHTML = "";
   document.getElementById("ride-transit").innerHTML = "";
   resultsLayer.clearLayers();
   lastResults = null;
@@ -1326,9 +1327,14 @@ function requestTimeText(r) {
 // The last search's results, kept to re-render them in another language.
 let lastResults = null;
 
+// Scripts loaded after this one (combined.js) add their part of a search's
+// results: each function gets the search's answer and the passenger's two ends.
+const RESULT_SECTIONS = [];
+
 function renderResults() {
   const { data, origin, destination } = lastResults;
   renderMatches(data.driver_matches, origin, destination, data);
+  RESULT_SECTIONS.forEach((render) => render(data, origin, destination));
   renderTransitOption(data.transit_option);
 }
 
@@ -1383,8 +1389,15 @@ function driverAvatar(m) {
 function renderMatches(matches, passengerOrigin, passengerDestination, limits = {}) {
   const container = document.getElementById("ride-matches");
   container.classList.remove("has-selection");
-  document.getElementById("ride-results").classList.toggle("no-matches", !matches.length);
-  document.getElementById("ride-ask").classList.toggle("secondary", matches.length > 0);
+  // A ride for part of the way (combined.js) is something to choose too.
+  const combined = (limits.combined_matches || []).length;
+  document.getElementById("ride-results").classList.toggle("no-matches", !matches.length && !combined);
+  document.getElementById("ride-results").classList.toggle("no-direct", !matches.length && combined > 0);
+  document.getElementById("ride-ask").classList.toggle("secondary", matches.length + combined > 0);
+  if (!matches.length && combined) {
+    container.innerHTML = `<div class="hint no-direct">${esc(t("combined.noDirect"))}</div>`;
+    return;
+  }
   if (!matches.length) {
     container.innerHTML = `<div class="no-rides">
       <img src="icons/no-rides.svg" alt="" width="150" height="84" />
