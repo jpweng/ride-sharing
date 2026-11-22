@@ -2,8 +2,10 @@
 
 "Find a ride" (`#/ride`) is one card with two fields, From and To, straight on the page, above a
 centred column of results. On a wide screen (980 px and more) the card is one bar, wider than the
-column: From, To and when, in a row. There is no search button, no map on the page and nothing to
-read first. The code is
+column: From, To and when, in a row. There is no search button and no map on the page. Under the
+title, one sentence says what the service is, for someone who sees it for the first time ("Get a
+seat with a driver going your way, combined with public transport when needed."); it makes way for
+the results as soon as a search shows them. The code is
 [frontend/passenger.js](../frontend/passenger.js) and
 [frontend/styles/passenger.css](../frontend/styles/passenger.css), on top of the search and the
 map in [frontend/app.js](../frontend/app.js).

@@ -14,6 +14,7 @@
   "ride.needTime": "Choose when you want to travel.",
   "ride.noMatches": "Nobody is driving this way around that time yet.",
   "ride.noTransit": "No direct public transport option found.",
+  "ride.pitch": "Get a seat with a driver going your way, combined with public transport when needed.",
   "ride.recentPlace": "Recent search",
   "ride.requestsLoadFailed": "Failed to load your requests: {error}",
   "ride.requestsTitle": "Your ride requests",

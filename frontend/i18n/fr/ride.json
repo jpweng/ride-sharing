@@ -14,6 +14,7 @@
   "ride.needTime": "Choisissez quand vous voulez voyager.",
   "ride.noMatches": "Personne ne fait encore ce trajet à cette heure.",
   "ride.noTransit": "Aucune correspondance directe en transports publics.",
+  "ride.pitch": "Trouvez une place chez un conducteur qui fait votre trajet, combinée aux transports publics si nécessaire.",
   "ride.recentPlace": "Recherche récente",
   "ride.requestsLoadFailed": "Impossible de charger vos demandes : {error}",
   "ride.requestsTitle": "Vos demandes de trajet",
