@@ -102,6 +102,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [Deploying to AWS](docs/deploying-to-aws.md): the server, Terraform, CI deploys, domain, emails,
   operations
 - [Routing](docs/routing.md): our own OSRM server and its monthly data
+- [Manual test procedure](docs/manual-test.md): every feature tested by hand, step by step, with
+  two accounts
 - [Notifications by email](docs/email-notifications.md): what is emailed and when, quiet hours,
   turning them off
 - [Ratings and reports](docs/ratings-and-reports.md): stars after a ride, what is shown,
