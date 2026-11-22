@@ -177,9 +177,9 @@ Still signed out in browser A. Searching is public: everything here must work wi
 - [ ] **2.27** Search Bulle → Genève, "Leave at" 06:50 on a weekday. **Expect:** a section "A ride
   and public transport" with up to four cards. Each has two steps in order with their times: "By car
   to (a stop)" with "pickup N km from your start", then "Public transport to (a station)", then "N h
-  NN min in all" and the ride's price. With no drive for the whole way, one line above says so. If
-  the section is missing, try Sion → Genève at 06:20, or Genève → Bulle around 17:30. Step 5.21
-  makes one for certain.
+  NN min in all" and the ride's price. With no drive for the whole way, nothing is above the
+  section's title. If the section is missing, try Sion → Genève at 06:20, or Genève → Bulle around
+  17:30. Step 5.21 makes one for certain.
 - [ ] **2.27b** Search again while watching the results. **Expect:** the drives (or "Searching…")
   first; "Searching…" where the public transport line will be and, under drives,
   "Looking for rides combined with public transport…"; then each part in its place, without the

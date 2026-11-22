@@ -3,7 +3,6 @@
   "combined.carFrom": "Mit dem Auto ab {place}",
   "combined.carTo": "Mit dem Auto bis {place}",
   "combined.dropoffGap": "Ausstieg {km} km von Ihrem Ziel",
-  "combined.noDirect": "Um diese Zeit fährt niemand die ganze Strecke. Eine Mitfahrt bringt Sie einen Teil des Wegs, der öffentliche Verkehr den Rest:",
   "combined.pickupGap": "Einstieg {km} km von Ihrem Start",
   "combined.searching": "Mitfahrten mit öffentlichem Verkehr werden gesucht…",
   "combined.title": "Mitfahrt und öffentlicher Verkehr",

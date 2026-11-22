@@ -1481,8 +1481,9 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     container.innerHTML = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
     return;
   }
+  // No drive for the whole way, but rides for part of it: their own title says what they are.
   if (!matches.length && combined) {
-    container.innerHTML = `<div class="hint no-direct">${esc(t("combined.noDirect"))}</div>`;
+    container.innerHTML = "";
     return;
   }
   if (!matches.length) {

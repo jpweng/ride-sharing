@@ -57,9 +57,10 @@ card is open), pointing at the card outlines it, and "Request a seat" ("Sign in 
 without an account) is a filled button.
 
 Under the rides, asking the drivers is a tinted panel of its own: the question "Nothing that suits
-you?", what asking does, and the filled button "Ask drivers for this ride". When no ride is found,
-the page says so with a small picture ([icons/no-rides.svg](../frontend/icons/no-rides.svg)), and
-the same text and button follow straight on the page, without the question.
+you?", what asking does in one short sentence, and the filled button "Ask drivers for this ride".
+When no ride is found, the page says so with a small picture
+([icons/no-rides.svg](../frontend/icons/no-rides.svg)), and the same sentence and button follow
+straight on the page, without the question.
 
 Public transport for the same trip is one line under that ("3 connections from 12:27 · 3 h 55
 min"), opened on a click: the stations, the ticket's price, and a row per connection, as plain

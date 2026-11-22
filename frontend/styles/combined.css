@@ -1,6 +1,5 @@
 /* A ride for part of the way, public transport for the rest (combined.js):
    the cards under the drives that make the whole trip. */
-.hint.no-direct { margin: 4px 0 8px; font-size: 14px; }
 /* No drive for the whole way: the combined trips' own title is enough. */
 #ride-results.no-direct .matches-title { display: none; }
 
