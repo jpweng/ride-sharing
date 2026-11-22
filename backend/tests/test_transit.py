@@ -246,6 +246,71 @@ def test_resolve_station_falls_back_to_nearest_stop(fake_http):
 
 
 # ---------------------------------------------------------------------------
+# A point of interest that is a stop (Photon's "Zürich HB, Zurich")
+# ---------------------------------------------------------------------------
+
+# The point Photon gives "Zürich HB" (Walchebrücke): the coordinate query
+# lists the lake pier first, the name search the main station.
+ZURICH_HB_POI = (47.3745, 8.5385)
+ST_GALLEN_BAHNHOFPLATZ = (47.4233, 9.3698)
+ZURICH_NEARBY = {"stations": [
+    {"id": "8503446", "name": "Zürich Landesmuseum (See)", "distance": 150, "icon": "ship",
+     "coordinate": {"x": 47.3752, "y": 8.5392}},
+]}
+ZURICH_SEARCH = {"stations": [
+    {"id": "8503000", "name": "Zürich HB", "icon": "train", "coordinate": {"x": 47.3779, "y": 8.5403}},
+    {"id": "8591123", "name": "Zürich, Hauptbahnhof", "icon": "tram", "coordinate": {"x": 47.3781, "y": 8.5398}},
+]}
+ST_GALLEN_NEARBY = {"stations": [
+    {"id": "8506302", "name": "St. Gallen", "distance": 50, "icon": "train",
+     "coordinate": {"x": 47.4233, "y": 9.3698}},
+]}
+ST_GALLEN_ZURICH_CONNECTIONS = {"connections": [
+    {"from": {"departure": "2026-11-23T09:58:00+0100", "station": {"id": "8506302", "name": "St. Gallen"}},
+     "to": {"arrival": "2026-11-23T11:00:00+0100", "station": {"id": "8503000", "name": "Zürich HB"}},
+     "duration": "00d01:02:00", "transfers": 0,
+     "sections": [{"journey": {"category": "IC", "number": "3", "operator": "SBB"}}]},
+]}
+
+
+def test_resolve_station_uses_the_stop_a_poi_is_named_after(fake_http):
+    fake_http.nearby[ZURICH_HB_POI] = ZURICH_NEARBY
+    fake_http.search["Zürich HB"] = ZURICH_SEARCH
+
+    station = transit.resolve_station(*ZURICH_HB_POI, poi_name="Zürich HB, Zurich")
+
+    assert (station["id"], station["name"]) == ("8503000", "Zürich HB")
+    # The same point without a name (an address, a map click) is the nearest stop.
+    assert transit.resolve_station(*ZURICH_HB_POI)["name"] == "Zürich Landesmuseum (See)"
+
+
+def test_poi_falls_back_to_the_nearest_stop(fake_http):
+    fake_http.nearby[ZURICH_HB_POI] = ZURICH_NEARBY
+    # Named like a stop, but too far from the point.
+    fake_http.search["Zürich HB"] = ZURICH_SEARCH
+    assert transit.station_for_poi("Zürich HB, Zurich", 47.30, 8.60) is None
+    # No stop of that name at all.
+    assert transit.resolve_station(*ZURICH_HB_POI, poi_name="Café Odeon, Zurich")["name"] == "Zürich Landesmuseum (See)"
+
+
+def test_poi_main_station_reaches_the_itinerary_and_the_sbb_link(fake_http):
+    fake_http.nearby[ZURICH_HB_POI] = ZURICH_NEARBY
+    fake_http.nearby[ST_GALLEN_BAHNHOFPLATZ] = ST_GALLEN_NEARBY
+    fake_http.search["Zürich HB"] = ZURICH_SEARCH
+    fake_http.connections[("St. Gallen", "Zürich HB")] = ST_GALLEN_ZURICH_CONNECTIONS
+
+    option = transit.transit_option_for_trip(
+        *ST_GALLEN_BAHNHOFPLATZ, *ZURICH_HB_POI, "2026-11-23T09:50",
+        destination_poi="Zürich HB, Zurich",
+    )
+
+    assert option["to_station"] == "Zürich HB"
+    [conn] = option["connections"]
+    assert "Z%C3%BCrich+HB_I8503000" in conn["booking_url"]
+    assert "Landesmuseum" not in conn["booking_url"]
+
+
+# ---------------------------------------------------------------------------
 # Connections: operators and booking link
 # ---------------------------------------------------------------------------
 

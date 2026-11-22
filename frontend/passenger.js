@@ -164,7 +164,7 @@ function restoreTrip() {
   }
   [trip.origin, trip.destination].forEach((p, i) => {
     inputs[i].value = p.name;
-    setPointCoords(RIDE_ROLES[i], p.lat, p.lon, p.name, ["place", "address"].includes(p.kind) ? p.kind : "point");
+    setPointCoords(RIDE_ROLES[i], p.lat, p.lon, p.name, ["place", "poi", "address"].includes(p.kind) ? p.kind : "point");
   });
 }
 

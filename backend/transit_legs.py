@@ -53,7 +53,8 @@ class _Lazy:
         if not self.looked_up:
             self.looked_up = True
             place = self.point.name if self.point.kind == "place" else None
-            self.station = transit.resolve_station(self.point.lat, self.point.lon, place)
+            poi = self.point.name if self.point.kind == "poi" else None
+            self.station = transit.resolve_station(self.point.lat, self.point.lon, place, poi)
         return self.station
 
 

@@ -737,7 +737,11 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
         for a ride last. Looked up when first needed."""
         if shape not in stations:
             point = destination if shape == RIDE_FIRST else origin
-            stations[shape] = transit.resolve_station(point.lat, point.lon, point.name if point.kind == "place" else None)
+            stations[shape] = transit.resolve_station(
+                point.lat, point.lon,
+                point.name if point.kind == "place" else None,
+                point.name if point.kind == "poi" else None,
+            )
         return stations[shape]
 
     def results(futures: list, budget_s: float) -> list:
