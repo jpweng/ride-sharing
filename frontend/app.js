@@ -755,6 +755,8 @@ document.getElementById("signin-form").addEventListener("submit", async (e) => {
   try {
     await postJson("/api/auth/link", { email, language: I18N.lang() });
     showStatus("signin-status", t("signin.sent", { email }), true);
+    // For the scripts loaded after this one (signin_code.js: the email's code can be typed here).
+    window.dispatchEvent(new CustomEvent("signin:sent", { detail: { email } }));
   } catch (err) {
     showStatus("signin-status", err.message, false);
   } finally {

@@ -15,6 +15,7 @@
   "errors.drive_departed": "This drive has already left.",
   "errors.drive_not_found": "This drive no longer exists.",
   "errors.email_unavailable": "The email couldn't be sent. Please try again later.",
+  "errors.invalid_code": "This code is wrong or no longer valid. Check it, or ask for a new link.",
   "errors.invalid_email": "Enter a valid email address.",
   "errors.invalid_link": "This sign-in link is invalid, has expired or was already used. Ask for a new one.",
   "errors.invalid_time": "Invalid date or time.",

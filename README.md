@@ -49,7 +49,7 @@ reasons behind them.
   [Routing](docs/routing.md)); falls back to straight lines (haversine) if unreachable
 - Public transport: [transport.opendata.ch](https://transport.opendata.ch) (all Swiss operators)
 - Address search: [geo.admin.ch Search API](https://api3.geo.admin.ch) (Swiss addresses/places)
-- Sign-in: a one-time link sent by email (Amazon SES), server-side sessions in an HttpOnly cookie; see [Sign-in and accounts](docs/sign-in.md). Optionally also Google and Apple, see [Sign-in with Google or Apple](docs/social-login.md)
+- Sign-in: a one-time link sent by email (Amazon SES), or the code in the same email, server-side sessions in an HttpOnly cookie; see [Sign-in and accounts](docs/sign-in.md). Optionally also Google and Apple, see [Sign-in with Google or Apple](docs/social-login.md)
 - Languages: German, French, Italian and English, see [Translations](docs/translations.md)
 
 ## Run it
@@ -165,6 +165,7 @@ frontend/
   style.css       teal/white theme, logo and text wordmark: base, layout, shared components
   styles/         one stylesheet per feature, linked right after style.css by the pages using it
   social.js       the sign-in page's Google and Apple buttons (see docs/social-login.md)
+  signin_code.js  the sign-in page's field for the code of the sign-in email (see docs/sign-in.md)
   manifest.webmanifest, sw.js, pwa.js   installable app (see docs/pwa.md)
   icons/          the logo and the app icons + make_icons.py that generates them
 mobile/android/   Android app (Trusted Web Activity): Bubblewrap config + publishing guide

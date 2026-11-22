@@ -724,14 +724,15 @@ def set_banned(email: str, banned: bool) -> bool:
     return True
 
 
-def add_sign_in_link(token_hash: str | None, email: str, ip: str | None, language: str, expires_at: str) -> None:
+def add_sign_in_link(token_hash: str | None, email: str, ip: str | None, language: str, expires_at: str,
+                     code_hash: str | None = None) -> None:
     with get_conn() as conn:
         conn.execute(
             """
-            INSERT INTO sign_in_links (token_hash, email, ip, language, created_at, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO sign_in_links (token_hash, code_hash, email, ip, language, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (token_hash, email, ip, language, now_iso(), expires_at),
+            (token_hash, code_hash, email, ip, language, now_iso(), expires_at),
         )
 
 
@@ -769,6 +770,26 @@ def use_sign_in_link(token_hash: str, now: str) -> dict | None:
             return None
         row = conn.execute("SELECT email, language FROM sign_in_links WHERE token_hash = ?", (token_hash,)).fetchone()
         return dict(row)
+
+
+def use_sign_in_code(email: str, code_hash: str, now: str, max_attempts: int) -> dict | None:
+    """Mark used and return ({email, language}) the link of `email` whose
+    email carried this code, if it is unused, hasn't expired and fewer than
+    `max_attempts` wrong codes were typed for it; None otherwise. A wrong
+    code counts against every link of that address that could still be
+    used. Single use even if two requests race, as for the link itself."""
+    live = "email = ? AND code_hash IS NOT NULL AND used_at IS NULL AND expires_at > ?"
+    with get_conn() as conn:
+        row = conn.execute(
+            f"SELECT id, email, language FROM sign_in_links WHERE {live} AND code_hash = ? AND code_attempts < ?"
+            " ORDER BY id DESC LIMIT 1",
+            (email, now, code_hash, max_attempts),
+        ).fetchone()
+        if row is None:
+            conn.execute(f"UPDATE sign_in_links SET code_attempts = code_attempts + 1 WHERE {live}", (email, now))
+            return None
+        used = conn.execute("UPDATE sign_in_links SET used_at = ? WHERE id = ? AND used_at IS NULL", (now, row["id"]))
+        return {"email": row["email"], "language": row["language"]} if used.rowcount == 1 else None
 
 
 def delete_sign_in_links_before(created_at: str) -> int:

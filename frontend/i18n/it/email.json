@@ -18,6 +18,7 @@
   "email.notify.requestAccepted": "{name} le dà un passaggio",
   "email.notify.requestForDriver": "{name} cerca un passaggio che lei potrebbe offrire",
   "email.signIn.button": "Accedere a Ride and Rail",
+  "email.signIn.code": "Oppure inserisca questo codice nella pagina in cui ha chiesto il link: {code}",
   "email.signIn.greeting": "Buongiorno,",
   "email.signIn.ignore": "Se non ha chiesto questo link, può ignorare questa e-mail: nessuno può accedere senza di esso.",
   "email.signIn.intro": "Per accedere a Ride and Rail, apra il link qui sotto entro {minutes} minuti. Funziona una sola volta.",

@@ -8,6 +8,16 @@ instead of the link is in [Sign-in with Google or Apple](social-login.md)):
   the page then POSTs the token (so it never appears in server logs, and mail scanners that open
   links can't use it up), and the server starts a session. The answer to "send me a link" is the same
   whether the address has an account or not.
+- **The code in the same email**: the email also carries a 6-digit code, which the page offers to
+  take once a link was asked for (`frontend/signin_code.js`). It is for where the link can't be
+  opened: the app installed on an iPhone keeps its own cookies, apart from Safari, where the link
+  opens, so the link signs Safari in and never the app; and a computer isn't signed in by a link
+  opened on a phone. The code signs in the page it is typed in. A link and its code are one
+  sign-in: using either uses up both, and the code lasts as long as the link. Only its SHA-256
+  (with the address) is stored. A code is short, so guesses are limited: after 5 wrong codes for
+  an address (`CODE_ATTEMPTS`), the codes of the links it was sent so far stop working, and the
+  links themselves still do. With the limits on links per address below, that is at most 50
+  guesses a day for one address, each with one chance in a million.
 - **First sign-in**: first and last name, "I am 18 or older" and the
   [code of conduct](../frontend/conduct.html) (a draft for a lawyer to review), whose acceptance is
   stored with its date and version (`CONDUCT_VERSION`; changing it asks everyone to accept the new
@@ -63,6 +73,9 @@ Access levels and error codes as in [API](api.md).
 
 - `POST /api/auth/link` `{email, language}` — public; emails a sign-in link. Always `{"ok": true}`
   (429 `too_many_requests` over the per-IP limit, 503 `email_unavailable` if sending fails)
+- `POST /api/auth/code` `{email, code}` — public; uses the code of a sign-in email sent to that
+  address, as `verify` does with the link's token (400 `invalid_code`: wrong, expired, used, or
+  too many wrong ones; 403 `account_banned`)
 - `POST /api/auth/verify` `{token}` — public; uses the link's token, sets the session cookie,
   returns `{user}` (400 `invalid_link`, 403 `account_banned`)
 - `GET  /api/auth/me` — public; `{user}` or `{user: null}`: name, email, `is_demo`,

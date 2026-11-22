@@ -3,6 +3,7 @@ Sign-in by email link, profile, sign-out, the demo-driver view and account
 deletion (see auth.py, the module these routes call):
 
   POST /api/auth/link, /api/auth/verify -- sign in by email link
+  POST /api/auth/code                    -- or by the code in the same email
   GET /api/auth/me                       -- who is signed in
   POST /api/auth/profile                 -- name, 18+, code of conduct
   POST /api/auth/sign_out
@@ -45,6 +46,11 @@ class SignInVerify(BaseModel):
     token: str = Field(min_length=1, max_length=200)
 
 
+class SignInCode(BaseModel):
+    email: str = Field(max_length=auth.MAX_EMAIL_LENGTH)
+    code: str = Field(min_length=1, max_length=20)
+
+
 class ProfileUpdate(BaseModel):
     first_name: str | None = Field(default=None, max_length=200)
     last_name: str | None = Field(default=None, max_length=200)
@@ -75,6 +81,14 @@ def request_sign_in_link(payload: SignInLinkRequest, request: Request):
 @router.post("/api/auth/verify")
 def verify_sign_in_link(payload: SignInVerify, request: Request, response: Response):
     user, token = auth.verify(payload.token)
+    auth.end_session(request.cookies.get(SESSION_COOKIE))  # a previous one in this browser
+    _set_session_cookie(response, token, auth.SESSION_TTL)
+    return {"user": auth.public_user(user)}
+
+
+@router.post("/api/auth/code")
+def verify_sign_in_code(payload: SignInCode, request: Request, response: Response):
+    user, token = auth.verify_code(payload.email, payload.code)
     auth.end_session(request.cookies.get(SESSION_COOKIE))  # a previous one in this browser
     _set_session_cookie(response, token, auth.SESSION_TTL)
     return {"user": auth.public_user(user)}

@@ -18,6 +18,7 @@
   "email.notify.requestAccepted": "{name} will drive you",
   "email.notify.requestForDriver": "{name} is looking for a ride you could offer",
   "email.signIn.button": "Sign in to Ride and Rail",
+  "email.signIn.code": "Or type this code on the page where you asked for the link: {code}",
   "email.signIn.greeting": "Hello,",
   "email.signIn.ignore": "If you didn't ask for this link, you can ignore this email: nobody can sign in without it.",
   "email.signIn.intro": "To sign in to Ride and Rail, open the link below within {minutes} minutes. It works only once.",

@@ -1,5 +1,8 @@
 {
   "signin.backToSignIn": "Ask for a new link",
+  "signin.codeHint": "Reading the email on another device, or using the installed app? Type the code from the email here instead.",
+  "signin.codeLabel": "Code from the email",
+  "signin.codeSubmit": "Sign in with the code",
   "signin.deleted": "Your account and your data have been deleted.",
   "signin.demoDriver": "Demo driver",
   "signin.demoHint": "View the demo as one of its fictional drivers, without an email address. You can look around but not change anything.",
@@ -8,6 +11,7 @@
   "signin.email": "Email address",
   "signin.emailPlaceholder": "name@example.ch",
   "signin.hint": "Enter your email address and we'll send you a link to sign in. No password needed.",
+  "signin.needCode": "Enter the 6-digit code from the email.",
   "signin.needEmail": "Enter your email address.",
   "signin.needed": "Sign in to request a seat or to ask drivers for a ride.",
   "signin.sending": "Sending…",

@@ -15,6 +15,7 @@
   "errors.drive_departed": "Ce trajet est déjà parti.",
   "errors.drive_not_found": "Ce trajet n'existe plus.",
   "errors.email_unavailable": "L'e-mail n'a pas pu être envoyé. Réessayez plus tard, s'il vous plaît.",
+  "errors.invalid_code": "Ce code est faux ou n'est plus valable. Vérifiez-le ou demandez un nouveau lien.",
   "errors.invalid_email": "Saisissez une adresse e-mail valide.",
   "errors.invalid_link": "Ce lien de connexion n'est pas valable, a expiré ou a déjà été utilisé. Demandez-en un nouveau.",
   "errors.invalid_time": "Date ou heure invalide.",

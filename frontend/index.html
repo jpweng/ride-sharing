@@ -79,6 +79,15 @@
       </form>
       <div class="status-msg" id="signin-status"></div>
 
+      <!-- The code of the sign-in email (signin_code.js): shown once a link was asked for -->
+      <form id="signin-code-form" novalidate hidden>
+        <div class="hint" data-i18n="signin.codeHint">Reading the email on another device, or using the installed app? Type the code from the email here instead.</div>
+        <label for="signin-code" data-i18n="signin.codeLabel">Code from the email</label>
+        <input type="text" id="signin-code" name="signin-code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" />
+        <button type="submit" class="submit-btn secondary" id="signin-code-submit" data-i18n="signin.codeSubmit">Sign in with the code</button>
+        <div class="status-msg" id="signin-code-status"></div>
+      </form>
+
       <!-- Sign-in with Google or Apple (social.js): shown for the providers the server has keys for -->
       <div class="social-signin" id="signin-social" hidden>
         <div class="social-or" data-i18n="social.or">or</div>
@@ -411,5 +420,6 @@
 <script src="profiles.js"></script>
 <script src="pwa.js"></script>
 <script src="social.js"></script>
+<script src="signin_code.js"></script>
 </body>
 </html>
