@@ -48,11 +48,14 @@ Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15
 
 A card starts with the passenger's trip, as a timetable shows a connection: when they get in and
 out ("07:30 → 09:05"), how long the ride takes, and at the right its price for a seat, with the
-train fare for the same distance under it. Then one line says how: "By car from (a stop) to (a
-stop)", the places near which the car picks them up and drops them, with how far these are from
-their own start and destination when they aren't there. Then who drives: their photo if they have
-one (the match's `driver_photo`, see [Profiles](profiles.md)), else the first letter of their
-name, then their name and rating. A click opens its details: the drive's own route and departure,
+train fare for the same distance under it. Then one line says who drives them, in words that can't
+be taken for anything else: "Judith drives you from (a stop) to (a stop)", the places near which
+the car picks them up and drops them, after the driver's photo if they have one (the match's
+`driver_photo`, see [Profiles](profiles.md)), else the first letter of their name, with their name
+in bold and their rating. Without a name (signed out): "A driver takes you from … to …". How far
+the car passes from their own start and destination is in the details; the card itself says it
+only beyond 1 km (`FAR_GAP_KM`), where the trip doesn't end at the door. A click opens the
+details: the drive's own route and departure, those distances,
 the way to the pickup and from the drop-off (see [Search limits](search-limits.md)), public
 transport legs, the driver's profile and "Show on map". Demo rides open their details and show on
 the map like any ride; they can't be booked, and an opened one says so where the button would be.

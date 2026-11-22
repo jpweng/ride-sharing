@@ -1,8 +1,12 @@
 {
-  "match.byCar": "By car",
+  "match.aDriver": "A driver",
   "match.details": "Details",
   "match.directions": "Directions",
-  "match.driver": "Driver",
+  "match.drives": "{name} drives you",
+  "match.drivesBetween": "{name} drives you from {from} to {to}",
+  "match.drivesFrom": "{name} drives you from {place}",
+  "match.drivesOn": "{name} drives you on from there",
+  "match.drivesTo": "{name} drives you to {place}",
   "match.dropoff": "Drop-off ~{time}, {km} km from your destination",
   "match.earlier": "{duration} earlier",
   "match.firstMile": "To the pickup:",
@@ -15,5 +19,10 @@
   "match.pickup": "Pickup ~{time}, {km} km from your start",
   "match.rideKm": "{km} km together",
   "match.showOnMap": "Show on map",
+  "match.takes": "{name} takes you by car",
+  "match.takesBetween": "{name} takes you from {from} to {to}",
+  "match.takesFrom": "{name} takes you from {place}",
+  "match.takesOn": "{name} takes you on from there",
+  "match.takesTo": "{name} takes you to {place}",
   "match.wider": "further away"
 }

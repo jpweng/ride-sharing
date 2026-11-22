@@ -6,7 +6,8 @@
 /* Under the drives, while the combined trips are still being looked for. */
 .hint.combined-searching { margin: 10px 0 2px; font-size: 13px; }
 
-.combined-steps { margin: 8px 0 0; }
+/* In the details: the trip's steps with their times. */
+.combined-steps { margin: 0 0 6px; }
 .combined-step {
   display: flex;
   gap: 12px;

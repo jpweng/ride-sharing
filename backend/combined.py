@@ -718,12 +718,18 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
     stations = {}
     alone = []
 
-    def alone_min() -> float | None:
-        """Public transport alone, in minutes: asked for when the first trip
-        is compared with it."""
+    def alone_option() -> dict:
+        """Public transport alone: asked for when the first trip is compared
+        with it."""
         if not alone:
-            alone.append(_transit_alone_min(transit_option() if callable(transit_option) else transit_option))
+            alone.append((transit_option() if callable(transit_option) else transit_option) or {})
+            alone.append(_transit_alone_min(alone[0]))
         return alone[0]
+
+    def alone_min() -> float | None:
+        """Its quickest connection, in minutes."""
+        alone_option()
+        return alone[1]
 
     def station(shape: str) -> dict | None:
         """The passenger's own stop at the end where a trip of `shape` is by
@@ -760,6 +766,9 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
         trip = as_trip(off)
         if alone_min() is not None:
             trip["vs_transit_min"] = round(total_min - alone_min())  # negative: quicker than public transport alone
+            # And what its ticket costs, to compare the two prices.
+            if alone_option().get("fare"):
+                trip["transit_alone_fare"] = alone_option()["fare"]
         return trip
 
     def best(trips: list[dict]) -> list[dict]:

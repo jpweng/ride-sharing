@@ -1,8 +1,12 @@
 {
-  "match.byCar": "In auto",
+  "match.aDriver": "Qualcuno",
   "match.details": "Dettagli",
   "match.directions": "Percorso",
-  "match.driver": "Conducente",
+  "match.drives": "{name} la porta in auto",
+  "match.drivesBetween": "{name} la porta in auto da {from} a {to}",
+  "match.drivesFrom": "{name} la porta in auto da {place}",
+  "match.drivesOn": "{name} la porta in auto da lì",
+  "match.drivesTo": "{name} la porta in auto fino a {place}",
   "match.dropoff": "Discesa ~{time}, a {km} km dalla sua destinazione",
   "match.earlier": "{duration} prima",
   "match.firstMile": "Fino alla salita:",
@@ -15,5 +19,10 @@
   "match.pickup": "Salita ~{time}, a {km} km dalla sua partenza",
   "match.rideKm": "{km} km insieme",
   "match.showOnMap": "Mostrare sulla mappa",
+  "match.takes": "{name} la porta in auto",
+  "match.takesBetween": "{name} la porta in auto da {from} a {to}",
+  "match.takesFrom": "{name} la porta in auto da {place}",
+  "match.takesOn": "{name} la porta in auto da lì",
+  "match.takesTo": "{name} la porta in auto fino a {place}",
   "match.wider": "più lontano"
 }

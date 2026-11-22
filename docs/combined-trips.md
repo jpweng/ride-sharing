@@ -109,7 +109,9 @@ match (`pickup`, `dropoff`, `ride_km`, the prices of the part ridden, `bookable`
 - for `transit_ride_transit`, instead of those two: `transit_before` and `transit_after` (each as
   `transit`), `change_before` and `change_after` (the stops where the passenger gets in and out);
 - `starts`, `arrives`, `total_min`: the whole trip;
-- `vs_transit_min`: minutes longer (negative: shorter) than public transport alone, when known.
+- `vs_transit_min`: minutes longer (negative: shorter) than public transport alone, when known;
+- `transit_alone_fare`: what the ticket for public transport alone costs (`transit_option`'s
+  `fare`), when known.
 
 As for matches, who drives is left out for someone who isn't signed in.
 
@@ -121,11 +123,16 @@ The page asks for them on their own, after the drives: `POST /api/match/combined
 Under the matches, "A ride and public transport": a card per trip. Its first line is the whole
 trip, as on a drive's card ([The passenger page](passenger-page.md)): when it starts and ends, how
 long it takes, and what it costs, the ride's seat and the tickets of its public transport legs
-together (2nd class, full fare, "≈" when a fare is an estimate), with the two amounts under it
-("ride CHF 3.80 + train ≈ CHF 68.00"). Without a ticket's price it is the ride's alone, "without
-the train ticket". Then its steps in order (two, or three for a ride between two public transport
-legs), each with its times, how much quicker than public transport alone it is, when it is, and
-who drives. Its details give the drive's own route and
+together (2nd class, full fare, "≈" when a fare is an estimate). Under it, to compare: what the
+train alone costs for the whole trip ("train alone ≈ CHF 75.00", the search's
+`transit_alone_fare`); when that isn't known, the two amounts the price is made of. Without a
+ticket's price it is the ride's alone, "without the train ticket". Then how the trip goes, in
+order, one part a line (two, or three for a ride between two public transport legs): who drives
+the passenger, in words ("Judith drives you to Zürich, Bahnhofquai/HB"; after public transport,
+"Judith drives you on from there"; signed out, "A driver takes you to …"), and "Public transport
+to (a stop)". Then how much quicker than public transport alone it is, when it is. A drop-off or a
+pickup more than 1 km from the passenger's own end of the trip is said on the card. Its details
+give the steps with their times, the two amounts the price is made of, the drive's own route and
 each connection with its ticket link and fare. "Request a seat" asks for the car's part: from the
 passenger's start to the stop, from the stop to their destination, or from one stop to the other
 (`ride_from`, `ride_to`), a booking like any other ([Booking](booking.md)). Without a drive for
