@@ -31,7 +31,7 @@ Where each statement comes from, to know what to reread when something changes:
 | Posting drives; areas, their ride requests, accepting one directly | [driver areas](driver-areas.md), [booking](booking.md) |
 | Passenger mode and driver mode with one account | `frontend/app.js` (`setMode`) |
 | Costs shared, the price limits, nothing paid through the service | `backend/pricing.py`, [booking](booking.md) |
-| Sign-in by email link, or Google or Apple; 18 or older; the code of conduct | [sign-in](sign-in.md), [social login](social-login.md), `frontend/conduct.html` |
+| Sign-in by email link or the code in the same email, or Google or Apple; 18 or older; the code of conduct | [sign-in](sign-in.md), [social login](social-login.md), `frontend/conduct.html` |
 | First name and initial; optional profiles and who sees them | [profiles](profiles.md) |
 | Ratings and reports | [ratings and reports](ratings-and-reports.md) |
 | Browser, home screen, four languages | [PWA](pwa.md), [translations](translations.md) |

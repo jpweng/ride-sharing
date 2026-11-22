@@ -40,9 +40,9 @@ How to read the steps:
 Signed out, in a new private window of browser A, so nothing is remembered from earlier visits.
 
 - [ ] **1.1** Open <https://rideandrail.ch>. **Expect:** the logo and "Ride and Rail", the subtitle
-  "Shared rides to the train", the DE FR IT EN picker, the Demo banner with "Privacy" and "Code of
-  conduct", the tabs "Find a ride" and "Inbox", a "Passenger mode" button and a "Sign in" link. The
-  page is a card with From and To. No map, no search button.
+  "Shared rides to the train", the DE FR IT EN picker, the Demo banner with "About", "Privacy",
+  "Code of conduct" and "Contact", the tabs "Find a ride" and "Inbox", a "Passenger mode" button and
+  a "Sign in" link. The page is a card with From and To. No map, no search button.
 - [ ] **1.2** Look at the language. **Expect:** your browser's first language among German, French,
   Italian and English, otherwise English.
 - [ ] **1.3** Click DE, FR, IT, EN in turn. **Expect:** every text changes at once without a reload,
@@ -63,7 +63,25 @@ Signed out, in a new private window of browser A, so nothing is remembered from 
   error.
 - [ ] **1.11** View the page source. **Expect:** `<meta name="robots" content="noindex, nofollow"
   />`, which keeps the demo out of search engines.
-- [ ] **1.12** Go back to EN for the rest of the procedure.
+
+**The About and Contact pages**
+
+- [ ] **1.12** Click "About" in the banner. **Expect:** what Ride and Rail is and offers, as a
+  complete text in each of the four languages. Its links to the privacy notice, the code of conduct
+  and the contact page open them. What it says agrees with what the rest of this procedure shows.
+- [ ] **1.13** Click "Contact" in the banner, then find the link to it in the privacy notice and in
+  the code of conduct. **Expect:** "Contact us" with "Your name", "Your email address", "Your
+  message" and "Send", in the four languages. If it says "The contact form isn't available at the
+  moment…" instead, the form is switched off on the server: note it and skip the next three steps.
+- [ ] **1.14** Click "Send" with a field left empty, then with "abc" as the address. **Expect:**
+  "Fill in your name, your email address and your message.", then "Enter a valid email address."
+- [ ] **1.15** Send a real message with an address you can read. **Expect:** "Sending…", then "Thank
+  you. Your message is on its way to our team; we will answer at (the address)." The team's mailbox
+  gets an email whose subject starts with "[Ride and Rail contact]", with the name, the address and
+  the message. Answering it writes to the visitor's address.
+- [ ] **1.16** Send three more within ten minutes. **Expect:** the fourth of the four answers "Too
+  many requests from here. Please try again later."
+- [ ] **1.17** Go back to EN for the rest of the procedure.
 
 ## Part 2. Searching without an account
 
@@ -178,7 +196,8 @@ browser B for D. If either is signed in with your own account, sign out first.
 **Pages that need an account**
 
 - [ ] **3.1** In browser A, click the "Inbox" tab. **Expect:** the "Sign in" page: an email field,
-  "Send me a sign-in link", and a box "Just looking?" with a list of demo drivers.
+  "Send me a sign-in link", the Google and Apple buttons when they are offered, and a box "Just
+  looking?" with a list of demo drivers.
 - [ ] **3.2** Click the "Passenger mode" button. **Expect:** it now reads "Driver mode", the first
   tab is "Your drives", and the sign-in page shows. Click it again: "Passenger mode" and "Find a
   ride".
@@ -263,15 +282,15 @@ another device. In browser A, signed out.
 
 **Google and Apple**
 
-- [ ] **3.29** Look at the sign-in page. **Expect:** while a provider's keys are not set: no "or",
-  no "Continue with Google", no "Continue with Apple", and
-  <https://rideandrail.ch/auth/google/start> answers 404.
-- [ ] **3.30** Once a provider's keys are set: click its button and sign in with the address of
-  account P. **Expect:** you land in Paula P.'s account, with no welcome step.
-- [ ] **3.31** Once set: sign in with an address that has no account. **Expect:** the welcome step
-  with the provider's name filled in as a suggestion.
-- [ ] **3.32** Once set: start, then cancel at the provider. **Expect:** back on the sign-in page
-  with "You didn't finish signing in. Try again, or use the email link."
+- [ ] **3.29** Look at the sign-in page. **Expect:** under "or", "Continue with Google" and
+  "Continue with Apple", for each provider whose keys are set on the server. Without them: no
+  button, and <https://rideandrail.ch/auth/google/start> answers 404.
+- [ ] **3.30** Click a provider's button and sign in with the address of account P. **Expect:** you
+  land in Paula P.'s account, with no welcome step.
+- [ ] **3.31** Sign in with a provider's account whose address has no account here. **Expect:** the
+  welcome step with the provider's name filled in as a suggestion. Delete that account afterwards.
+- [ ] **3.32** Start with a provider, then cancel there. **Expect:** back on the sign-in page with
+  "You didn't finish signing in. Try again, or use the email link."
 
 **A changed code of conduct (local)**
 
