@@ -8,6 +8,8 @@
   "errors.booking_not_found": "Cette réservation n'existe plus.",
   "errors.booking_not_open": "Cette réservation a déjà reçu une réponse ou a été annulée.",
   "errors.consent_required": "Confirmez que vous avez 18 ans ou plus et acceptez le code de conduite.",
+  "errors.contact_incomplete": "Indiquez votre nom, votre adresse e-mail et votre message.",
+  "errors.contact_unavailable": "Le formulaire de contact n'est pas disponible pour le moment. Réessayez plus tard, s'il vous plaît.",
   "errors.cross_site_request": "Cette requête a été refusée pour des raisons de sécurité. Rechargez la page et réessayez.",
   "errors.demo_driver_not_found": "Ce conducteur de démo n'existe pas.",
   "errors.demo_read_only": "Vous découvrez la démo en tant que conducteur fictif : rien ne peut être modifié. Connectez-vous avec votre adresse e-mail pour publier des trajets et des demandes.",

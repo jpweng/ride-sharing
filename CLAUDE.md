@@ -19,6 +19,12 @@ Rules for anyone changing this repository, people and Claude alike. The app itse
   formal address ("Sie", "vous", "Lei"). `backend/tests/test_i18n.py` enforces it.
 - Never run `terraform apply` or AWS commands that change anything without the owner's explicit
   go-ahead for that command.
+- **One description of the service, everywhere.** What Ride and Rail offers is said in the About
+  page (`frontend/about.html`, four languages), the README, `docs/`, the privacy notice
+  (`frontend/privacy.html`), the app's manifest and the store listings (`mobile/`). They must agree
+  with each other and with what the site and the apps do, at all times: a change to what users can
+  do, see or pay updates every one of them that mentions it, in the same pull request.
+  [docs/about-page.md](docs/about-page.md) lists where each statement of the About page comes from.
 
 ## Branches: avoiding repeated merge conflicts
 

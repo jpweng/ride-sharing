@@ -17,6 +17,8 @@
 #                           (optional; see docs/ratings-and-reports.md)
 #   PHOTO_BUCKET            the S3 bucket for profile photos (optional: no
 #                           photos without it; see docs/profiles.md)
+#   CONTACT_EMAIL           where the contact form's messages are emailed
+#                           (optional: no form without it; see docs/contact.md)
 #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_ID, APPLE_TEAM_ID,
 #   APPLE_KEY_ID, APPLE_PRIVATE_KEY
 #                           sign-in with Google and Apple (optional: each is
@@ -101,6 +103,9 @@ services:
       # photos.
       PHOTO_BUCKET: ${PHOTO_BUCKET:-}
       PHOTO_REGION: ${AWS_REGION}
+      # Where the contact form's messages are emailed (backend/contact.py).
+      # Empty: the form is switched off and the contact page says so.
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-}
       # Sign-in with Google and Apple (backend/social.py). Empty: not offered.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

@@ -80,6 +80,10 @@ Optional repo variable: `REPORTS_EMAIL`, the address users' reports of a problem
 (see [Ratings and reports](ratings-and-reports.md)); unset, they are only logged and listed by
 `admin.py reports`.
 
+Optional repo **secret**: `CONTACT_EMAIL`, the address the contact form's messages are emailed to
+(see [The contact page](contact.md)); unset, the contact page says the form isn't available. A
+secret and not a variable, because the deploy log of a public repository shows variables' values.
+
 Optional, for sign-in with Google and Apple: the repo variables `GOOGLE_CLIENT_ID`, `APPLE_CLIENT_ID`,
 `APPLE_TEAM_ID`, `APPLE_KEY_ID` and the repo secrets `GOOGLE_CLIENT_SECRET`, `APPLE_PRIVATE_KEY`; see
 [Sign-in with Google or Apple](social-login.md#setting-it-up). Without them the buttons aren't shown.

@@ -185,5 +185,7 @@ def test_the_page_shows_them():
     assert 'id="ride-combined"' in html and scripts.index("combined.js") > scripts.index("app.js")
     script = (FRONTEND / "combined.js").read_text()
     assert "RESULT_SECTIONS.push(" in script and 'cardExtras("combined", m, card)' in script
+    # A card says when the trip is quicker than public transport alone, never that it is longer.
+    assert 't("combined.vsFaster"' in script and "vsSlower" not in script and "vsSame" not in script
     # Asking for a seat is for the car's part: to or from the stop where the passenger changes.
     assert 'if (kind === "combined") Object.assign(body, { origin: item.ride_from, destination: item.ride_to });' in (FRONTEND / "bookings.js").read_text()

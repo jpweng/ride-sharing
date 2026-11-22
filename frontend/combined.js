@@ -9,8 +9,9 @@
 // ---------------------------------------------------------------------
 const CAR_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5v-4l1.8-4.6a2 2 0 0 1 1.9-1.4h7.6a2 2 0 0 1 1.9 1.4l1.8 4.6v4M3.5 12.5h17M7 16.5v2M17 16.5v2M7.5 14.6h.01M16.5 14.6h.01"/></svg>';
 
-// Shorter or longer than public transport alone by less than this: "as quick".
-const SAME_AS_TRANSIT_MIN = 5;
+// A trip quicker than public transport alone by at least this says so on its
+// card. One that isn't says nothing about it.
+const QUICKER_WORTH_SAYING_MIN = 5;
 
 function combinedStep(icon, from, to, text) {
   return `<div class="combined-step">
@@ -19,10 +20,9 @@ function combinedStep(icon, from, to, text) {
   </div>`;
 }
 
-function versusTransit(minutes) {
-  if (typeof minutes !== "number") return "";
-  if (Math.abs(minutes) < SAME_AS_TRANSIT_MIN) return t("combined.vsSame");
-  return t(minutes < 0 ? "combined.vsFaster" : "combined.vsSlower", { duration: fmtMinutes(Math.abs(minutes)) });
+function quickerThanTransit(minutes) {
+  if (typeof minutes !== "number" || minutes > -QUICKER_WORTH_SAYING_MIN) return "";
+  return t("combined.vsFaster", { duration: fmtMinutes(-minutes) });
 }
 
 // The car's part of a combined trip on the map: its route, where the
@@ -77,9 +77,9 @@ function combinedCard(m, origin, destination) {
       </div>
     </div>
     <div class="combined-steps">${rideFirst ? ride + transit : transit + ride}</div>
-    <div class="meta combined-total">${esc(t("combined.total", { duration: fmtMinutes(m.total_min) }))}${
-      typeof m.vs_transit_min === "number" ? ` · ${esc(versusTransit(m.vs_transit_min))}` : ""
-    }</div>
+    <div class="meta combined-total">${esc(
+      [t("combined.total", { duration: fmtMinutes(m.total_min) }), quickerThanTransit(m.vs_transit_min)].filter(Boolean).join(" · ")
+    )}</div>
     ${priceBadges(m)}
     <div class="match-details" hidden>
       <div class="meta">${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))} · ${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</div>
@@ -102,10 +102,7 @@ function combinedCard(m, origin, destination) {
   card.appendChild(details);
   card.addEventListener("click", (e) => {
     if (e.target.closest("a")) return; // ticket links
-    if (e.target.closest(".match-on-map")) {
-      // As for any ride: a demo one is fictional, and says so instead.
-      return m.is_demo ? showNotice(t("match.demoTitle"), t("match.demoText")) : showCombinedOnMap(m, origin, destination);
-    }
+    if (e.target.closest(".match-on-map")) return showCombinedOnMap(m, origin, destination);
     details.hidden = !details.hidden;
     card.classList.toggle("open", !details.hidden);
     more.setAttribute("aria-expanded", String(!details.hidden));

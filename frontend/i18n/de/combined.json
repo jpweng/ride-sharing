@@ -7,7 +7,5 @@
   "combined.title": "Mitfahrt und öffentlicher Verkehr",
   "combined.total": "{duration} insgesamt",
   "combined.transitTo": "Öffentlicher Verkehr bis {place}",
-  "combined.vsFaster": "{duration} schneller als nur mit dem öffentlichen Verkehr",
-  "combined.vsSame": "so schnell wie nur mit dem öffentlichen Verkehr",
-  "combined.vsSlower": "{duration} länger als nur mit dem öffentlichen Verkehr"
+  "combined.vsFaster": "{duration} schneller als nur mit dem öffentlichen Verkehr"
 }
