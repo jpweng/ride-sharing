@@ -11,10 +11,15 @@ whether they're "bookable": demo drives aren't.
 Next to those, "combined_matches": a ride for part of the way with public
 transport for the rest (combined.py).
 
+The parts that wait for the timetable service run side by side: public
+transport alone from the start, the names of the meeting points and the
+legs to and from them while the combined trips are found.
+
 Searching is public. Someone who isn't signed in gets the matches without
 their drivers' names (api.without_driver): the rating shows, the name and
 the profile come with signing in.
 """
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -35,6 +40,11 @@ import transit_legs
 from api import LatLon, api_error, current_session, is_member, without_driver
 
 router = APIRouter()
+
+# The parts of a search that only wait for the timetable service, next to the
+# request's own thread. None of them waits for another one.
+_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="search-parts")
+
 
 class MatchRequest(BaseModel):
     origin: LatLon
@@ -73,6 +83,18 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     origin_place = payload.origin.name if payload.origin.kind == "place" else None
     destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
+    # Pure public-transport alternative, origin to final destination, for
+    # comparison. Nothing else is needed for it: asked for straight away.
+    transit_alone = _pool.submit(
+        transit.transit_option_for_trip,
+        payload.origin.lat, payload.origin.lon,
+        payload.destination.lat, payload.destination.lon,
+        payload.requested_time,
+        origin_place=origin_place,
+        destination_place=destination_place,
+        arrive_by=payload.time_kind == "arrive",
+    )
+
     driver_matches = search.matches_for_search(
         passenger_origin, passenger_destination, payload.requested_time, payload.time_kind,
     )
@@ -91,29 +113,24 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
         viewer_id = user["id"]
     profiles.with_driver_photos(driver_matches, viewer_id)
 
-    # Public transport to the pickup and from the drop-off, where they're too
-    # far to walk.
-    transit_legs.add_to(driver_matches, payload.origin, payload.destination)
+    def with_the_way_to_them():
+        # Public transport to the pickup and from the drop-off, where they're
+        # too far to walk.
+        transit_legs.add_to(driver_matches, payload.origin, payload.destination)
+        # Names for the pickup and drop-off points, and the way on from the drop-off.
+        meeting_points.add_to(driver_matches, payload.origin, payload.destination)
 
-    # Names for the pickup and drop-off points, and the way on from the drop-off.
-    meeting_points.add_to(driver_matches, payload.origin, payload.destination)
+    the_way_to_them = _pool.submit(with_the_way_to_them)
 
-    # Pure public-transport alternative, origin to final destination, for comparison.
-    transit_option = transit.transit_option_for_trip(
-        payload.origin.lat, payload.origin.lon,
-        payload.destination.lat, payload.destination.lon,
-        payload.requested_time,
-        origin_place=origin_place,
-        destination_place=destination_place,
-        arrive_by=payload.time_kind == "arrive",
-    )
-
-    # A ride for part of the way and public transport for the rest
-    # (combined.py), with the drives that don't pass near both ends.
+    # Meanwhile: a ride for part of the way and public transport for the rest
+    # (combined.py), with the drives that don't pass near both ends. It
+    # compares them with public transport alone once it has found them.
     combined_matches = combined.find(
         payload.origin, payload.destination, payload.requested_time, payload.time_kind,
-        exclude_ids={m["id"] for m in driver_matches}, transit_option=transit_option,
+        exclude_ids={m["id"] for m in driver_matches}, transit_option=transit_alone.result,
     )
+    the_way_to_them.result()
+    transit_option = transit_alone.result()
     bookings.with_seats_booked(combined_matches)
     ratings.with_driver_ratings(combined_matches)
     combined_matches = [search.with_bookable(pricing.with_ride_prices(m)) for m in combined_matches]
