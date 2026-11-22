@@ -27,6 +27,7 @@ db.DB_PATH = os.path.join(tempfile.mkdtemp(prefix="rideshare-tests-"), "_unused.
 import fares  # noqa: E402
 import matching  # noqa: E402
 import pytest  # noqa: E402
+import search  # noqa: E402
 import transit  # noqa: E402
 
 
@@ -47,6 +48,15 @@ def empty_transit_cache():
     transit._cache.clear()
     yield
     transit._cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def no_routes_kept():
+    """Each test starts without routes kept by an earlier one's searches
+    (search.prepared_routes): their databases number their drives alike."""
+    search._routes.clear()
+    yield
+    search._routes.clear()
 
 
 @pytest.fixture

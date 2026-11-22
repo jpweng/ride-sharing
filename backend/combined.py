@@ -221,11 +221,13 @@ def _with_times(places: dict, drive: dict, route: list) -> dict | None:
     }
 
 
-def _could_make(drive: dict, origin: tuple, destination: tuple, shape: str, radius_km: float) -> bool:
+def _could_make(drive: dict, origin: tuple, destination: tuple, shape: str, radius_km: float,
+                trip_km: float | None = None) -> bool:
     """From the drive's two ends and its duration alone: whether it lasts
     long enough for a ride and its route can pass near the passenger's end
-    of the car part (matching.could_pass_near)."""
-    if matching.haversine_km(*origin, *destination) <= radius_km:
+    of the car part (matching.could_pass_near). `trip_km`: the straight line
+    between the passenger's two ends, when the caller has it."""
+    if (matching.haversine_km(*origin, *destination) if trip_km is None else trip_km) <= radius_km:
         return False  # too short a trip for the car to do a part of it only
     if (drive.get("route_duration_s") or MIN_RIDE_MIN * 60) < MIN_RIDE_MIN * 60:
         return False
@@ -273,12 +275,7 @@ def _away_min(drive: dict, shape: str, asked: datetime, time_kind: str, trip_km:
     return max((departs - wanted).total_seconds(), (wanted - arrives).total_seconds(), 0.0) / 60.0
 
 
-def _route_key(drive: dict):
-    """What tells one stored route from another before they are loaded: demo
-    drives between the same two places share theirs, a posted drive has its own."""
-    if drive.get("is_demo"):
-        return (drive["origin_lat"], drive["origin_lon"], drive["destination_lat"], drive["destination_lon"])
-    return drive["id"]
+_route_key = search.route_key
 
 
 def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: str,
@@ -294,6 +291,8 @@ def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: s
         departing_from=_iso(asked - slack - timedelta(hours=matching.MAX_DRIVE_HOURS)),
         departing_until=_iso(asked + slack),
         include_demo=include_demo and demo_drives.enabled(),
+        # Left out by the database already: most of those that pass near neither end.
+        passing_near=[(*origin, radius_km), (*destination, radius_km)], passing_near_any=True,
     )
     trip_km = matching.haversine_km(*origin, *destination)
     possible = []
@@ -301,7 +300,7 @@ def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: s
         if d["seats_available"] <= 0 or d["id"] in exclude_ids:
             continue
         for shape in (RIDE_FIRST, TRANSIT_FIRST):
-            if _could_make(d, origin, destination, shape, radius_km):
+            if _could_make(d, origin, destination, shape, radius_km, trip_km):
                 possible.append((_away_min(d, shape, asked, time_kind, trip_km), d, shape))
     possible.sort(key=lambda item: (item[0], item[1]["departure_time"], item[1]["id"]))
     # The closest in time, up to MAX_ROUTES_LOADED routes: every drive on them.
@@ -314,23 +313,16 @@ def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: s
             routes.add(key)
         kept.append((d, shape))
 
-    geometries = db.route_geometries(list({d["id"] for d, _ in kept}))
-    prepared, places = {}, {}
+    # Drives on the same trip share one route: where the passenger gets in
+    # and out is worked out once for them all.
+    routes = search.prepared_routes([d for d, _ in kept])
+    places = {}
     found = []
     for d, shape in kept:
-        geometry = geometries.get(d["id"])
-        if geometry:
-            # Drives on the same trip share one geometry: where the
-            # passenger gets in and out is worked out once for them all.
-            if id(geometry) not in prepared:
-                prepared[id(geometry)] = matching.prepare_route(geometry, d)
-            route = prepared[id(geometry)]
-            if (id(geometry), shape) not in places:
-                places[(id(geometry), shape)] = _car_places(route, origin, destination, shape, radius_km)
-            where = places[(id(geometry), shape)]
-        else:
-            route = matching.prepare_route(None, d)
-            where = _car_places(route, origin, destination, shape, radius_km)
+        route = routes[d["id"]]
+        if (id(route), shape) not in places:
+            places[(id(route), shape)] = _car_places(route, origin, destination, shape, radius_km)
+        where = places[(id(route), shape)]
         part = _with_times(where, d, route) if where is not None else None
         if part is not None:
             starts, arrives = _estimate(part, shape)
@@ -343,6 +335,17 @@ def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: s
             found.append({"drive": d, "route": route, "shape": shape, "part": part, "rank": rank})
     found.sort(key=lambda c: (c["rank"], bool(c["drive"].get("is_demo"))))
     return found
+
+
+def _on_the_way_box(origin: tuple, destination: tuple) -> tuple:
+    """A box that holds every place on the passenger's way (MAX_DETOUR), for
+    the database to leave the other drives out: by that place, the way is
+    at most MAX_DETOUR times the straight line, which keeps it within half
+    the straight line times the square root of MAX_DETOUR squared minus one
+    of that line (an ellipse around the two ends)."""
+    trip_km = matching.haversine_km(*origin, *destination)
+    aside_km = trip_km / 2.0 * (MAX_DETOUR ** 2 - 1.0) ** 0.5
+    return db.box_around([origin, destination], aside_km + 2.0)
 
 
 def _between_candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: str,
@@ -362,6 +365,7 @@ def _between_candidates(origin: tuple, destination: tuple, asked: datetime, time
         departing_from=_iso(asked - slack - timedelta(hours=matching.MAX_DRIVE_HOURS)),
         departing_until=_iso(asked + slack),
         include_demo=demo_drives.enabled(),
+        ends_inside=_on_the_way_box(origin, destination),
     )
     trip_km = matching.haversine_km(*origin, *destination)
     found = []
@@ -809,9 +813,9 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
             ], left_s)
         # Their routes, for the map: only those of the trips found.
         with search._search_slots:
-            geometries = db.route_geometries(list({c["drive"]["id"] for c, _, _ in found}))
-            for candidate, _, _ in found:
-                candidate["route"] = matching.prepare_route(geometries.get(candidate["drive"]["id"]), candidate["drive"])
+            routes = search.prepared_routes([c["drive"] for c, _, _ in found])
+        for candidate, _, _ in found:
+            candidate["route"] = routes[candidate["drive"]["id"]]
         for candidate, before, after in found:
             trip = proposed(before["starts"], after["arrives"], lambda off: _as_between(candidate, before, after, off),
                             MAX_SLOWER_BETWEEN, SLOWER_BETWEEN_GRACE_MIN)

@@ -442,19 +442,21 @@ def find_matches(
     time_tolerance_min: float = DEFAULT_TIME_TOLERANCE_MIN,
     max_results: int = MAX_RESULTS,
     time_kind: str = "depart",
+    routes: dict | None = None,
 ) -> list[dict]:
     """
     The drives that serve this passenger (see match_drive), best first.
     Drives need their route_geometry; one without it is taken as a straight
-    line.
+    line. Or `routes`: drive id -> its route from prepare_route, for all of
+    them (search.prepared_routes).
     """
     # Demo drives on the same trip share one route_geometry object (see
     # database.route_geometries): prepared once, not once per drive.
     prepared = {}
     matches = []
     for drive in drives:
-        geometry = drive.get("route_geometry")
-        route = None
+        geometry = drive.get("route_geometry") if routes is None else None
+        route = None if routes is None else routes[drive["id"]]
         if geometry:
             if id(geometry) not in prepared:
                 prepared[id(geometry)] = prepare_route(geometry, drive)

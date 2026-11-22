@@ -18,6 +18,7 @@ recipient_name). Three kinds of user rows exist:
 """
 import sqlite3
 import json
+import math
 import os
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -169,6 +170,46 @@ _DRIVES_WITH_ROUTES = """
 """
 
 
+# Lower bounds of what a degree is worth in km, for tests that may let a
+# drive through for nothing but never leave one out: a degree of latitude is
+# 111.2 km; a degree of longitude that much times the cosine of the latitude,
+# taken 5 degrees further from the equator than the point (enough for any
+# drive under 500 km).
+_KM_PER_LAT_DEGREE = 111.0
+
+
+def _km_per_lon_degree(lat: float) -> float:
+    return _KM_PER_LAT_DEGREE * math.cos(math.radians(min(89.0, abs(lat) + 5.0)))
+
+
+def box_around(points: list[tuple[float, float]], margin_km: float) -> tuple[float, float, float, float]:
+    """(south, north, west, east) of the smallest box of latitudes and
+    longitudes that holds everything within `margin_km` of the `points`
+    ((lat, lon) each), and a little more."""
+    lats, lons = [p[0] for p in points], [p[1] for p in points]
+    lat_margin = margin_km / _KM_PER_LAT_DEGREE
+    lon_margin = margin_km / _km_per_lon_degree(max(abs(lat) for lat in lats))
+    return min(lats) - lat_margin, max(lats) + lat_margin, min(lons) - lon_margin, max(lons) + lon_margin
+
+
+def _could_pass_near_sql(lat: float, lon: float, radius_km: float) -> tuple[str, list]:
+    """
+    matching.could_pass_near() as far as the database can tell, without
+    trigonometry: a drive whose route passes within the radius of the point
+    has its two ends, together, no further from it than the drive is long
+    plus twice the radius. Counted in latitude alone, then in longitude
+    alone, each can only be less. A drive without a road distance is let
+    through.
+    """
+    reach = "(COALESCE(NULLIF(d.route_distance_m, 0), 1e12) / 1000.0 + ?)"
+    margin_km = 2 * radius_km + 1.0
+    return (
+        f"((ABS(d.origin_lat - ?) + ABS(d.destination_lat - ?)) * {_KM_PER_LAT_DEGREE} <= {reach}"
+        f" AND (ABS(d.origin_lon - ?) + ABS(d.destination_lon - ?)) * ? <= {reach})",
+        [lat, lat, margin_km, lon, lon, _km_per_lon_degree(lat), margin_km],
+    )
+
+
 def list_drives(
     upcoming_only: bool = True,
     driver_name: str | None = None,
@@ -177,8 +218,31 @@ def list_drives(
     departing_from: str | None = None,
     departing_until: str | None = None,
     include_demo: bool = True,
+    passing_near: list[tuple[float, float, float]] | None = None,
+    passing_near_any: bool = False,
+    ends_inside: tuple[float, float, float, float] | None = None,
 ) -> list[dict]:
+    """
+    The drives, the earliest first. For a search, which reads a week of demo
+    drives otherwise, the database can leave most of them out, by where
+    they are (never one that the search's own test would keep):
+    `passing_near`: (lat, lon, radius_km) points; only the drives that could
+    pass near each of them (matching.could_pass_near), or near any of them
+    with `passing_near_any`. `ends_inside`: a box (box_around); only the
+    drives that start and end inside it.
+    """
     clauses, params = [], []
+    if passing_near:
+        tests = [_could_pass_near_sql(*point) for point in passing_near]
+        clauses.append("(" + (" OR " if passing_near_any else " AND ").join(sql for sql, _ in tests) + ")")
+        params += [value for _, values in tests for value in values]
+    if ends_inside:
+        south, north, west, east = ends_inside
+        clauses.append(
+            "d.origin_lat BETWEEN ? AND ? AND d.destination_lat BETWEEN ? AND ?"
+            " AND d.origin_lon BETWEEN ? AND ? AND d.destination_lon BETWEEN ? AND ?"
+        )
+        params += [south, north, south, north, west, east, west, east]
     if not include_demo:
         clauses.append("d.is_demo = 0")
     if upcoming_only:
