@@ -22,6 +22,9 @@
   it's back.
 - **Translations:** German, French, Italian and English, with a language picker; English is the
   default when the browser's language isn't one of them.
+- **Contact page:** `contact.html`, a form whose messages are emailed to the team (see
+  `docs/contact.md`). The privacy notice and the code of conduct point to it; the privacy notice
+  still lacks the name and address of who is responsible.
 
 ## Next steps, in order of priority
 
@@ -50,5 +53,6 @@ Not needed for the demo, but these shape decisions made now:
 1. **Name:** is "Ride and Rail" the final name?
 2. **Deadline:** is there a date for an investor meeting or the start of testing?
 3. **Testers:** how many, and do they get access by invitation, or is the site open to anyone?
-4. **Privacy contact:** who is responsible for the data (a person or a company), and which contact
-   to publish? The Swiss data protection law requires both in the privacy notice.
+4. **Privacy contact:** who is responsible for the data (a person or a company)? The Swiss data
+   protection law requires the name and address in the privacy notice. The contact itself is the
+   contact page.
