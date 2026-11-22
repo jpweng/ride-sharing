@@ -36,6 +36,17 @@ def test_the_trip_card_is_on_the_page_and_one_bar_on_a_wide_screen():
     assert re.search(r"\.trip-bar \.trip-swap svg \{ transform: rotate\(90deg\)", wide)
 
 
+def test_a_field_shows_the_place_the_search_uses():
+    js = (FRONTEND / "passenger.js").read_text()
+    # Emptied or half typed, then left (also for the map, closed without
+    # picking): the field shows its place again, which the search still uses.
+    assert 'addEventListener("blur", (e) => {' in js
+    assert "if (points[role] && e.target.value.trim() !== points[role].name) e.target.value = points[role].name;" in js
+    # "Pick on map" no longer empties the field: closing the map left it empty over the old results.
+    pick = js[js.index('label: t("form.pickOnMap")'):js.index("startPicking(role);")]
+    assert ".blur()" in pick and 'value = ""' not in pick
+
+
 def test_a_match_starts_with_who_drives():
     app = (FRONTEND / "app.js").read_text()
     card = app[app.index("card.innerHTML = `"):app.index("container.appendChild(card);")]
