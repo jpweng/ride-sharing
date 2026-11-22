@@ -43,7 +43,7 @@ def test_every_language_says_the_same_things(lang):
 
 def test_its_links_lead_somewhere():
     links = set(_shape(EN)[1])
-    assert {"privacy.html", "conduct.html", "./"} <= links
+    assert {"privacy.html", "conduct.html", "contact.html", "./"} <= links
     for href in links - {"./"}:
         assert (FRONTEND / href).is_file(), href
 

@@ -38,9 +38,13 @@ class ConsoleBackend:
     def __init__(self):
         self.outbox: list[dict] = []
 
-    def send(self, to: str, subject: str, text: str, html: str) -> None:
-        self.outbox.append({"to": to, "subject": subject, "text": text, "html": html})
-        logger.info("Email (not sent, EMAIL_BACKEND=console) to %s: %s\n%s", to, subject, text)
+    def send(self, to: str, subject: str, text: str, html: str, reply_to: str | None = None) -> None:
+        email = {"to": to, "subject": subject, "text": text, "html": html}
+        if reply_to:
+            email["reply_to"] = reply_to
+        self.outbox.append(email)
+        logger.info("Email (not sent, EMAIL_BACKEND=console) to %s%s: %s\n%s",
+                    to, f", reply to {reply_to}" if reply_to else "", subject, text)
 
 
 class SesBackend:
@@ -52,13 +56,17 @@ class SesBackend:
         self.sender = sender
         self.client = boto3.client("sesv2", region_name=region)
 
-    def send(self, to: str, subject: str, text: str, html: str) -> None:
+    def send(self, to: str, subject: str, text: str, html: str, reply_to: str | None = None) -> None:
         from botocore.exceptions import BotoCoreError, ClientError
 
+        # Reply-To: where an answer to this email goes, when that isn't the
+        # sender (the contact form: the visitor who wrote, see contact.py).
+        headers = {"ReplyToAddresses": [reply_to]} if reply_to else {}
         try:
             self.client.send_email(
                 FromEmailAddress=self.sender,
                 Destination={"ToAddresses": [to]},
+                **headers,
                 Content={"Simple": {
                     "Subject": {"Data": subject, "Charset": "UTF-8"},
                     "Body": {

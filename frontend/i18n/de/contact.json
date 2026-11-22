@@ -1,0 +1,12 @@
+{
+  "contact.email": "Ihre E-Mail-Adresse",
+  "contact.heading": "Kontakt",
+  "contact.intro": "Eine Frage, eine Idee, ein Problem mit einer Fahrt oder mit Ihrem Konto? Schreiben Sie uns: Wir antworten per E-Mail.",
+  "contact.message": "Ihre Nachricht",
+  "contact.name": "Ihr Name",
+  "contact.privacy": "Ihre Nachricht geht per E-Mail an unser Team und wird auf dieser Website nicht gespeichert. Mehr dazu in der <a href=\"privacy.html\">Datenschutzerklärung</a>.",
+  "contact.send": "Senden",
+  "contact.sending": "Wird gesendet…",
+  "contact.sent": "Vielen Dank. Ihre Nachricht ist unterwegs zu unserem Team; wir antworten an {email}.",
+  "contact.title": "Kontakt — Ride and Rail"
+}

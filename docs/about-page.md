@@ -36,6 +36,7 @@ Where each statement comes from, to know what to reread when something changes:
 | Ratings and reports | [ratings and reports](ratings-and-reports.md) |
 | Browser, home screen, four languages | [PWA](pwa.md), [translations](translations.md) |
 | Demo drives are fictional and can't be booked | [demo drives and data retention](demo-drives-and-data-retention.md) |
+| Writing to the team | [the contact page](contact.md) |
 | No advertising or analytics, 30 days, deleting one's account | [privacy notice](../frontend/privacy.html), `backend/maintenance.py` |
 
 Some statements depend on how the site is set up, not only on the code. The page is written for

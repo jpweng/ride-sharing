@@ -1,4 +1,4 @@
 {
-  "banner.app": "<strong>Démo</strong> — un prototype pour tester. Les trajets marqués <span class=\"badge demo\">Démo</span> sont fictifs. Les autres voient votre prénom et l'initiale de votre nom. <a href=\"about.html\">À propos</a> · <a href=\"privacy.html\">Confidentialité</a> · <a href=\"conduct.html\">Code de conduite</a>",
+  "banner.app": "<strong>Démo</strong> — un prototype pour tester. Les trajets marqués <span class=\"badge demo\">Démo</span> sont fictifs. Les autres voient votre prénom et l'initiale de votre nom. <a href=\"about.html\">À propos</a> · <a href=\"privacy.html\">Confidentialité</a> · <a href=\"conduct.html\">Code de conduite</a> · <a href=\"contact.html\">Contact</a>",
   "banner.privacy": "<strong>Démo</strong> — un prototype pour tester. <a href=\"./\">Retour à l'application</a>"
 }
