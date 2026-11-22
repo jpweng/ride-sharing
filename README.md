@@ -1,7 +1,9 @@
 # Ride and Rail
 
-A demo of a ride-sharing app for Switzerland that combines car rides with public transport, live at
-<https://rideandrail.ch>. Drivers post drives; passengers search for one, without an account, by
+A demo of a carpooling app for Switzerland, live at <https://rideandrail.ch>: drivers who make a trip
+anyway take passengers along, to put more people in fewer cars when roads and trains are full (the
+commute at peak hours, big events, weekend trips). A ride can be combined with public transport for
+the rest of the way. Drivers post drives; passengers search for one, without an account, by
 route corridor matching (drivers whose route passes near the passenger's start and destination,
 around their time; the passenger gives only those three, and the closest come first), with a
 public-transport comparison, and public transport to the pickup and from the drop-off where they are

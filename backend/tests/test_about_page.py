@@ -63,13 +63,23 @@ def test_it_says_first_that_this_is_a_demo(lang):
     assert "<strong>A demo version for now.</strong>" in EN
 
 
+def test_what_it_is_for_comes_before_public_transport():
+    # The purpose is fuller cars where the country is congested: the commute
+    # at peak hours, big events, weekend trips. Public transport is how a
+    # trip can be completed, said after that (docs/about-page.md).
+    opening = " ".join(EN[: EN.index("<h3>")].split())
+    for moment in ("commute to work at peak hours", "big events such as summer festivals", "weekend trips"):
+        assert moment in opening, moment
+    assert opening.index("weekend trips") < opening.index("public transport")
+
+
 def test_the_sections_it_has():
     # One per thing the service offers; a new one is added in every language
     # (test_every_language_says_the_same_things).
     assert re.findall(r"<h3>(.*?)</h3>", EN) == [
         "If you need a ride",
         "If you drive",
-        "Sharing costs, not earning money",
+        "Sharing costs",
         "Knowing who you travel with",
         "On your phone and your computer",
         "A demo for now",
