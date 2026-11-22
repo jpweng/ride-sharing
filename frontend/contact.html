@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" class="i18n-pending" data-i18n-title="contact.title">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Contact — Ride and Rail</title>
+<!-- Installable app (PWA): manifest, icons, and full-screen on iOS "Add to Home Screen". -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0f6e5f" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Ride and Rail" />
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="styles/pwa.css" />
+<link rel="stylesheet" href="styles/contact.css" />
+</head>
+<body class="doc-page">
+<header>
+  <h1><a class="wordmark" href="./"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
+  <div class="lang-picker" role="group" aria-label="Language">
+    <button type="button" data-lang="de">DE</button><button type="button" data-lang="fr">FR</button><button type="button" data-lang="it">IT</button><button type="button" data-lang="en">EN</button>
+  </div>
+</header>
+
+<div class="demo-banner" role="note" data-i18n-html="banner.privacy">
+  <strong>Demo</strong> — a prototype for testing.
+  <a href="./">Back to the app</a>
+</div>
+
+<!-- The contact form (contact.js, docs/contact.md): the message is emailed to
+     the team by POST /api/contact and kept nowhere on the site. -->
+<div class="doc contact">
+  <h2 data-i18n="contact.heading">Contact us</h2>
+  <p data-i18n="contact.intro">A question, an idea, a problem with a ride or with your account? Write to us: we answer by email.</p>
+
+  <form id="contact-form" novalidate>
+    <label for="contact-name" data-i18n="contact.name">Your name</label>
+    <input type="text" id="contact-name" name="name" maxlength="100" autocomplete="name" required />
+
+    <label for="contact-email" data-i18n="contact.email">Your email address</label>
+    <input type="email" id="contact-email" name="email" maxlength="254" autocomplete="email" placeholder="name@example.ch" data-i18n-placeholder="signin.emailPlaceholder" required />
+
+    <label for="contact-message" data-i18n="contact.message">Your message</label>
+    <textarea id="contact-message" name="message" rows="8" maxlength="4000" required></textarea>
+
+    <!-- Not for people (hidden by contact.css, skipped by the keyboard and by
+         screen readers): a robot that fills in every field fills in this one,
+         and its message is dropped (backend/contact.py). -->
+    <div class="contact-extra" aria-hidden="true">
+      <label for="contact-website">Website</label>
+      <input type="text" id="contact-website" name="website" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <div class="hint" data-i18n-html="contact.privacy">Your message reaches our team by email and isn't kept on this site. More in the <a href="privacy.html">privacy notice</a>.</div>
+    <button class="submit-btn" id="contact-send" data-i18n="contact.send">Send</button>
+  </form>
+  <div class="status-msg" id="contact-status" role="status"></div>
+</div>
+
+<script src="i18n.js"></script>
+<script src="contact.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

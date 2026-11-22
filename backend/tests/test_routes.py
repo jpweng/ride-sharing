@@ -60,6 +60,8 @@ API_ROUTES = {
     ("post", "/api/notifications/{notification_id}/action"),
     ("get", "/api/notifications/{notification_id}/preview"),
     ("put", "/api/notification_settings"),
+    ("get", "/api/contact"),
+    ("post", "/api/contact"),
 }
 
 

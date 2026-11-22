@@ -8,6 +8,8 @@
   "errors.booking_not_found": "This booking no longer exists.",
   "errors.booking_not_open": "This booking was already answered or cancelled.",
   "errors.consent_required": "Confirm that you are 18 or older and accept the code of conduct.",
+  "errors.contact_incomplete": "Fill in your name, your email address and your message.",
+  "errors.contact_unavailable": "The contact form isn't available at the moment. Please try again later.",
   "errors.cross_site_request": "This request was refused for security reasons. Reload the page and try again.",
   "errors.demo_driver_not_found": "This demo driver doesn't exist.",
   "errors.demo_read_only": "You're viewing the demo as a fictional driver: nothing can be changed. Sign in with your email address to post drives and requests.",

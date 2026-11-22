@@ -8,6 +8,8 @@
   "errors.booking_not_found": "Diese Buchung gibt es nicht mehr.",
   "errors.booking_not_open": "Diese Buchung wurde bereits beantwortet oder storniert.",
   "errors.consent_required": "Bestätigen Sie, dass Sie 18 oder älter sind, und akzeptieren Sie den Verhaltenskodex.",
+  "errors.contact_incomplete": "Geben Sie Ihren Namen, Ihre E-Mail-Adresse und Ihre Nachricht ein.",
+  "errors.contact_unavailable": "Das Kontaktformular ist zurzeit nicht verfügbar. Bitte versuchen Sie es später noch einmal.",
   "errors.cross_site_request": "Diese Anfrage wurde aus Sicherheitsgründen abgelehnt. Laden Sie die Seite neu und versuchen Sie es noch einmal.",
   "errors.demo_driver_not_found": "Diese fahrende Person gibt es in der Demo nicht.",
   "errors.demo_read_only": "Sie sehen die Demo als erfundene fahrende Person: Es lässt sich nichts ändern. Melden Sie sich mit Ihrer E-Mail-Adresse an, um Fahrten und Anfragen zu veröffentlichen.",

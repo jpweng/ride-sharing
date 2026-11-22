@@ -112,6 +112,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   the pickup and from the drop-off is proposed
 - [Booking](docs/booking.md): asking for a seat, the driver's answer, cancelling, seats and prices
 - [Load test](docs/load-test.md): the event-evening simulation and its results
+- [The contact page](docs/contact.md): the form whose messages are emailed to the team, the email's
+  headers, limits, switching it on
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
   listed by FastAPI at `/docs` on a running app
 - [Ride predictions and ride requests](docs/ride-predictions.md): design, rules and reasons
@@ -139,6 +141,7 @@ backend/
   pricing.py      ride prices: the driver's price band, what each passenger pays
   ratings.py      ratings after a ride: who rates whom, the averages shown
   reports.py      reports of a problem with a ride, for the team (see admin.py)
+  contact.py      the contact form: a visitor's message, emailed to the team
   bookings.py     bookings: asking for seats on a drive, the driver's answer, cancelling
   profiles.py     optional profiles (about, habits, car, photo) and who may see whose
   photos.py       where profile photos are kept: a private S3 bucket (a folder in development)
@@ -152,6 +155,7 @@ frontend/
                   #/signin, #/signin/<token> (opening a link) and first-sign-in profile
   privacy.html    privacy notice, linked from the demo banner
   conduct.html    code of conduct (draft for legal review), accepted at first sign-in
+  contact.html    the contact form, linked from the demo banner; contact.js sends it (docs/contact.md)
   offline.html    shown by the service worker for an uncached page while offline
   app.js          Leaflet map, point picking, address autocomplete, API calls
   areas.js        driver areas: "Your areas" in the driver's profile, their requests on the Driver page (docs/driver-areas.md)

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 FRONTEND = Path(__file__).resolve().parents[2] / "frontend"
-PAGES = ["index.html", "privacy.html", "conduct.html", "offline.html"]
+PAGES = ["index.html", "privacy.html", "conduct.html", "offline.html", "contact.html"]
 
 
 def _own_stylesheets(page):

@@ -84,6 +84,10 @@ jobs:
           # empty until the repo secrets exist, and the providers aren't offered.
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           APPLE_PRIVATE_KEY: ${{ secrets.APPLE_PRIVATE_KEY }}
+          # Where the contact form's messages are emailed (optional, see
+          # docs/contact.md). A secret, not a variable: this log is public and
+          # would show a variable's value. Empty: the form is switched off.
+          CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
         run: |
           INSTANCE_ID=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=${{ vars.SERVER_NAME }}" "Name=instance-state-name,Values=running" \
@@ -106,6 +110,8 @@ jobs:
           ENV_FILE=$(printf '%s\nREPORTS_EMAIL=%s\n' "$ENV_FILE" "${{ vars.REPORTS_EMAIL }}")
           # PHOTO_BUCKET: optional repo variable, the S3 bucket for profile photos.
           ENV_FILE=$(printf '%s\nPHOTO_BUCKET=%s\n' "$ENV_FILE" "${{ vars.PHOTO_BUCKET }}")
+          # CONTACT_EMAIL: optional repo secret, from the step's env like the two above.
+          ENV_FILE=$(printf '%s\nCONTACT_EMAIL=%s\n' "$ENV_FILE" "$CONTACT_EMAIL")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \
