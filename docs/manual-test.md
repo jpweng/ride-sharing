@@ -40,7 +40,7 @@ How to read the steps:
 Signed out, in a new private window of browser A, so nothing is remembered from earlier visits.
 
 - [ ] **1.1** Open <https://rideandrail.ch>. **Expect:** the logo and "Ride and Rail", the subtitle
-  "Shared rides to the train", the DE FR IT EN picker, the Demo banner with "About", "Privacy",
+  "Carpooling for Switzerland", the DE FR IT EN picker, the Demo banner with "About", "Privacy",
   "Code of conduct" and "Contact", the tabs "Find a ride" and "Inbox", a "Passenger mode" button and
   a "Sign in" link. The page is a card with From and To. No map, no search button.
 - [ ] **1.2** Look at the language. **Expect:** your browser's first language among German, French,

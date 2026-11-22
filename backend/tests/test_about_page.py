@@ -73,6 +73,22 @@ def test_what_it_is_for_comes_before_public_transport():
     assert opening.index("weekend trips") < opening.index("public transport")
 
 
+def test_the_tagline_says_the_same_as_the_opening():
+    # "Carpooling for Switzerland": the header's subtitle, the home page's
+    # title and the manifest's description, as the page's first sentence.
+    en = {**json.loads((FRONTEND / "i18n" / "en" / "header.json").read_text()),
+          **json.loads((FRONTEND / "i18n" / "en" / "meta.json").read_text())}
+    assert en["header.subtitle"] == "Carpooling for Switzerland"
+    assert en["meta.title"] == "Ride and Rail — carpooling for Switzerland"
+    assert json.loads((FRONTEND / "manifest.webmanifest").read_text())["description"].startswith("Carpooling for Switzerland")
+    assert "Ride and Rail is carpooling for Switzerland." in " ".join(EN.split())
+    # No description of the service leads with the train any more.
+    for lang in LANGS:
+        for name in ("header", "meta"):
+            text = (FRONTEND / "i18n" / lang / f"{name}.json").read_text().lower()
+            assert not re.search(r"train|zug|treno", text), (lang, name)
+
+
 def test_the_sections_it_has():
     # One per thing the service offers; a new one is added in every language
     # (test_every_language_says_the_same_things).
