@@ -1,4 +1,4 @@
 {
-  "banner.app": "<strong>Demo</strong> — ein Prototyp zum Testen. Fahrten mit <span class=\"badge demo\">Demo</span> sind erfunden. Andere sehen Ihren Vornamen und den ersten Buchstaben Ihres Nachnamens. <a href=\"privacy.html\">Datenschutz</a> · <a href=\"conduct.html\">Verhaltenskodex</a>",
+  "banner.app": "<strong>Demo</strong> — ein Prototyp zum Testen. Fahrten mit <span class=\"badge demo\">Demo</span> sind erfunden. Andere sehen Ihren Vornamen und den ersten Buchstaben Ihres Nachnamens. <a href=\"about.html\">Über uns</a> · <a href=\"privacy.html\">Datenschutz</a> · <a href=\"conduct.html\">Verhaltenskodex</a>",
   "banner.privacy": "<strong>Demo</strong> — ein Prototyp zum Testen. <a href=\"./\">Zurück zur App</a>"
 }

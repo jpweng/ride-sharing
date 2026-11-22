@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en" class="i18n-pending" data-i18n-title="about.title">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>About — Ride and Rail</title>
+<!-- Installable app (PWA): manifest, icons, and full-screen on iOS "Add to Home Screen". -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#0f6e5f" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Ride and Rail" />
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="styles/pwa.css" />
+</head>
+<body class="doc-page">
+<header>
+  <h1><a class="wordmark" href="./"><span class="wm-ride">Ride</span> <span class="wm-and">and</span> <span class="wm-rail">Rail</span></a></h1>
+  <div class="lang-picker" role="group" aria-label="Language">
+    <button type="button" data-lang="de">DE</button><button type="button" data-lang="fr">FR</button><button type="button" data-lang="it">IT</button><button type="button" data-lang="en">EN</button>
+  </div>
+</header>
+
+<div class="demo-banner" role="note" data-i18n-html="banner.privacy">
+  <strong>Demo</strong> — a prototype for testing. <a href="./">Back to the app</a>
+</div>
+
+<!-- What Ride and Rail offers, one complete text per language (like
+     privacy.html; i18n.js shows the visitor's). It describes the service as
+     it is on the site and in the apps: change it in the same pull request as
+     any change to what users can do (see docs/about-page.md). The four texts
+     keep the same structure; backend/tests/test_about_page.py checks that,
+     and the facts taken from the code. -->
+<article class="doc" lang="en" data-i18n-block>
+  <h2>About Ride and Rail</h2>
+  <p>
+    Ride and Rail is carpooling for Switzerland that works together with public transport. A driver
+    who is making the trip anyway takes you along, for the whole way or for part of it; the train,
+    the bus or the tram does the rest.
+  </p>
+  <p>
+    Public transport gets you almost everywhere in Switzerland, but the first or the last
+    kilometres are often the slow part of a trip, while cars drive the same way with empty seats.
+    Ride and Rail puts the two together: one search shows the drives going your way, the trips
+    that combine a ride with public transport, and the public transport connection on its own, so
+    that you can compare them.
+  </p>
+
+  <h3>If you need a ride</h3>
+  <ul>
+    <li>
+      Say where you start, where you are going and when you want to leave or arrive. Searching
+      needs no account.
+    </li>
+    <li>
+      You see the drives that pass near your start and your destination: where the driver would
+      pick you up and drop you off, at what time, and the price per seat next to the train fare.
+    </li>
+    <li>
+      When nobody drives the whole way, a ride can take you part of the way and public transport
+      the rest.
+    </li>
+    <li>
+      Ask for a seat with a short message. The driver accepts or declines, and you are told in
+      your inbox and by email.
+    </li>
+    <li>
+      Nothing that suits you? Ask for the ride: drivers who often make that trip or drive around
+      there are told, and you hear when a drive that fits is posted.
+    </li>
+  </ul>
+
+  <h3>If you drive</h3>
+  <ul>
+    <li>
+      Post the drives you are making anyway: start, destination, time, free seats and your price
+      per seat.
+    </li>
+    <li>Passengers ask for a seat, and you decide whom you take along.</li>
+    <li>
+      Save the areas you usually drive from or to, such as home or work. You see the ride requests
+      that start or end there, you are told about a few of them, and you can accept one directly.
+    </li>
+  </ul>
+  <p>One account does both: a button switches between passenger mode and driver mode.</p>
+
+  <h3>Sharing costs, not earning money</h3>
+  <p>
+    Drivers share the costs of a drive; they don't make a profit from it. The driver sets the price
+    per seat within limits: about the cost of the fuel at least, and never more than the train's
+    2nd class full fare for the same distance. When more passengers share a drive, each pays less.
+    Nothing is paid through Ride and Rail: passenger and driver settle between themselves.
+  </p>
+
+  <h3>Knowing who you travel with</h3>
+  <ul>
+    <li>
+      You sign in with a link sent to your email address, without a password, or with Google or
+      Apple.
+    </li>
+    <li>
+      Everyone confirms being 18 or older and accepts the
+      <a href="conduct.html">code of conduct</a>.
+    </li>
+    <li>
+      Other users see your first name and the initial of your last name, never your email address.
+    </li>
+    <li>
+      A profile is optional: a photo, a few words about you, your habits in the car and, for
+      drivers, the car. Only the people you may share a ride with can see it.
+    </li>
+    <li>
+      After a ride, passenger and driver rate each other, and either can report a problem to our
+      team.
+    </li>
+  </ul>
+
+  <h3>On your phone and your computer</h3>
+  <p>
+    Ride and Rail runs in the browser at rideandrail.ch, in German, French, Italian and English.
+    On a phone, you can add it to the home screen and open it like an app. Apps for Android and
+    for iPhone are coming soon; they will offer the same service, with the same account.
+  </p>
+
+  <h3>A demo for now</h3>
+  <p>
+    Ride and Rail is being tested, and this site is a prototype. The drives marked
+    <span class="badge demo">Demo</span> are fictional: they show how a search works and can't be
+    booked.
+  </p>
+
+  <h3>Your data</h3>
+  <p>
+    There is no advertising and there are no analytics trackers. Drives, ride requests and
+    searches are deleted after 30 days, and you can delete your account and all your data yourself
+    at any time. The <a href="privacy.html">privacy notice</a> has the details.
+  </p>
+
+  <p><a href="./">Find a ride</a></p>
+</article>
+
+<article class="doc" lang="de" data-i18n-block hidden>
+  <h2>Über Ride and Rail</h2>
+  <p>
+    Ride and Rail ist Mitfahren für die Schweiz, abgestimmt auf den öffentlichen Verkehr. Wer die
+    Strecke ohnehin mit dem Auto fährt, nimmt Sie mit, für den ganzen Weg oder einen Teil davon;
+    den Rest übernehmen Zug, Bus oder Tram.
+  </p>
+  <p>
+    Der öffentliche Verkehr bringt Sie in der Schweiz fast überallhin, doch die ersten oder die
+    letzten Kilometer sind oft der langsame Teil einer Reise, während Autos mit freien Plätzen
+    denselben Weg fahren. Ride and Rail verbindet beides: Eine einzige Suche zeigt die Fahrten in
+    Ihre Richtung, die Reisen, die eine Mitfahrt mit dem öffentlichen Verkehr kombinieren, und die
+    Verbindung nur mit dem öffentlichen Verkehr, damit Sie vergleichen können.
+  </p>
+
+  <h3>Wenn Sie eine Mitfahrt suchen</h3>
+  <ul>
+    <li>
+      Geben Sie an, wo Sie starten, wohin Sie möchten und wann Sie abfahren oder ankommen wollen.
+      Für die Suche brauchen Sie kein Konto.
+    </li>
+    <li>
+      Sie sehen die Fahrten, die in der Nähe Ihres Starts und Ihres Ziels vorbeiführen: wo die
+      Fahrerin oder der Fahrer Sie abholen und absetzen würde, um welche Zeit, und den Preis pro
+      Platz neben dem Bahnpreis.
+    </li>
+    <li>
+      Fährt niemand die ganze Strecke, bringt Sie eine Mitfahrt einen Teil des Wegs und der
+      öffentliche Verkehr den Rest.
+    </li>
+    <li>
+      Fragen Sie mit einer kurzen Nachricht einen Platz an. Die Fahrerin oder der Fahrer nimmt an
+      oder lehnt ab; Sie erfahren es in Ihrem Posteingang und per E-Mail.
+    </li>
+    <li>
+      Nichts Passendes? Fragen Sie die Fahrt an: Wer diese Strecke oft fährt oder in der Gegend
+      unterwegs ist, wird benachrichtigt, und Sie erfahren, wenn eine passende Fahrt erscheint.
+    </li>
+  </ul>
+
+  <h3>Wenn Sie fahren</h3>
+  <ul>
+    <li>
+      Bieten Sie die Fahrten an, die Sie ohnehin machen: Start, Ziel, Zeit, freie Plätze und Ihr
+      Preis pro Platz.
+    </li>
+    <li>Mitfahrende fragen einen Platz an, und Sie entscheiden, wen Sie mitnehmen.</li>
+    <li>
+      Speichern Sie die Gebiete, von denen aus oder zu denen Sie üblicherweise fahren, zum
+      Beispiel Ihr Zuhause oder Ihren Arbeitsort. Sie sehen die Fahrtanfragen, die dort beginnen
+      oder enden, werden über einige benachrichtigt und können eine direkt übernehmen.
+    </li>
+  </ul>
+  <p>Ein Konto genügt für beides: Eine Schaltfläche wechselt zwischen Mitfahr-Modus und Fahr-Modus.</p>
+
+  <h3>Kosten teilen, nicht Geld verdienen</h3>
+  <p>
+    Wer fährt, teilt die Kosten der Fahrt und macht damit keinen Gewinn. Den Preis pro Platz legt
+    die Fahrerin oder der Fahrer innerhalb von Grenzen fest: mindestens etwa die Treibstoffkosten
+    und nie mehr als das Bahnbillett 2. Klasse zum Vollpreis für die gleiche Strecke. Je mehr
+    Mitfahrende eine Fahrt teilen, desto weniger zahlt jede Person. Über Ride and Rail wird nichts
+    bezahlt: Mitfahrende und Fahrende rechnen untereinander ab.
+  </p>
+
+  <h3>Wissen, mit wem Sie unterwegs sind</h3>
+  <ul>
+    <li>
+      Sie melden sich mit einem Link an, den Sie per E-Mail erhalten, ohne Passwort, oder mit
+      Google oder Apple.
+    </li>
+    <li>
+      Alle bestätigen, dass sie 18 oder älter sind, und akzeptieren den
+      <a href="conduct.html">Verhaltenskodex</a>.
+    </li>
+    <li>
+      Andere sehen Ihren Vornamen und den ersten Buchstaben Ihres Nachnamens, nie Ihre
+      E-Mail-Adresse.
+    </li>
+    <li>
+      Ein Profil ist freiwillig: ein Foto, ein paar Worte über Sie, Ihre Gewohnheiten im Auto und,
+      wenn Sie fahren, das Auto. Nur wer vielleicht eine Fahrt mit Ihnen teilt, kann es sehen.
+    </li>
+    <li>
+      Nach einer Fahrt bewerten sich Mitfahrende und Fahrende gegenseitig, und beide können
+      unserem Team ein Problem melden.
+    </li>
+  </ul>
+
+  <h3>Auf dem Handy und am Computer</h3>
+  <p>
+    Ride and Rail läuft im Browser unter rideandrail.ch, auf Deutsch, Französisch, Italienisch und
+    Englisch. Auf dem Handy können Sie die Seite zum Startbildschirm hinzufügen und wie eine App
+    öffnen. Apps für Android und für das iPhone folgen bald; sie bieten denselben Dienst, mit
+    demselben Konto.
+  </p>
+
+  <h3>Vorerst eine Demo</h3>
+  <p>
+    Ride and Rail wird getestet, und diese Website ist ein Prototyp. Die Fahrten mit
+    <span class="badge demo">Demo</span> sind erfunden: Sie zeigen, wie eine Suche funktioniert,
+    und lassen sich nicht buchen.
+  </p>
+
+  <h3>Ihre Daten</h3>
+  <p>
+    Es gibt keine Werbung und keine Analyse-Tracker. Fahrten, Fahrtanfragen und Suchen werden nach
+    30 Tagen gelöscht, und Sie können Ihr Konto und alle Ihre Daten jederzeit selbst löschen. Die
+    Einzelheiten stehen in der <a href="privacy.html">Datenschutzerklärung</a>.
+  </p>
+
+  <p><a href="./">Mitfahrt finden</a></p>
+</article>
+
+<article class="doc" lang="fr" data-i18n-block hidden>
+  <h2>À propos de Ride and Rail</h2>
+  <p>
+    Ride and Rail, c'est le covoiturage pour la Suisse, pensé pour aller avec les transports
+    publics. Un conducteur qui fait de toute façon le trajet vous emmène, pour tout le chemin ou
+    pour une partie ; le train, le bus ou le tram font le reste.
+  </p>
+  <p>
+    En Suisse, les transports publics mènent presque partout, mais les premiers ou les derniers
+    kilomètres sont souvent la partie lente d'un voyage, alors que des voitures font le même
+    chemin avec des places libres. Ride and Rail réunit les deux : une seule recherche montre les
+    trajets en voiture qui vont dans votre direction, les voyages qui combinent un trajet en
+    voiture et les transports publics, et la liaison en transports publics seuls, pour que vous
+    puissiez comparer.
+  </p>
+
+  <h3>Si vous cherchez un trajet</h3>
+  <ul>
+    <li>
+      Indiquez d'où vous partez, où vous allez et quand vous voulez partir ou arriver. La
+      recherche ne demande pas de compte.
+    </li>
+    <li>
+      Vous voyez les trajets qui passent près de votre départ et de votre destination : où le
+      conducteur vous prendrait et vous déposerait, à quelle heure, et le prix par place à côté du
+      prix du train.
+    </li>
+    <li>
+      Si personne ne fait tout le trajet, une voiture peut vous emmener une partie du chemin, et
+      les transports publics le reste.
+    </li>
+    <li>
+      Demandez une place avec un court message. Le conducteur accepte ou refuse, et vous êtes
+      prévenu dans vos messages et par e-mail.
+    </li>
+    <li>
+      Rien qui vous convienne ? Demandez le trajet : les conducteurs qui le font souvent ou qui
+      roulent dans le secteur sont prévenus, et vous apprenez quand un trajet qui convient est
+      publié.
+    </li>
+  </ul>
+
+  <h3>Si vous conduisez</h3>
+  <ul>
+    <li>
+      Proposez les trajets que vous faites de toute façon : départ, destination, heure, places
+      libres et votre prix par place.
+    </li>
+    <li>Les passagers demandent une place, et vous décidez qui vous emmenez.</li>
+    <li>
+      Enregistrez les zones d'où vous partez ou vers lesquelles vous roulez habituellement, par
+      exemple votre domicile ou votre lieu de travail. Vous voyez les demandes de trajet qui
+      commencent ou se terminent là, vous êtes prévenu de quelques-unes, et vous pouvez en
+      accepter une directement.
+    </li>
+  </ul>
+  <p>Un seul compte suffit : un bouton fait passer du mode passager au mode conducteur.</p>
+
+  <h3>Partager les frais, pas gagner de l'argent</h3>
+  <p>
+    Les conducteurs partagent les frais du trajet ; ils n'en tirent pas de bénéfice. Le conducteur
+    fixe le prix par place dans des limites : au moins le coût du carburant, à peu près, et jamais
+    plus que le billet de train 2e classe plein tarif pour la même distance. Plus il y a de
+    passagers, moins chacun paie. Rien n'est payé par l'intermédiaire de Ride and Rail : passager
+    et conducteur s'arrangent entre eux.
+  </p>
+
+  <h3>Savoir avec qui vous voyagez</h3>
+  <ul>
+    <li>
+      Vous vous connectez avec un lien envoyé à votre adresse e-mail, sans mot de passe, ou avec
+      Google ou Apple.
+    </li>
+    <li>
+      Chacun confirme avoir 18 ans ou plus et accepte le
+      <a href="conduct.html">code de conduite</a>.
+    </li>
+    <li>
+      Les autres voient votre prénom et l'initiale de votre nom, jamais votre adresse e-mail.
+    </li>
+    <li>
+      Le profil est facultatif : une photo, quelques mots sur vous, vos habitudes en voiture et,
+      pour les conducteurs, la voiture. Seules les personnes qui pourraient partager un trajet
+      avec vous peuvent le voir.
+    </li>
+    <li>
+      Après un trajet, passager et conducteur se notent l'un l'autre, et chacun peut signaler un
+      problème à notre équipe.
+    </li>
+  </ul>
+
+  <h3>Sur votre téléphone et votre ordinateur</h3>
+  <p>
+    Ride and Rail fonctionne dans le navigateur, à l'adresse rideandrail.ch, en allemand, en
+    français, en italien et en anglais. Sur un téléphone, vous pouvez l'ajouter à l'écran
+    d'accueil et l'ouvrir comme une application. Des applications pour Android et pour iPhone
+    arrivent bientôt ; elles offriront le même service, avec le même compte.
+  </p>
+
+  <h3>Une démo pour l'instant</h3>
+  <p>
+    Ride and Rail est en phase de test, et ce site est un prototype. Les trajets marqués
+    <span class="badge demo">Démo</span> sont fictifs : ils montrent comment fonctionne une
+    recherche et ne peuvent pas être réservés.
+  </p>
+
+  <h3>Vos données</h3>
+  <p>
+    Il n'y a ni publicité ni outil de suivi. Les trajets, les demandes de trajet et les recherches
+    sont supprimés après 30 jours, et vous pouvez supprimer vous-même votre compte et toutes vos
+    données à tout moment. Les détails figurent dans la
+    <a href="privacy.html">déclaration de confidentialité</a>.
+  </p>
+
+  <p><a href="./">Trouver un trajet</a></p>
+</article>
+
+<article class="doc" lang="it" data-i18n-block hidden>
+  <h2>Informazioni su Ride and Rail</h2>
+  <p>
+    Ride and Rail è il car pooling per la Svizzera, pensato per funzionare insieme ai trasporti
+    pubblici. Un conducente che fa comunque quel tragitto la porta con sé, per tutto il percorso o
+    per una parte; il treno, il bus o il tram fanno il resto.
+  </p>
+  <p>
+    In Svizzera i trasporti pubblici portano quasi ovunque, ma i primi o gli ultimi chilometri
+    sono spesso la parte lenta di un viaggio, mentre delle auto fanno la stessa strada con posti
+    liberi. Ride and Rail unisce le due cose: una sola ricerca mostra i passaggi in auto nella sua
+    direzione, i viaggi che combinano un passaggio in auto e i trasporti pubblici, e il
+    collegamento con i soli trasporti pubblici, così può confrontarli.
+  </p>
+
+  <h3>Se cerca un passaggio</h3>
+  <ul>
+    <li>
+      Indichi da dove parte, dove va e quando vuole partire o arrivare. Per cercare non serve un
+      account.
+    </li>
+    <li>
+      Vede i passaggi che transitano vicino alla sua partenza e alla sua destinazione: dove il
+      conducente la farebbe salire e scendere, a che ora, e il prezzo per posto accanto al prezzo
+      del treno.
+    </li>
+    <li>
+      Se nessuno fa tutto il tragitto, un'auto può portarla per una parte del percorso, e i
+      trasporti pubblici per il resto.
+    </li>
+    <li>
+      Chieda un posto con un breve messaggio. Il conducente accetta o rifiuta, e lei viene
+      avvisato nei suoi messaggi e per e-mail.
+    </li>
+    <li>
+      Niente che le vada bene? Chieda il passaggio: i conducenti che fanno spesso quel tragitto o
+      che guidano nella zona vengono avvisati, e lei viene a sapere quando viene pubblicato un
+      passaggio adatto.
+    </li>
+  </ul>
+
+  <h3>Se guida</h3>
+  <ul>
+    <li>
+      Offra i viaggi che fa comunque: partenza, destinazione, ora, posti liberi e il suo prezzo
+      per posto.
+    </li>
+    <li>I passeggeri chiedono un posto, e lei decide chi portare.</li>
+    <li>
+      Salvi le zone da cui parte o verso cui guida abitualmente, ad esempio casa o lavoro. Vede le
+      richieste di passaggio che iniziano o terminano lì, viene avvisato di alcune e può
+      accettarne una direttamente.
+    </li>
+  </ul>
+  <p>Basta un solo account: un pulsante fa passare dalla modalità passeggero alla modalità conducente.</p>
+
+  <h3>Dividere i costi, non guadagnare</h3>
+  <p>
+    I conducenti dividono i costi del viaggio; non ne traggono un guadagno. Il conducente fissa il
+    prezzo per posto entro dei limiti: almeno il costo del carburante, all'incirca, e mai più del
+    biglietto del treno 2a classe a prezzo intero per la stessa distanza. Più passeggeri ci sono,
+    meno paga ciascuno. Nulla viene pagato tramite Ride and Rail: passeggero e conducente si
+    accordano tra loro.
+  </p>
+
+  <h3>Sapere con chi viaggia</h3>
+  <ul>
+    <li>
+      Accede con un link inviato al suo indirizzo e-mail, senza password, oppure con Google o
+      Apple.
+    </li>
+    <li>
+      Tutti confermano di avere 18 anni o più e accettano il
+      <a href="conduct.html">codice di condotta</a>.
+    </li>
+    <li>
+      Gli altri vedono il suo nome e l'iniziale del suo cognome, mai il suo indirizzo e-mail.
+    </li>
+    <li>
+      Il profilo è facoltativo: una foto, qualche parola su di lei, le sue abitudini in auto e,
+      per i conducenti, l'auto. Lo vedono solo le persone che potrebbero condividere un viaggio
+      con lei.
+    </li>
+    <li>
+      Dopo un viaggio, passeggero e conducente si valutano a vicenda, e ciascuno può segnalare un
+      problema al nostro team.
+    </li>
+  </ul>
+
+  <h3>Sul telefono e sul computer</h3>
+  <p>
+    Ride and Rail funziona nel browser, all'indirizzo rideandrail.ch, in tedesco, francese,
+    italiano e inglese. Sul telefono può aggiungerlo alla schermata Home e aprirlo come un'app.
+    Le app per Android e per iPhone arriveranno presto; offriranno lo stesso servizio, con lo
+    stesso account.
+  </p>
+
+  <h3>Per ora una demo</h3>
+  <p>
+    Ride and Rail è in fase di test, e questo sito è un prototipo. I viaggi segnati
+    <span class="badge demo">Demo</span> sono fittizi: mostrano come funziona una ricerca e non
+    possono essere prenotati.
+  </p>
+
+  <h3>I suoi dati</h3>
+  <p>
+    Non ci sono pubblicità né strumenti di tracciamento. I viaggi, le richieste di passaggio e le
+    ricerche vengono eliminati dopo 30 giorni, e può eliminare da sé il suo account e tutti i suoi
+    dati in qualsiasi momento. I dettagli si trovano
+    nell'<a href="privacy.html">informativa sulla privacy</a>.
+  </p>
+
+  <p><a href="./">Trovare un passaggio</a></p>
+</article>
+
+
+<script src="i18n.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

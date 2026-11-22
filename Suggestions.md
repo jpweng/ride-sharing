@@ -15,6 +15,9 @@
   still lacks who is responsible for the data and how to contact them; see open questions.
 - **Ride and Rail identity:** the name everywhere, a text wordmark, a teal palette instead of the
   SBB-inspired red, and a home page explaining the concept in three steps.
+- **About page:** `about.html` says what the service offers, in the four languages, linked from the
+  banner; it is updated with every change to what users can do (see `docs/about-page.md`). It
+  doesn't say yet who is behind Ride and Rail; see open questions.
 - **Uptime alerts:** a health check every 5 minutes, with an email when the site is down and when
   it's back.
 - **Translations:** German, French, Italian and English, with a language picker; English is the
