@@ -1,8 +1,8 @@
 {
   "transit.fare": "Billett 2. Klasse: CHF {full} (Halbtax CHF {half})",
   "transit.fareApprox": "Billett 2. Klasse: etwa CHF {full} (Halbtax etwa CHF {half})",
-  "transit.summary.one": "{count} Verbindung um {time} · {duration}",
-  "transit.summary.other": "{count} Verbindungen ab {time} · {duration}",
+  "transit.summary.one": "{count} Verbindung · {departure} → {arrival} · {duration}",
+  "transit.summary.other": "{count} Verbindungen · {departure} → {arrival} · {duration}",
   "transit.tickets": "Billette bei der SBB",
   "transit.transfers.one": "{count} Umstieg",
   "transit.transfers.other": "{count} Umstiege"

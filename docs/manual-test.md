@@ -128,10 +128,10 @@ Still signed out in browser A. Searching is public: everything here must work wi
 
 **Public transport for the same trip**
 
-- [ ] **2.12** Under the rides, find the line "Public transport", for example "3 connections from
-  12:27 · 1 h 05 min". Click it. **Expect:** the two stations, "Ticket, 2nd class: about CHF N (half
-  fare about CHF N)", and a row per connection: times, duration, transfers, lines and who runs them.
-  No operator logo.
+- [ ] **2.12** Under the rides, find the line "Public transport", for example "3 connections ·
+  12:27 → 13:32 · 1 h 05 min". Click it. **Expect:** the two stations, "Ticket, 2nd class: about
+  CHF N (half fare about CHF N)", and a row per connection: times, duration, transfers, lines and
+  who runs them. No operator logo.
 - [ ] **2.13** Click "Tickets on SBB". **Expect:** sbb.ch opens in a new tab, in the page's
   language, with that connection.
 
@@ -139,7 +139,8 @@ Still signed out in browser A. Searching is public: everything here must work wi
 
 - [ ] **2.14** Before touching the time, turn "Leave at" into "Arrive by". **Expect:** the time
   jumps to one hour from now and a new search runs. Every drop-off is at or before that time, the
-  latest first. Public transport connections arrive by it too.
+  latest first. Public transport connections arrive by it too, and the line gives the times of the
+  one that leaves last.
 - [ ] **2.15** Turn it back to "Leave at". **Expect:** the time is now again, and the search runs
   again.
 - [ ] **2.16** Choose tomorrow at 07:00. **Expect:** one new search, about half a second after the

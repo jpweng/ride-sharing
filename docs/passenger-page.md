@@ -65,10 +65,11 @@ When no ride is found, the page says so with a small picture
 ([icons/no-rides.svg](../frontend/icons/no-rides.svg)), and the same sentence and button follow
 straight on the page, without the question.
 
-Public transport for the same trip is one line under that ("3 connections from 12:27 · 3 h 55
-min"), opened on a click: the stations, the ticket's price, and a row per connection, as plain
-text (times, transfers, the lines and who runs them) with a link to its tickets. The page shows no
-operator's logo.
+Public transport for the same trip is one line under that ("3 connections · 12:27 → 16:22 · 3 h 55
+min": the times of the connection to take, the next to leave or, to arrive by a time, the last
+that gets there), opened on a click: the stations, the ticket's price, and a row per connection,
+as plain text (times, transfers, the lines and who runs them) with a link to its tickets. The page
+shows no operator's logo.
 
 The passenger's bookings and ride requests are listed below the search only when there are any.
 
