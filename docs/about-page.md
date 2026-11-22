@@ -21,7 +21,9 @@ The page opens with the purpose, in this order:
    first or the last kilometres to a station.
 
 Any other description of the service (README, store listings, the app's own texts) follows the same
-order. The tagline, "Carpooling for Switzerland", is the first of the three points: it is the
+order. The sentence under the search page's title (`ride.pitch`,
+[the passenger page](passenger-page.md)) is the first point, with public transport as what
+completes a ride. The tagline, "Carpooling for Switzerland", is the first of the three points: it is the
 header's subtitle (`header.subtitle`), the end of the home page's title (`meta.title`) and the start
 of the manifest's description. The three moments are where the service is meant to help; the site has no feature specific
 to one of them, and the page claims none.

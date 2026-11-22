@@ -82,6 +82,16 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
 /* The passenger page: the trip card straight on the page. */
 #page-ride .page-title { margin-bottom: 12px; font-size: 22px; }
 
+/* One sentence under the title says what the service is, until a search
+   shows its results. */
+.ride-pitch {
+  margin: -6px 0 14px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+#page-ride:has(#ride-results:not([hidden])) .ride-pitch { display: none; }
+
 .trip-card {
   position: relative;
   padding: 2px 60px 2px 16px;
@@ -160,7 +170,8 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
    results below it. The time is there from the start (it is for now). */
 @media (min-width: 980px) {
   body[data-mode="passenger"] #page-ride { --bar-out: 150px; }
-  body[data-mode="passenger"] #page-ride .page-title { margin-left: calc(4px - var(--bar-out)); }
+  body[data-mode="passenger"] #page-ride .page-title,
+  body[data-mode="passenger"] #page-ride .ride-pitch { margin-left: calc(4px - var(--bar-out)); }
   body[data-mode="passenger"] .trip-bar {
     display: flex;
     align-items: center;

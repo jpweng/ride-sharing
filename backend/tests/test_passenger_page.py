@@ -23,6 +23,20 @@ def test_the_form_is_two_fields_and_a_swap_button():
         assert gone not in RIDE, gone
 
 
+def test_one_sentence_says_what_the_service_is_until_there_are_results():
+    # Under the title, above the two fields.
+    assert RIDE.index('data-i18n="ride.title"') < RIDE.index('<p class="ride-pitch" data-i18n="ride.pitch">') < RIDE.index('class="trip-bar"')
+    css = (FRONTEND / "styles" / "passenger.css").read_text()
+    assert "#page-ride:has(#ride-results:not([hidden])) .ride-pitch { display: none; }" in css
+    for lang in ("en", "de", "fr", "it"):
+        pitch = json.loads((FRONTEND / "i18n" / lang / "ride.json").read_text())["ride.pitch"]
+        # One sentence: a ride first, public transport as what completes it (docs/about-page.md).
+        assert pitch.count(".") == 1 and len(pitch) <= 120, lang
+    english = json.loads((FRONTEND / "i18n" / "en" / "ride.json").read_text())["ride.pitch"]
+    assert english.index("driver") < english.index("public transport")
+    assert "station" not in english and "kilometre" not in english
+
+
 def test_the_trip_card_is_on_the_page_and_one_bar_on_a_wide_screen():
     css = (FRONTEND / "styles" / "passenger.css").read_text()
     # No band of colour behind the card.
