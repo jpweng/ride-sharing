@@ -187,7 +187,13 @@ main {
   background: var(--panel);
 }
 
+/* Leaflet places its tiles and controls from the nearest positioned ancestor.
+   It only makes the map one itself if the map isn't positioned when it is
+   created, and it is then (passenger mode, the page's default: fixed, see
+   styles/passenger.css). Without this, in driver mode they would be laid out
+   from the window's corner, over the header and the form. */
 #map {
+  position: relative;
   height: 100%;
   width: 100%;
 }
