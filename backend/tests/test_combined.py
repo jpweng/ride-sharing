@@ -71,12 +71,12 @@ START = LatLon(name="Start", lat=NEAR_A[0], lon=NEAR_A[1])
 END = LatLon(name="End", lat=FAR_NORTH[0], lon=FAR_NORTH[1])
 
 
-def _the_drive(at="08:00", name="Driver"):
+def _the_drive(at="08:00", name="Driver", duration_s=6000):
     return db.create_drive(
         driver_name=name, origin_name="A", origin_lat=A[0], origin_lon=A[1],
         destination_name="B", destination_lat=B[0], destination_lon=B[1],
         departure_time=f"{DAY}T{at}", seats_available=3, route_geometry=[[A[1], A[0]], [B[1], B[0]]],
-        route_distance_m=100_000, route_duration_s=6000, route_source="osrm",
+        route_distance_m=100_000, route_duration_s=duration_s, route_source="osrm",
     )
 
 
@@ -117,7 +117,8 @@ def test_public_transport_then_a_ride(network):
     assert trip["shape"] == combined.TRANSIT_FIRST
     # The last connection that is there 10 minutes before the car leaves (08:00).
     assert trip["transit"]["connection"]["departure"][11:16] == "06:40"
-    assert network.connection_queries[-1][3] is True  # asked for arrivals by a time
+    # One lookup, from the time asked for (a trip may start 15 minutes before it).
+    assert [q[2:] for q in network.connection_queries] == [(f"{DAY}T06:15", False)]
     assert (trip["starts"][-5:], trip["arrives"][-5:]) == ("06:40", trip["dropoff"]["time"][-5:])
     assert trip["change"]["name"] == trip["pickup"]["name"] == "A, station"
 
@@ -132,6 +133,68 @@ def test_arrive_by_is_about_the_end_of_the_whole_trip(network):
     _the_drive()
     assert len(combined.find(START, END, f"{DAY}T11:15", "arrive")) == 1
     assert combined.find(START, END, f"{DAY}T10:45", "arrive") == []  # public transport gets there at 11:00
+
+
+def test_arrive_by_takes_the_drive_that_fits_a_connection_in_time(network):
+    # The last bus that is there by 11:00 leaves at 08:00; the next arrives at 12:30.
+    network.set_connections("B, station", "End, station", [_connection("08:00", "09:00"), _connection("11:30", "12:30")])
+    in_time = _the_drive("06:00")                      # at the stop at 07:40
+    for at in ("07:00", "07:15", "07:30"):             # closer to 11:00 by the estimate, too late for the bus
+        _the_drive(at)
+    [trip] = combined.find(START, END, f"{DAY}T11:00", "arrive")
+    assert (trip["id"], trip["starts"][-5:], trip["arrives"][-5:]) == (in_time, "06:05", "09:00")
+    # One lookup for all the drives that change there: the connections that arrive by the time asked for.
+    assert network.connection_queries == [("B, station", "End, station", f"{DAY}T11:00", True)]
+
+
+def test_arrive_by_a_drive_long_before_those_connections_gets_its_own_lookup(network):
+    drive_id = _the_drive("06:00")
+    network.set_connections("B, station", "End, station", lambda when: (
+        [_connection("09:45", "10:45")] if when.endswith("T11:00") else [_connection("08:00", "09:00")]
+    ))
+    [trip] = combined.find(START, END, f"{DAY}T11:00", "arrive")
+    assert (trip["id"], trip["arrives"][-5:]) == (drive_id, "09:00")
+    assert [q[2:] for q in network.connection_queries] == [(f"{DAY}T11:00", True), (f"{DAY}T07:50", False)]
+
+
+def test_leave_at_a_drive_long_after_the_first_connections_gets_its_own_lookup(network):
+    _the_drive("10:00")
+    start, end = LatLon(name="Far", lat=FAR_SOUTH[0], lon=FAR_SOUTH[1]), LatLon(name="Near B", lat=NEAR_B[0], lon=NEAR_B[1])
+    network.add_station("Far, station", start.lat, start.lon)
+    network.add_station("A, station", A[0], A[1])
+    network.set_connections("Far, station", "A, station", lambda when: (
+        [_connection("06:40", "07:45")] if when.endswith("T06:15") else [_connection("08:30", "09:40")]
+    ))
+    [trip] = combined.find(start, end, f"{DAY}T06:30")
+    assert (trip["shape"], trip["starts"][-5:]) == (combined.TRANSIT_FIRST, "08:30")
+    assert [q[2:] for q in network.connection_queries] == [(f"{DAY}T06:15", False), (f"{DAY}T09:50", True)]
+
+
+def test_routes_are_loaded_for_the_drives_closest_to_when_the_passenger_is_there(network, monkeypatch):
+    # To arrive by 11:00 after 195 km, a ride first leaves around 07:45, not around 11:00.
+    monkeypatch.setattr(combined, "MAX_ROUTES_LOADED", 1)
+    network.set_connections("B, station", "End, station", [_connection("08:00", "09:00")])
+    _the_drive("10:30")
+    _the_drive("11:00")
+    in_time = _the_drive("06:00")
+    [trip] = combined.find(START, END, f"{DAY}T11:00", "arrive")
+    assert trip["id"] == in_time
+    assert combined._away_min(DRIVE, combined.RIDE_FIRST, combined._naive(f"{DAY}T08:30"), "depart", 195.0) == 0
+    assert combined._away_min(DRIVE, combined.TRANSIT_FIRST, combined._naive(f"{DAY}T06:30"), "depart", 60.0) == 30
+
+
+def test_demo_drives_on_the_same_trip_count_as_one_route():
+    demo = {**DRIVE, "is_demo": 1}
+    assert combined._route_key(demo) == combined._route_key({**demo, "id": 2, "departure_time": f"{DAY}T09:00"})
+    assert combined._route_key(DRIVE) != combined._route_key({**DRIVE, "id": 2})
+
+
+def test_the_change_counts_in_minutes_as_the_times_are_shown(network):
+    # The car is at the stop at 09:40:30, shown as 09:40: the 09:50 leaves 10 minutes later.
+    _the_drive(duration_s=6030)
+    network.set_connections("B, station", "End, station", [_connection("09:50", "10:50")])
+    [trip] = combined.find(START, END, f"{DAY}T08:00")
+    assert (trip["dropoff"]["time"][-5:], trip["transit"]["connection"]["departure"][11:16]) == ("09:40", "09:50")
 
 
 def test_without_a_connection_that_fits_there_is_no_trip(network):
