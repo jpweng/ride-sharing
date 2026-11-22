@@ -27,7 +27,8 @@ A drive that passes near both ends is a plain match, not one of these.
   arrives by it, up to 4 hours before.
 - **Not much slower than public transport alone:** a combined trip that takes more than 1.25 times
   the quickest connection for the whole trip plus 15 minutes is left out
-  (`MAX_SLOWER_THAN_TRANSIT`). The card says how it compares.
+  (`MAX_SLOWER_THAN_TRANSIT`). A trip at least 5 minutes quicker says so on its card; one that
+  isn't says nothing about it.
 - At most 4, the earliest arrival first ("Leave at") or the latest start first ("Arrive by");
   two drives at the same time on the same trip make one proposal.
 
@@ -60,7 +61,7 @@ As for matches, who drives is left out for someone who isn't signed in.
 ## On the page
 
 Under the matches, "A ride and public transport": a card per trip with its two steps in order,
-each with its times, the total and how it compares with public transport alone, and the price of
+each with its times, the total (and how much quicker than public transport alone, when it is), and the price of
 the ride. Its details give the connection with its ticket link and fare. "Request a seat" asks for
 the car's part: from the passenger's start to the stop, or from the stop to their destination
 (`ride_from`, `ride_to`), a booking like any other ([Booking](booking.md)). Without a drive for

@@ -7,7 +7,5 @@
   "combined.title": "A ride and public transport",
   "combined.total": "{duration} in all",
   "combined.transitTo": "Public transport to {place}",
-  "combined.vsFaster": "{duration} quicker than public transport alone",
-  "combined.vsSame": "as quick as public transport alone",
-  "combined.vsSlower": "{duration} longer than public transport alone"
+  "combined.vsFaster": "{duration} quicker than public transport alone"
 }
