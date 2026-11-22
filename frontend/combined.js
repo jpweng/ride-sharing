@@ -102,10 +102,7 @@ function combinedCard(m, origin, destination) {
   card.appendChild(details);
   card.addEventListener("click", (e) => {
     if (e.target.closest("a")) return; // ticket links
-    if (e.target.closest(".match-on-map")) {
-      // As for any ride: a demo one is fictional, and says so instead.
-      return m.is_demo ? showNotice(t("match.demoTitle"), t("match.demoText")) : showCombinedOnMap(m, origin, destination);
-    }
+    if (e.target.closest(".match-on-map")) return showCombinedOnMap(m, origin, destination);
     details.hidden = !details.hidden;
     card.classList.toggle("open", !details.hidden);
     more.setAttribute("aria-expanded", String(!details.hidden));

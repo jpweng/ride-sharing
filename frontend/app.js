@@ -1501,9 +1501,8 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
 
     const entry = { match: m, card, color, line: null };
     shown.push(entry);
-    // A demo ride is fictional: its details open like any ride's, but it
-    // can't be shown on the map (or booked): asking for that says so instead.
-    const choose = () => (m.is_demo ? showNotice(t("match.demoTitle"), t("match.demoText")) : select(entry));
+    // A demo ride is fictional: it opens and shows on the map like any ride,
+    // but can't be booked (bookings.js gives it no button).
     if (m.is_demo) card.classList.add("demo");
     const details = card.querySelector(".match-details");
     // The driver's profile belongs to the details; "Details" closes the card.
@@ -1519,7 +1518,7 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     card.appendChild(details);
     card.addEventListener("click", (e) => {
       if (e.target.closest("a")) return; // directions and ticket links
-      if (e.target.closest(".match-on-map")) return !m.is_demo && selected === entry ? revealMap() : choose();
+      if (e.target.closest(".match-on-map")) return selected === entry ? revealMap() : select(entry);
       details.hidden = !details.hidden;
       card.classList.toggle("open", !details.hidden);
       more.setAttribute("aria-expanded", String(!details.hidden));
@@ -1531,7 +1530,6 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
         .addTo(resultsLayer)
         .bindTooltip(`${m.driver_name ? `${esc(m.driver_name)}: ` : ""}${esc(m.origin_name)} → ${esc(m.destination_name)}`, { sticky: true })
         .on("click", () => {
-          if (m.is_demo) return choose();
           if (selected !== entry) select(entry);
           // On phones that would scroll the map away from under the finger.
           if (!PHONE_LAYOUT.matches) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
