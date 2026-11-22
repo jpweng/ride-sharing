@@ -92,7 +92,7 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [Driver areas](docs/driver-areas.md): the places a driver usually drives from or to, each with a
   radius they choose
 - [A ride and public transport](docs/combined-trips.md): trips that combine a ride for part of the
-  way with the train or the bus for the rest
+  way with the train or the bus for the rest, before the ride, after it or both
 - [The passenger page](docs/passenger-page.md): two fields, a search that starts by itself, the map
   only when asked for
 - [Ride requests on the driver's map](docs/request-preview.md): clicking a request in the inbox shows

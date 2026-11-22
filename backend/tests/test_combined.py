@@ -257,6 +257,95 @@ def test_the_search_answers_with_combined_trips(network, force_haversine):
     assert trip["driver_name"] is None              # not signed in: who drives isn't said
 
 
+# --- A ride between two public transport legs -----------------------------------------
+# The drive A -> B is near neither end of a trip from 89 km south of A to 100 km north of B.
+SOUTH = LatLon(name="Far", lat=FAR_SOUTH[0], lon=FAR_SOUTH[1])
+
+
+@pytest.fixture
+def both_ends(network):
+    network.add_station("Far, station", SOUTH.lat, SOUTH.lon)
+    network.add_station("A, station", A[0], A[1])
+    network.set_connections("Far, station", "A, station", [_connection("06:10", "07:20"), _connection("06:40", "07:45")])
+    return network
+
+
+def test_a_ride_between_two_public_transport_legs(both_ends):
+    drive_id = _the_drive()
+    [trip] = combined.find(SOUTH, END, f"{DAY}T06:30")
+    assert (trip["id"], trip["shape"]) == (drive_id, combined.TRANSIT_BOTH)
+    # The whole drive, from the stop where it starts to the stop where it ends.
+    assert (trip["pickup"]["name"], trip["pickup"]["time"][-5:]) == ("A, station", "08:00")
+    assert (trip["dropoff"]["name"], trip["dropoff"]["time"][-5:]) == ("B, station", "09:40")
+    assert (trip["change_before"]["name"], trip["change_after"]["name"]) == ("A, station", "B, station")
+    assert 99 < trip["ride_km"] < 101 and len(trip["route_geometry"]) == 2
+    before, after = trip["transit_before"], trip["transit_after"]
+    assert (before["from_station"], before["to_station"], before["connection"]["departure"][11:16]) == ("Far, station", "A, station", "06:40")
+    assert (after["from_station"], after["to_station"], after["connection"]["departure"][11:16]) == ("B, station", "End, station", "10:00")
+    assert before["fare"]["full_chf"] > 0 and after["fare"]["full_chf"] > 0
+    assert "transit" not in trip and "change" not in trip
+    assert (trip["starts"][-5:], trip["arrives"][-5:], trip["total_min"]) == ("06:40", "11:00", 260)
+    # The leg at the end the time is about with one lookup from that time, the other at the car's.
+    assert [q[2:] for q in both_ends.connection_queries] == [(f"{DAY}T06:15", False), (f"{DAY}T09:50", False)]
+
+
+def test_a_ride_between_to_arrive_by_a_time(both_ends):
+    _the_drive()
+    [trip] = combined.find(SOUTH, END, f"{DAY}T11:15", "arrive")
+    assert (trip["shape"], trip["starts"][-5:], trip["arrives"][-5:]) == (combined.TRANSIT_BOTH, "06:40", "11:00")
+    assert [q[2:] for q in both_ends.connection_queries] == [(f"{DAY}T11:15", True), (f"{DAY}T07:50", True)]
+    assert combined.find(SOUTH, END, f"{DAY}T10:45", "arrive") == []  # the bus gets there at 11:00
+
+
+def test_rides_between_fill_what_a_search_has_room_for(both_ends):
+    _the_drive()
+    # Four drives already found for the whole trip: nothing to add.
+    assert combined.find(SOUTH, END, f"{DAY}T06:30", exclude_ids={101, 102, 103, 104}) == []
+    assert len(combined.find(SOUTH, END, f"{DAY}T06:30", exclude_ids={101, 102, 103})) == 1
+
+
+def test_a_ride_between_may_take_longer_than_the_others_but_not_any_longer(both_ends):
+    _the_drive()
+    # 260 minutes. Public transport alone in 160: within 1.5 times plus 30. In 150: not.
+    [trip] = combined.find(SOUTH, END, f"{DAY}T06:30", transit_option={"connections": [_connection("06:30", "09:10")]})
+    assert trip["vs_transit_min"] == 100
+    assert combined.find(SOUTH, END, f"{DAY}T06:30", transit_option={"connections": [_connection("06:30", "09:00")]}) == []
+
+
+def test_a_ride_between_goes_the_passengers_way(both_ends):
+    _the_drive()
+    # From 92 km east of A, the way by A and B is a third longer than the straight line.
+    aside = LatLon(name="Aside", lat=46.0, lon=8.2)
+    both_ends.add_station("Aside, station", aside.lat, aside.lon)
+    both_ends.set_connections("Aside, station", "A, station", [_connection("06:40", "07:45")])
+    assert combined.find(aside, END, f"{DAY}T06:30") == []
+    # The other way round, the drive takes them away from where they are going.
+    both_ends.add_station("B, station", B[0], B[1])
+    both_ends.set_connections("End, station", "B, station", [_connection("06:40", "07:45")])
+    both_ends.set_connections("A, station", "Far, station", [_connection("10:00", "11:00")])
+    assert combined.find(END, SOUTH, f"{DAY}T06:30") == []
+    assert combined._between_candidates((END.lat, END.lon), FAR_SOUTH, combined._naive(f"{DAY}T06:30"), "depart", 240, 10.0, set()) == []
+
+
+def test_a_drive_near_one_end_is_not_a_ride_between(network):
+    drive_id = _the_drive()
+    assert [c["shape"] for c in combined._candidates(NEAR_A, FAR_NORTH, combined._naive(f"{DAY}T08:00"), "depart", 240, 10.0, set())] == [combined.RIDE_FIRST]
+    assert combined._between_candidates(NEAR_A, FAR_NORTH, combined._naive(f"{DAY}T08:00"), "depart", 240, 10.0, set()) == []
+    # And one already proposed isn't proposed again.
+    [trip] = combined.find(START, END, f"{DAY}T08:00")
+    assert (trip["id"], trip["shape"]) == (drive_id, combined.RIDE_FIRST)
+
+
+def test_the_search_answers_with_a_ride_between(both_ends, force_haversine):
+    _the_drive()
+    answer = match_routes.match_ride(match_routes.MatchRequest(
+        origin=SOUTH.model_dump(), destination=END.model_dump(), requested_time=f"{DAY}T06:30",
+    ))
+    [trip] = answer["combined_matches"]
+    assert trip["shape"] == combined.TRANSIT_BOTH and trip["bookable"] is True
+    assert trip["price_chf"] is not None and trip["driver_name"] is None
+
+
 def test_the_page_shows_them():
     html = (FRONTEND / "index.html").read_text()
     scripts = re.findall(r'<script src="([^"]+)"', html)
@@ -265,5 +354,9 @@ def test_the_page_shows_them():
     assert "RESULT_SECTIONS.push(" in script and 'cardExtras("combined", m, card)' in script
     # A card says when the trip is quicker than public transport alone, never that it is longer.
     assert 't("combined.vsFaster"' in script and "vsSlower" not in script and "vsSame" not in script
+    # A ride between two public transport legs: three steps, a fare and a connection for each leg.
+    assert 't("combined.carBetween", { from: m.change_before.name, to: m.change_after.name })' in script
+    assert "${transitStep(before)}${ride}${transitStep(after)}" in script and "legs.map((leg) =>" in script
+    assert "m.ride_from = between ? m.change_before :" in script and "m.ride_to = between ? m.change_after :" in script
     # Asking for a seat is for the car's part: to or from the stop where the passenger changes.
     assert 'if (kind === "combined") Object.assign(body, { origin: item.ride_from, destination: item.ride_to });' in (FRONTEND / "bookings.js").read_text()

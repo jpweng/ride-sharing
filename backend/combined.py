@@ -2,13 +2,21 @@
 A ride for part of the way and public transport for the rest: what a search
 proposes next to the drives that make the whole trip (routes/match.py).
 
-Two shapes, for a passenger going from A to B:
+Three shapes, for a passenger going from A to B:
 
   "ride_then_transit": a drive picks them up near A (within a search's
       radius) and takes them towards B; they get out where its route is
       closest to B, and go on by public transport from the stop there.
   "transit_then_ride": public transport takes them from A to a stop on a
       drive's route, where the drive picks them up and drops them near B.
+  "transit_ride_transit": a drive that is near neither A nor B but goes
+      their way (Zurich to Fribourg, for St. Gallen to a village near
+      Payerne). They ride all of it: public transport takes them to where
+      it starts, and on from where it ends. Two changes: these are looked
+      for only when a search has fewer than MAX_RESULTS drives and combined
+      trips to show, the way by the car may not be much of a detour
+      (MAX_DETOUR), and they may take longer than the others
+      (MAX_SLOWER_BETWEEN).
 
 A drive that passes near both ends is a plain match (search.py), not one of
 these. And the ride has to be worth a change: it lasts at least MIN_RIDE_MIN,
@@ -30,6 +38,11 @@ How it is found:
      transport is: one lookup at the time asked for serves every drive
      that changes at the same place, for the best MAX_EVALUATED places
      (_legs_at).
+  4. when that leaves room, the rides between two public transport legs,
+     from the drives' two ends and times alone (_between_candidates), and
+     their connections in what is left of BUDGET_S: the leg at the end the
+     time is about with one lookup per place, the other at the car's own
+     time (_between_at).
 
 The time is the passenger's "leave at" or "arrive by" (matching.py's
 time_kind), applied to the whole trip: the first thing they board leaves
@@ -42,6 +55,7 @@ match (pickup, dropoff, ride_km, prices for the part ridden), with "shape",
 stop where they change: {name, lat, lon}), "starts", "arrives" and "total_min".
 """
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import datetime, timedelta
 
@@ -57,6 +71,7 @@ logger = logging.getLogger("uvicorn.error")
 
 RIDE_FIRST = "ride_then_transit"
 TRANSIT_FIRST = "transit_then_ride"
+TRANSIT_BOTH = "transit_ride_transit"
 
 # The car's part: a ride shorter than this isn't worth a change. (A drive
 # for the whole trip is a plain match, however short.)
@@ -64,6 +79,14 @@ MIN_RIDE_MIN = 10
 # And it goes the passenger's way: they are closer to their destination when
 # they get out than when they got in, by at least this share of the km ridden.
 MIN_CLOSER_SHARE = 0.5
+
+# A ride between two public transport legs: the way to the car, the drive and
+# the way on from it, in straight lines, are together at most this many
+# times the straight line between the passenger's two ends.
+MAX_DETOUR = 1.15
+# Timetable lookups for them: this many places to change at, at the end of
+# the trip the time is about.
+MAX_BETWEEN_PLACES = 2
 
 # This many routes are loaded at most, those of the drives closest in time
 # (_away_min). Demo drives on the same trip share one route.
@@ -92,6 +115,12 @@ TRANSIT_MIN_PER_KM = 1.0
 # alone, plus a grace.
 MAX_SLOWER_THAN_TRANSIT = 1.25
 SLOWER_GRACE_MIN = 15
+
+# A ride between two public transport legs has two changes and is seldom as
+# quick: it is shown, with how long it takes, up to this many times public
+# transport alone, plus a grace.
+MAX_SLOWER_BETWEEN = 1.5
+SLOWER_BETWEEN_GRACE_MIN = 30
 
 # "Leave at": the trip may start this much before the time asked for, not
 # more (nobody leaves an hour earlier than they said they could).
@@ -311,6 +340,63 @@ def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: s
     return found
 
 
+def _between_candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: str,
+                        tolerance_min: float, radius_km: float, exclude_ids: set) -> list[dict]:
+    """
+    The drives that can be the middle of a trip around the time asked for,
+    public transport taking the passenger to where the drive starts and on
+    from where it ends, the most promising first (as _candidates gives the
+    others, without their routes: "route" is None). All from a drive's two
+    ends and times: it is near neither end of the trip (those are the other
+    shapes'), it lasts at least MIN_RIDE_MIN, it goes the passenger's way
+    (MIN_CLOSER_SHARE) and it isn't much of a detour (MAX_DETOUR).
+    """
+    slack = timedelta(minutes=tolerance_min + 1) + timedelta(hours=matching.MAX_DRIVE_HOURS)
+    drives = db.list_drives(
+        upcoming_only=True, with_geometry=False,
+        departing_from=_iso(asked - slack - timedelta(hours=matching.MAX_DRIVE_HOURS)),
+        departing_until=_iso(asked + slack),
+        include_demo=demo_drives.enabled(),
+    )
+    trip_km = matching.haversine_km(*origin, *destination)
+    found = []
+    for d in drives:
+        if d["seats_available"] <= 0 or d["id"] in exclude_ids:
+            continue
+        start, end = (d["origin_lat"], d["origin_lon"]), (d["destination_lat"], d["destination_lon"])
+        before_km = matching.haversine_km(*origin, *start)
+        if before_km <= radius_km or before_km > MAX_DETOUR * trip_km:
+            continue
+        after_km = matching.haversine_km(*end, *destination)
+        straight_km = matching.haversine_km(*start, *end)
+        if after_km <= radius_km or before_km + straight_km + after_km > MAX_DETOUR * trip_km:
+            continue
+        ride_km = (d.get("route_distance_m") or 0) / 1000.0 or straight_km
+        duration_s = d.get("route_duration_s") or ride_km / matching.FALLBACK_SPEED_KMH * 3600.0
+        if duration_s < MIN_RIDE_MIN * 60:
+            continue
+        if matching.haversine_km(*start, *destination) - after_km < MIN_CLOSER_SHARE * ride_km:
+            continue
+        departs = _naive(d["departure_time"])
+        part = {
+            "pickup": {"lat": start[0], "lon": start[1], "gap_km": before_km, "route_km": 0.0, "time": departs},
+            "dropoff": {"lat": end[0], "lon": end[1], "gap_km": after_km, "route_km": ride_km,
+                        "time": departs + timedelta(seconds=duration_s)},
+            "far_gap_km": before_km + after_km, "ride_km": ride_km,
+        }
+        # When the whole trip would start and end, before asking the timetable.
+        starts = part["pickup"]["time"] - timedelta(minutes=TRANSFER_MIN + before_km * TRANSIT_MIN_PER_KM)
+        arrives = part["dropoff"]["time"] + timedelta(minutes=TRANSFER_MIN + after_km * TRANSIT_MIN_PER_KM)
+        off = _off_by_min(starts, arrives, asked, time_kind, tolerance_min, ESTIMATE_SLACK_MIN)
+        if off is None:
+            continue
+        # Close to the time, and the car doing much of the way.
+        rank = abs(off) + part["far_gap_km"] * TRANSIT_MIN_PER_KM
+        found.append({"drive": d, "route": None, "shape": TRANSIT_BOTH, "part": part, "rank": rank})
+    found.sort(key=lambda c: (c["rank"], bool(c["drive"].get("is_demo"))))
+    return found
+
+
 def _far(candidate: dict) -> dict:
     """The end of the car part where the passenger changes."""
     return candidate["part"]["dropoff" if candidate["shape"] == RIDE_FIRST else "pickup"]
@@ -419,6 +505,31 @@ def _leg_of(candidate: dict, end_station: dict) -> list[tuple[dict, dict]]:
     return [(candidate, leg)] if leg else []
 
 
+def _asked_connections(group: list[dict], end_station: dict, asked: datetime) -> tuple | None:
+    """
+    For the candidates that change at one place (`group`, the most
+    promising first), when public transport is at the end of the trip the
+    time is about: (the stop there, the candidates near it, the connections
+    between it and `end_station` that arrive by the time asked for, or leave
+    from it); None without a stop or a connection.
+    """
+    stop = _stop(group[0], end_station)
+    if stop is None:
+        return None
+    group = [group[0]] + [
+        c for c in group[1:]
+        if matching.haversine_km(_far(c)["lat"], _far(c)["lon"], stop["lat"], stop["lon"]) <= MAX_STOP_KM
+    ]
+    if group[0]["shape"] == RIDE_FIRST:
+        connections = transit.get_connections(stop["name"], end_station["name"], _iso(asked), arrive_by=True)
+        connections = [c for c in connections if _naive(c["arrival"]) < asked + timedelta(minutes=1)]
+    else:
+        earliest = asked - timedelta(minutes=EARLY_START_MIN)
+        connections = transit.get_connections(end_station["name"], stop["name"], _iso(earliest))
+        connections = [c for c in connections if _naive(c["departure"]) >= earliest]
+    return (stop, group, connections) if connections else None
+
+
 def _legs_at(group: list[dict], end_station: dict, asked: datetime) -> list[tuple[dict, dict]]:
     """
     The candidates that change at one place (`group`, the most promising
@@ -435,25 +546,12 @@ def _legs_at(group: list[dict], end_station: dict, asked: datetime) -> list[tupl
     its own time. At most MAX_PER_TRANSFER, the latest start first (to
     leave at a time: the earliest arrival).
     """
+    at = _asked_connections(group, end_station, asked)
+    if at is None:
+        return []
+    stop, group, connections = at
     shape = group[0]["shape"]
-    stop = _stop(group[0], end_station)
-    if stop is None:
-        return []
-    group = [group[0]] + [
-        c for c in group[1:]
-        if matching.haversine_km(_far(c)["lat"], _far(c)["lon"], stop["lat"], stop["lon"]) <= MAX_STOP_KM
-    ]
     change, max_wait = timedelta(minutes=TRANSFER_MIN), timedelta(minutes=MAX_WAIT_MIN)
-    if shape == RIDE_FIRST:
-        connections = transit.get_connections(stop["name"], end_station["name"], _iso(asked), arrive_by=True)
-        connections = [c for c in connections if _naive(c["arrival"]) < asked + timedelta(minutes=1)]
-    else:
-        earliest = asked - timedelta(minutes=EARLY_START_MIN)
-        connections = transit.get_connections(end_station["name"], stop["name"], _iso(earliest))
-        connections = [c for c in connections if _naive(c["departure"]) >= earliest]
-    if not connections:
-        return []
-
     found = [(c, leg) for c in group if (leg := _leg(c, stop, end_station, connections)) is not None]
     if not found:
         if shape == RIDE_FIRST:
@@ -477,6 +575,40 @@ def _legs_at(group: list[dict], end_station: dict, asked: datetime) -> list[tupl
         key = (_iso(c["part"]["pickup"]["time"]), _iso(c["part"]["dropoff"]["time"]), leg["connection"]["departure"])
         unique.setdefault(key, (c, leg))
     return list(unique.values())[:MAX_PER_TRANSFER]
+
+
+def _between_at(group: list[dict], stations: dict, asked: datetime) -> list[tuple[dict, dict, dict]]:
+    """
+    The rides between two public transport legs that change at one place at
+    the end of the trip the time is about, each as (candidate, the leg
+    before the car, the leg after it). `group`: the candidates seen from
+    that end, the most promising first: as a ride first when the time is
+    one to arrive by (the leg after the car is the one in question), as a
+    ride last otherwise. `stations`: the passenger's own stop at each end,
+    by the shape that ends there.
+
+    The leg at that end as in _legs_at, with one lookup at the time asked
+    for; the other leg at the car's own time, for the MAX_PER_TRANSFER most
+    promising of the drives that fit (two at the same times count as one).
+    """
+    asked_end = group[0]["shape"]
+    other_end = TRANSIT_FIRST if asked_end == RIDE_FIRST else RIDE_FIRST
+    at = _asked_connections(group, stations[asked_end], asked)
+    if at is None:
+        return []
+    stop, group, connections = at
+    found, tried = [], set()
+    for c in group:
+        leg = _leg(c, stop, stations[asked_end], connections)
+        times = (_iso(c["part"]["pickup"]["time"]), _iso(c["part"]["dropoff"]["time"]), _change_place({**c, "shape": other_end}))
+        if leg is None or times in tried:
+            continue
+        tried.add(times)
+        for _, other in _leg_of({**c, "shape": other_end}, stations[other_end]):
+            found.append((c, other, leg) if asked_end == RIDE_FIRST else (c, leg, other))
+        if len(tried) >= MAX_PER_TRANSFER:
+            break
+    return found
 
 
 def _transit_alone_min(transit_option: dict | None) -> float | None:
@@ -519,6 +651,35 @@ def _as_match(candidate: dict, leg: dict, off_min: float) -> dict:
     }
 
 
+def _as_between(candidate: dict, before: dict, after: dict, off_min: float) -> dict:
+    """A ride between two public transport legs as a match: _as_match() with
+    "transit_before" and "transit_after" for "transit", and "change_before"
+    and "change_after" (the stops where the passenger gets in and out) for
+    "change"."""
+    trip = _as_match({**candidate, "shape": RIDE_FIRST}, after, off_min)
+    del trip["transit"], trip["change"]
+    trip["pickup"]["name"] = before["stop"]["name"]
+    return {
+        **trip,
+        "shape": TRANSIT_BOTH,
+        "transit_before": {k: before[k] for k in ("from_station", "to_station", "connection", "fare")},
+        "transit_after": {k: after[k] for k in ("from_station", "to_station", "connection", "fare")},
+        "change_before": {k: before["stop"][k] for k in ("name", "lat", "lon")},
+        "change_after": {k: after["stop"][k] for k in ("name", "lat", "lon")},
+        "starts": _iso(before["starts"]),
+        "arrives": _iso(after["arrives"]),
+        "total_min": round(_total_min(before["starts"], after["arrives"])),
+    }
+
+
+def _same_trip(trip: dict) -> tuple:
+    """What two proposals of the same trip have in common: its shape, the
+    times of the car and the connections."""
+    legs = ("transit_before", "transit_after") if trip["shape"] == TRANSIT_BOTH else ("transit",)
+    return (trip["shape"], trip["pickup"]["time"], trip["dropoff"]["time"],
+            *((trip[leg]["from_station"], trip[leg]["to_station"], trip[leg]["connection"]["departure"]) for leg in legs))
+
+
 def find(origin, destination, requested_time: str, time_kind: str = "depart",
          exclude_ids: set | None = None, transit_option: dict | None = None,
          time_tolerance_min: float = search.SEARCH_TIME_TOLERANCE_MIN,
@@ -544,70 +705,101 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
           time_tolerance_min, radius_km) -> list[dict]:
     asked = _naive(requested_time)
     start, end = (origin.lat, origin.lon), (destination.lat, destination.lon)
-    with search._search_slots:  # routes are parsed: one search's worth at a time
-        candidates = _candidates(start, end, asked, time_kind, time_tolerance_min, radius_km, exclude_ids)
-    if not candidates:
-        return []
-    shapes = {c["shape"] for c in candidates}
-
-    def place_name(point):
-        return point.name if point.kind == "place" else None
-
-    # The passenger's own stop at each end, looked up only for a shape that has candidates.
+    alone_min = _transit_alone_min(transit_option)
     stations = {}
-    if RIDE_FIRST in shapes:
-        stations[RIDE_FIRST] = transit.resolve_station(destination.lat, destination.lon, place_name(destination))
-    if TRANSIT_FIRST in shapes:
-        stations[TRANSIT_FIRST] = transit.resolve_station(origin.lat, origin.lon, place_name(origin))
+
+    def station(shape: str) -> dict | None:
+        """The passenger's own stop at the end where a trip of `shape` is by
+        public transport: their destination for a ride first, their start
+        for a ride last. Looked up when first needed."""
+        if shape not in stations:
+            point = destination if shape == RIDE_FIRST else origin
+            stations[shape] = transit.resolve_station(point.lat, point.lon, point.name if point.kind == "place" else None)
+        return stations[shape]
+
+    def results(futures: list, budget_s: float) -> list:
+        """What the lookups found within `budget_s`; the others are dropped."""
+        done, late = wait(futures, timeout=budget_s)
+        for future in late:
+            future.cancel()
+        found = []
+        for future in done:
+            try:
+                found += future.result()
+            except Exception:
+                logger.warning("combined trip lookup failed", exc_info=True)
+        return found
+
+    def proposed(starts: datetime, arrives: datetime, as_trip, slower: float, grace_min: float) -> dict | None:
+        """The trip `as_trip(minutes off the time asked for)` when it is in
+        time and not longer than `slower` times public transport alone
+        plus the grace."""
+        off = _off_by_min(starts, arrives, asked, time_kind, time_tolerance_min)
+        if off is None:
+            return None
+        total_min = _total_min(starts, arrives)
+        if alone_min is not None and total_min > alone_min * slower + grace_min:
+            return None
+        trip = as_trip(off)
+        if alone_min is not None:
+            trip["vs_transit_min"] = round(total_min - alone_min)  # negative: quicker than public transport alone
+        return trip
+
+    def best(trips: list[dict]) -> list[dict]:
+        # Two drives at the same time on the same trip make one proposal: the real one, if any.
+        unique = {}
+        for trip in sorted(trips, key=lambda t: bool(t.get("is_demo"))):
+            unique.setdefault(_same_trip(trip), trip)
+        if time_kind == "arrive":
+            return sorted(unique.values(), key=lambda t: (t["starts"], t["arrives"]), reverse=True)
+        return sorted(unique.values(), key=lambda t: (t["arrives"], t["starts"]))
 
     # Public transport is at the end of the trip the time is about for one
     # shape: a lookup per place to change at (_legs_at). For the other, the
     # car is, and each drive's own time decides: a lookup per drive.
-    by_place = RIDE_FIRST if time_kind == "arrive" else TRANSIT_FIRST
+    asked_end = RIDE_FIRST if time_kind == "arrive" else TRANSIT_FIRST
+    began = time.monotonic()
+    with search._search_slots:  # routes are parsed: one search's worth at a time
+        candidates = _candidates(start, end, asked, time_kind, time_tolerance_min, radius_km, exclude_ids)
     futures = []
     for shape in (RIDE_FIRST, TRANSIT_FIRST):
-        end_station = stations.get(shape)
-        if not end_station:
+        if not any(c["shape"] == shape for c in candidates) or not station(shape):
             continue
-        if shape == by_place:
-            futures += [_pool.submit(_legs_at, group, end_station, asked) for group in _by_place(candidates, shape)]
+        if shape == asked_end:
+            futures += [_pool.submit(_legs_at, group, station(shape), asked) for group in _by_place(candidates, shape)]
         else:
-            futures += [_pool.submit(_leg_of, c, end_station) for c in _pick(candidates, shape)]
-    done, late = wait(futures, timeout=BUDGET_S)
-    for future in late:
-        future.cancel()
-
-    alone_min = _transit_alone_min(transit_option)
+            futures += [_pool.submit(_leg_of, c, station(shape)) for c in _pick(candidates, shape)]
     trips = []
-    for future in done:
-        try:
-            legs = future.result()
-        except Exception:
-            logger.warning("combined trip lookup failed", exc_info=True)
-            continue
-        for candidate, leg in legs:
-            off = _off_by_min(leg["starts"], leg["arrives"], asked, time_kind, time_tolerance_min)
-            if off is None:
-                continue
-            total_min = _total_min(leg["starts"], leg["arrives"])
-            if alone_min is not None and total_min > alone_min * MAX_SLOWER_THAN_TRANSIT + SLOWER_GRACE_MIN:
-                continue
-            trip = _as_match(candidate, leg, off)
-            if alone_min is not None:
-                trip["vs_transit_min"] = round(total_min - alone_min)  # negative: quicker than public transport alone
+    for candidate, leg in results(futures, BUDGET_S) if futures else []:
+        trip = proposed(leg["starts"], leg["arrives"], lambda off: _as_match(candidate, leg, off),
+                        MAX_SLOWER_THAN_TRANSIT, SLOWER_GRACE_MIN)
+        if trip:
             trips.append(trip)
+    trips = best(trips)
 
-    # Two drives at the same time on the same trip make one proposal: the real one, if any.
-    trips.sort(key=lambda t: bool(t.get("is_demo")))
-    unique = {}
-    for trip in trips:
-        key = (trip["shape"], trip["pickup"]["time"], trip["dropoff"]["time"], trip["change"]["name"],
-               trip["transit"]["connection"]["departure"])
-        unique.setdefault(key, trip)
-    trips = list(unique.values())
-
-    if time_kind == "arrive":
-        trips.sort(key=lambda t: (t["starts"], t["arrives"]), reverse=True)
-    else:
-        trips.sort(key=lambda t: (t["arrives"], t["starts"]))
+    # With room left in what the search shows, the drives that are near
+    # neither end: a ride between two public transport legs.
+    left_s = BUDGET_S - (time.monotonic() - began)
+    if len(trips) + len(exclude_ids) < MAX_RESULTS and left_s >= 1.0:
+        shown = exclude_ids | {t["id"] for t in trips}
+        with search._search_slots:
+            between = _between_candidates(start, end, asked, time_kind, time_tolerance_min, radius_km, shown)
+        found = []
+        if between and station(RIDE_FIRST) and station(TRANSIT_FIRST):
+            seen = [{**c, "shape": asked_end} for c in between]
+            found = results([
+                _pool.submit(_between_at, group, stations, asked)
+                for group in _by_place(seen, asked_end)[:MAX_BETWEEN_PLACES]
+            ], left_s)
+        # Their routes, for the map: only those of the trips found.
+        with search._search_slots:
+            geometries = db.route_geometries(list({c["drive"]["id"] for c, _, _ in found}))
+            for candidate, _, _ in found:
+                candidate["route"] = matching.prepare_route(geometries.get(candidate["drive"]["id"]), candidate["drive"])
+        for candidate, before, after in found:
+            trip = proposed(before["starts"], after["arrives"], lambda off: _as_between(candidate, before, after, off),
+                            MAX_SLOWER_BETWEEN, SLOWER_BETWEEN_GRACE_MIN)
+            if trip:
+                trips.append(trip)
+        trips = best(trips)
     return trips[:MAX_RESULTS]
