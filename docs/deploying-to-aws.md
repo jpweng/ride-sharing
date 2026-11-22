@@ -7,8 +7,11 @@ Docker Compose ([deploy/compose.yaml](../deploy/compose.yaml)), each container w
 - **proxy**: Caddy ([deploy/caddy/Caddyfile](../deploy/caddy/Caddyfile)), which handles HTTPS via
   Let's Encrypt once a domain is set, plus rate limits. Searches (`POST /api/match` and
   `/api/requests`) are limited to 30/min per IP and 60/min for all clients together, about what the
-  server's one app process can serve (see [Load test](load-test.md)); `POST /api/auth/link` (each one
-  emails a sign-in link) to 10 per 10 min per IP; other writes to 120/min per IP,
+  server's one app process can serve (see [Load test](load-test.md)); the two other parts of a
+  search (`POST /api/match/transit` and `/api/match/combined`, see
+  [The passenger page](passenger-page.md)) to twice that, 60/min per IP and 120/min together;
+  `POST /api/auth/link` (each one
+  emails a sign-in link) to 10 per 10 min per IP; all writes to 180/min per IP,
   and all of `/api/*` to 1200/min per IP. The per-IP limits are high because phones on mobile
   networks share public IPv4 addresses (carrier-grade NAT): at an event, many people can come from
   one address. Over-limit requests get a 429 response.

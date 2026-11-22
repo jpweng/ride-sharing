@@ -62,6 +62,30 @@ operator's logo.
 
 The passenger's bookings and ride requests are listed below the search only when there are any.
 
+### In steps
+
+Finding the drives waits for nothing; public transport and the rides combined with it wait for
+the timetable service, a second or more. So the page asks for a search in three parts and shows
+each as it arrives:
+
+1. `POST /api/match` with `"drives_only": true`: the drives, shown at once. Where the other two
+   parts will be, the page says it is still searching: "Searching…" for public transport, "Looking
+   for rides combined with public transport…" under the drives. Without a drive, it says
+   "Searching…" and not yet that nobody is driving that way.
+2. `POST /api/match/transit`, sent with the first: `{"transit_option": ...}`, the line of public
+   transport for the same trip.
+3. `POST /api/match/combined`, sent once the drives are there, with their ids as `exclude_ids`:
+   `{"combined_matches": [...]}` ([A ride and public transport](combined-trips.md)). When they
+   arrive, the drives' cards stay as they are (one may be open); only without a drive does the
+   page now say what it found, or that nobody is driving that way.
+
+The two endpoints ([backend/routes/match_parts.py](../backend/routes/match_parts.py)) take the body
+of `/api/match` and give what it gives for their part; like it they are public (who drives is for
+signed-in users) and answer 400 `invalid_time` for a time that isn't one. A part that fails shows
+as nothing found. Asked for at the same time, they ask the timetable service once for what they
+share: its cache answers a question that is already being asked with the same answer. `/api/match`
+without `drives_only` still answers with everything at once.
+
 ## Without an account
 
 The page is public: a visitor searches and sees the rides, their prices and the drivers' ratings.

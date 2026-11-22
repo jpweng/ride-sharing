@@ -64,8 +64,9 @@ def test_without_a_ride_asking_the_drivers_leads():
     app = (FRONTEND / "app.js").read_text()
     # The button is the filled one when nothing was found, the outlined one under rides
     # (a ride for part of the way, combined.js, is one too).
-    assert 'getElementById("ride-ask").classList.toggle("secondary", matches.length + combined > 0)' in app
-    assert 'classList.toggle("no-matches", !matches.length && !combined)' in app
+    # While those are still being looked for, the page doesn't say that nothing was found.
+    assert 'getElementById("ride-ask").classList.toggle("secondary", matches.length + combined > 0 || searching)' in app
+    assert 'classList.toggle("no-matches", !matches.length && !combined && !searching)' in app
     assert '<img src="icons/no-rides.svg" alt=""' in app
     assert (FRONTEND / "icons" / "no-rides.svg").is_file()
 

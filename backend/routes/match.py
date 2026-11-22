@@ -15,6 +15,10 @@ The parts that wait for the timetable service run side by side: public
 transport alone from the start, the names of the meeting points and the
 legs to and from them while the combined trips are found.
 
+With "drives_only", the answer is the drives alone, without those two
+waits: the page shows them at once and asks for public transport alone and
+the combined trips next to it (routes/match_parts.py).
+
 Searching is public. Someone who isn't signed in gets the matches without
 their drivers' names (api.without_driver): the rating shows, the name and
 the profile come with signing in.
@@ -53,19 +57,68 @@ class MatchRequest(BaseModel):
     # What the time is: when the passenger wants to leave, or when they want
     # to be there (see matching.py).
     time_kind: Literal["depart", "arrive"] = "depart"
+    # True: the drives only ("transit_option" None, no "combined_matches"),
+    # for a page that asks for those two next to it (routes/match_parts.py).
+    drives_only: bool = False
 
 
-@router.post("/api/match")
-def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(current_session)] = None):
+def check_time(payload: MatchRequest) -> None:
     try:
         datetime.fromisoformat(payload.requested_time)
     except ValueError:
         raise api_error(400, "invalid_time", "requested_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
 
+
+def passenger_id(found: dict | None) -> int | None:
+    """The signed-in passenger a search is for: someone with a complete
+    profile, not a demo session. None for anyone else."""
+    user = found["user"] if found else None
+    if user and auth.profile_complete(user) and not (user["is_demo"] or found["session"]["is_demo"]):
+        return user["id"]
+    return None
+
+
+def transit_alone(payload: MatchRequest) -> dict | None:
+    """Pure public-transport alternative, origin to final destination, for comparison."""
+    return transit.transit_option_for_trip(
+        payload.origin.lat, payload.origin.lon,
+        payload.destination.lat, payload.destination.lon,
+        payload.requested_time,
+        origin_place=payload.origin.name if payload.origin.kind == "place" else None,
+        destination_place=payload.destination.name if payload.destination.kind == "place" else None,
+        arrive_by=payload.time_kind == "arrive",
+    )
+
+
+def combined_trips(payload: MatchRequest, found: dict | None, exclude_ids: set, transit_option) -> list[dict]:
+    """A ride for part of the way and public transport for the rest
+    (combined.py), with the drives that don't pass near both ends
+    (`exclude_ids`: those that do), as the search answers with them.
+    `transit_option`: public transport alone, or a function that gives it:
+    the trips are compared with it once they are found."""
+    trips = combined.find(
+        payload.origin, payload.destination, payload.requested_time, payload.time_kind,
+        exclude_ids=exclude_ids, transit_option=transit_option,
+    )
+    bookings.with_seats_booked(trips)
+    ratings.with_driver_ratings(trips)
+    trips = [search.with_bookable(pricing.with_ride_prices(m)) for m in trips]
+    viewer_id = passenger_id(found)
+    if viewer_id is not None:
+        profiles.allow_candidates(viewer_id, [m["driver_id"] for m in trips if not m["is_demo"]])
+    profiles.with_driver_photos(trips, viewer_id)
+    return trips if is_member(found) else [without_driver(m) for m in trips]
+
+
+@router.post("/api/match")
+def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(current_session)] = None):
+    check_time(payload)
+
     # Searching is public; a signed-in passenger's search is kept for their
     # "recent searches" (and ride predictions later). Not demo sessions'.
     user = found["user"] if found else None
-    if user and auth.profile_complete(user) and not (user["is_demo"] or found["session"]["is_demo"]):
+    viewer_id = passenger_id(found)
+    if viewer_id is not None:
         db.save_ride_request(
             passenger_name=user["name"],
             origin_name=payload.origin.name,
@@ -80,20 +133,9 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
 
     passenger_origin = (payload.origin.lat, payload.origin.lon)
     passenger_destination = (payload.destination.lat, payload.destination.lon)
-    origin_place = payload.origin.name if payload.origin.kind == "place" else None
-    destination_place = payload.destination.name if payload.destination.kind == "place" else None
 
-    # Pure public-transport alternative, origin to final destination, for
-    # comparison. Nothing else is needed for it: asked for straight away.
-    transit_alone = _pool.submit(
-        transit.transit_option_for_trip,
-        payload.origin.lat, payload.origin.lon,
-        payload.destination.lat, payload.destination.lon,
-        payload.requested_time,
-        origin_place=origin_place,
-        destination_place=destination_place,
-        arrive_by=payload.time_kind == "arrive",
-    )
+    # Public transport alone needs nothing else: asked for straight away.
+    alone = None if payload.drives_only else _pool.submit(transit_alone, payload)
 
     driver_matches = search.matches_for_search(
         passenger_origin, passenger_destination, payload.requested_time, payload.time_kind,
@@ -107,10 +149,8 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
     # The real drivers found are candidates for this ride: a signed-in
     # passenger may see their profiles (profiles.py), and their photos show
     # on the matches.
-    viewer_id = None
-    if user and auth.profile_complete(user) and not (user["is_demo"] or found["session"]["is_demo"]):
-        profiles.allow_candidates(user["id"], [m["driver_id"] for m in driver_matches if not m["is_demo"]])
-        viewer_id = user["id"]
+    if viewer_id is not None:
+        profiles.allow_candidates(viewer_id, [m["driver_id"] for m in driver_matches if not m["is_demo"]])
     profiles.with_driver_photos(driver_matches, viewer_id)
 
     def with_the_way_to_them():
@@ -122,25 +162,16 @@ def match_ride(payload: MatchRequest, found: Annotated[dict | None, Depends(curr
 
     the_way_to_them = _pool.submit(with_the_way_to_them)
 
-    # Meanwhile: a ride for part of the way and public transport for the rest
-    # (combined.py), with the drives that don't pass near both ends. It
-    # compares them with public transport alone once it has found them.
-    combined_matches = combined.find(
-        payload.origin, payload.destination, payload.requested_time, payload.time_kind,
-        exclude_ids={m["id"] for m in driver_matches}, transit_option=transit_alone.result,
-    )
+    # Meanwhile: the combined trips, compared with public transport alone
+    # once they are found.
+    combined_matches = []
+    if not payload.drives_only:
+        combined_matches = combined_trips(payload, found, {m["id"] for m in driver_matches}, alone.result)
     the_way_to_them.result()
-    transit_option = transit_alone.result()
-    bookings.with_seats_booked(combined_matches)
-    ratings.with_driver_ratings(combined_matches)
-    combined_matches = [search.with_bookable(pricing.with_ride_prices(m)) for m in combined_matches]
-    if viewer_id is not None:
-        profiles.allow_candidates(viewer_id, [m["driver_id"] for m in combined_matches if not m["is_demo"]])
-    profiles.with_driver_photos(combined_matches, viewer_id)
+    transit_option = alone.result() if alone else None
 
     if not is_member(found):
         driver_matches = [without_driver(m) for m in driver_matches]
-        combined_matches = [without_driver(m) for m in combined_matches]
 
     return {
         "driver_matches": driver_matches,

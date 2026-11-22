@@ -121,6 +121,12 @@ function combinedCard(m, origin, destination) {
 
 RESULT_SECTIONS.push((data, origin, destination) => {
   const container = document.getElementById("ride-combined");
+  // Still being looked for (app.js fills them in when they arrive): said under
+  // the drives found. Without any, the page says it is searching as it is.
+  if (data.combined_matches === STILL_SEARCHING) {
+    container.innerHTML = data.driver_matches.length ? `<div class="hint combined-searching">${esc(t("combined.searching"))}</div>` : "";
+    return;
+  }
   const trips = data.combined_matches || [];
   container.innerHTML = trips.length ? `<div class="section-title">${esc(t("combined.title"))}</div>` : "";
   trips.forEach((m) => container.appendChild(combinedCard(m, origin, destination)));

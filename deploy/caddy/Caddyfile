@@ -16,6 +16,11 @@
 	# request matches counts it, so POST /api/match uses the search,
 	# search_all, writes and api budgets at once.
 	#
+	# The page's search is three requests: /api/match for the drives, then
+	# /api/match/transit and /api/match/combined for what waits for the
+	# timetable. The first one counts as the search; the other two have
+	# zones of their own, twice as large.
+	#
 	# Phones on mobile networks reach us over IPv4 through carrier-grade
 	# NAT (the server has no IPv6): at an event, dozens of people can share
 	# one public IP. So the per-IP limits are set for a crowd behind one
@@ -62,13 +67,36 @@
 			events 60
 			window 1m
 		}
+		# The two other parts of a search: two per search, so twice the
+		# searches' budgets, per IP and for all clients together. They are
+		# what asks transport.opendata.ch the most.
+		zone search_parts {
+			match {
+				method POST
+				path /api/match/*
+			}
+			key {remote_host}
+			events 60
+			window 1m
+		}
+		zone search_parts_all {
+			match {
+				method POST
+				path /api/match/*
+			}
+			key all
+			events 120
+			window 1m
+		}
+		# A search is three writes: 90 a minute for an address at the
+		# searches' limit, and as many again for everything else.
 		zone writes {
 			match {
 				method POST PUT DELETE
 				path /api/*
 			}
 			key {remote_host}
-			events 120
+			events 180
 			window 1m
 		}
 		# An open page polls the inbox once a minute, and a visit makes a
