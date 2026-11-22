@@ -66,10 +66,13 @@ def test_a_match_starts_with_the_trip_then_says_who_drives():
     card = app[app.index("card.innerHTML = `"):app.index("container.appendChild(card);")]
     # The trip's times, duration and price, then who drives the passenger from where to where;
     # the drive's own route is in the details.
+    # On the card the stops go by their towns; the details give the ride as a step, by their full names.
     order = ["${tripLine(m.pickup.time, m.dropoff.time,", "ridePrice(m))}",
-             "${tripHow([whoDrives(m, { from: m.pickup.name, to: m.dropoff.name })])}",
-             '<div class="match-details" hidden>', "${esc(m.origin_name)} → ${esc(m.destination_name)}"]
+             "${tripHow([whoDrives(m, townsOf(m.pickup.name, m.dropoff.name))])}",
+             '<div class="match-details" hidden>', "${rideStepDetail(m)}", "${esc(m.origin_name)} → ${esc(m.destination_name)}"]
     assert [card.index(part) for part in order] == sorted(card.index(part) for part in order)
+    assert 'return stop ? stop.split(",")[0].trim() : stop;' in app
+    assert "return a && a === b ? { from, to } : { from: a, to: b };" in app  # not the same town twice
     line = app[app.index("function tripLine("):app.index("function tripPrice(")]
     assert line.index('class="trip-times"') < line.index('class="trip-duration"') < line.index("${priceHtml}")
     # The price for a seat, and the train fare for the same distance under it.
@@ -79,13 +82,17 @@ def test_a_match_starts_with_the_trip_then_says_who_drives():
     # and on the card itself only beyond a short walk.
     assert "const FAR_GAP_KM = 1;" in app and ".filter(([, point]) => point.gap_km > overKm)" in app
     assert "${farGapsNote(m)}" in card[:card.index('<div class="match-details" hidden>')]
-    assert "gapsText(m)" in card[card.index('<div class="match-details" hidden>'):]
-    # Who drives, in words: the circle (initial or photo), then "Judith drives you to …", the
-    # name in bold; signed out, "A driver takes you to …".
+    step = app[app.index("function rideStepDetail(m) {"):app.index("function minutesBetween(")]
+    assert "const gaps = gapsText(m);" in step and 't("combined.carBetween", { from, to })' in step
+    # Who drives, in words, after the car's sign: "Judith drives you to …", their small circle
+    # (initial or photo) and their name in bold; signed out, "A driver takes you to …".
     who = app[app.index("function whoDrives(m, places = {}) {"):app.index("function tripHow(parts) {")]
     assert '`match.${m.driver_name ? "drives" : "takes"}${form}`' in who
-    assert '<span class="match-name">${esc(m.driver_name || t("match.aDriver"))}${demoBadge(m)}</span>' in who
-    assert who.index("${driverAvatar(m)}") < who.index("esc(sentence).replace(NAME_HERE, name)")
+    assert '${m.driver_name ? driverAvatar(m) : ""}<span class="match-name">${esc(m.driver_name || t("match.aDriver"))}</span>' in who
+    assert 'return tripPart("car", esc(sentence).replace(NAME_HERE, name));' in who
+    # The signs of a trip's parts are joined by a line: a small journey.
+    css = (FRONTEND / "styles" / "passenger.css").read_text()
+    assert ".trip-part:not(:last-child)::before {" in css and ".trip-icon.car {" in css
     forms = ("", "To", "From", "Between", "On")
     for lang in ("en", "de", "fr", "it"):
         texts = json.loads((FRONTEND / "i18n" / lang / "match.json").read_text())
@@ -119,9 +126,15 @@ def test_a_card_looks_like_something_to_choose():
     bookings = (FRONTEND / "bookings.js").read_text()
     assert 'actionButton("booking.ask", "submit-btn", ' in bookings
     assert 'actionButton("booking.signInToAsk", "submit-btn", ' in bookings
-    # A demo ride has no button: opened, it says that it can't be booked.
-    assert 'if (item.is_demo) box.innerHTML = `<div class="hint demo-note">${esc(t("errors.not_bookable"))}</div>`;' in bookings
-    assert ".match-card:not(.open) .demo-note { display: none; }" in css
+    # A demo ride has no button: where it would be, the card says what it is, open or not.
+    app = (FRONTEND / "app.js").read_text()
+    assert 'return m.is_demo ? `<div class="demo-note">${demoBadge(m)}<span>${esc(t("match.demoNote"))}</span></div>` : "";' in app
+    for script in (app, (FRONTEND / "combined.js").read_text()):
+        card = script[script.index("card.innerHTML = `"):script.index('<div class="match-details" hidden>', script.index("card.innerHTML = `"))]
+        assert "${demoNote(m)}" in card
+    assert "demo-note" not in bookings and ".demo-note { display: none; }" not in css
+    for lang in ("en", "de", "fr", "it"):
+        assert json.loads((FRONTEND / "i18n" / lang / "match.json").read_text())["match.demoNote"]
 
 
 def test_asking_the_drivers_is_a_panel_with_a_filled_button():

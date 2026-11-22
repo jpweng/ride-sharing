@@ -276,38 +276,55 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
 }
 .match-card.clickable:hover .trip-line::after { border-color: var(--accent); }
 .match-card.open .trip-line::after { margin-top: 10px; transform: rotate(-135deg); }
-/* How the trip goes, its parts in order, one a line: who drives the
-   passenger (their circle, their name in bold), and public transport before
-   or after it (its sign in a circle of the same size). */
+/* How the trip goes, its parts in order, one a line, as a small journey:
+   the sign of what the passenger rides in a circle (the car in the site's
+   colour, public transport in grey), joined to the next by a line, and a
+   few words: who drives them (their small circle, their name in bold), or
+   public transport to where. */
 .trip-how {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin-top: 10px;
   font-size: 14px;
   line-height: 1.35;
 }
 .trip-part {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
   min-width: 0;
 }
-.trip-part .avatar,
-.trip-icon {
-  flex: none;
-  width: 28px;
-  height: 28px;
+.trip-part > span:last-child { padding-top: 4px; }
+.trip-part:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 28px;
+  bottom: -8px;
+  left: 13px;
+  width: 2px;
+  background: var(--border);
 }
-.trip-part .avatar { font-size: 13px; }
-.trip-part .avatar svg { width: 18px; height: 18px; }
 .trip-icon {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #eef0f3;
   color: var(--muted);
+}
+.trip-icon.car { background: var(--accent-soft); color: var(--accent-dark); }
+.trip-part .avatar {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  margin: -3px 6px -3px 0;
+  vertical-align: middle;
+  font-size: 11px;
 }
 .trip-icon .pt-icon {
   width: 17px;
@@ -321,12 +338,20 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
 .match-name { font-weight: 700; }
 /* Beyond a short walk, how far the car passes from the passenger's own start
    or destination. */
-.trip-gap { margin: 4px 0 0 36px; font-size: 12px; color: var(--muted); }
+.trip-gap { margin: 4px 0 0 38px; font-size: 12px; color: var(--muted); }
 /* Asking for a seat is what a card is for: the filled button. */
 .match-card .booking-box .submit-btn { padding: 9px 16px; }
-/* A demo ride has no such button: once opened, it says why (bookings.js). */
-.match-card .demo-note { margin: 0; }
-.match-card:not(.open) .demo-note { display: none; }
+/* A demo ride has no such button: where it would be, the card says what it
+   is (app.js: demoNote). */
+.demo-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--demo-text);
+}
+.demo-note .badge { flex: none; margin-left: 0; }
 .avatar {
   position: relative;
   flex: none;

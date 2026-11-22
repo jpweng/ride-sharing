@@ -1,5 +1,6 @@
 {
   "match.aDriver": "Jemand",
+  "match.demoNote": "Ein erfundenes Beispiel: nicht buchbar.",
   "match.details": "Details",
   "match.directions": "Route",
   "match.drives": "{name} fährt Sie",

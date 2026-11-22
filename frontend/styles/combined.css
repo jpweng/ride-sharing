@@ -21,7 +21,8 @@
   flex: none;
   width: 16px;
   height: 16px;
-  align-self: center;
+  align-self: flex-start;
+  margin-top: 2px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
@@ -29,6 +30,8 @@
   stroke-linejoin: round;
 }
 .combined-gap { display: block; font-size: 12px; color: var(--muted); }
+.combined-gap:empty { display: none; }
+.combined-step + .combined-step { margin-top: 4px; }
 
 @media (max-width: 520px) {
   .combined-step { flex-direction: column; gap: 0; }

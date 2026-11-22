@@ -127,13 +127,16 @@ together (2nd class, full fare, "≈" when a fare is an estimate). Under it, to 
 train alone costs for the whole trip ("train alone ≈ CHF 75.00", the search's
 `transit_alone_fare`); when that isn't known, the two amounts the price is made of. Without a
 ticket's price it is the ride's alone, "without the train ticket". Then how the trip goes, in
-order, one part a line (two, or three for a ride between two public transport legs): who drives
-the passenger, in words ("Judith drives you to Zürich, Bahnhofquai/HB"; after public transport,
-"Judith drives you on from there"; signed out, "A driver takes you to …"), and "Public transport
-to (a stop)". Then how much quicker than public transport alone it is, when it is. A drop-off or a
-pickup more than 1 km from the passenger's own end of the trip is said on the card. Its details
-give the steps with their times, the two amounts the price is made of, the drive's own route and
-each connection with its ticket link and fare. "Request a seat" asks for the car's part: from the
+order, one part a line (two, or three for a ride between two public transport legs), each after
+the sign of what the passenger rides, in a circle, the signs joined by a line: who drives the
+passenger, in words ("Judith drives you to Zürich"; after public transport, "Judith drives you on
+from there"; signed out, "A driver takes you to …"), and "Public transport to Sévaz". Stops go by
+their towns there. Then how much quicker than public transport alone it is, when it is. A drop-off
+or a pickup more than 1 km from the passenger's own end of the trip is said on the card. Its
+details give the same steps once more, with what the card leaves out: their times and the stops'
+full names; under the ride, how far the car passes and the seat's price; under a connection, how
+long it takes, its lines, its ticket's price and the link to it. Then the drive's own route.
+"Request a seat" asks for the car's part: from the
 passenger's start to the stop, from the stop to their destination, or from one stop to the other
 (`ride_from`, `ride_to`), a booking like any other ([Booking](booking.md)). Without a drive for
 the whole way, the section's title is all the page says about it.

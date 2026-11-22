@@ -427,13 +427,17 @@ def test_the_page_shows_them():
     # Under the amount: what the train alone costs for the whole trip, to compare.
     assert 't(alone.approximate ? "price.trainAloneApprox" : "price.trainAlone", { price: fmtChf(alone.full_chf) })' in price
     # Then how it goes, in order: who drives the passenger, public transport before or after.
-    assert "${tripHow([transitPart(before), drives, transitPart(after)])}" in script
-    assert "whoDrives(m, between ? { to: m.change_after.name } : rideFirst ? { to: m.change.name } : { on: true })" in script
-    # The steps with their times and what the price is made of are in the details.
+    assert "${tripHow([part(before), drives, part(after)])}" in script
+    assert "whoDrives(m, between ? { to: townOf(m.change_after.name) } : rideFirst ? { to: townOf(m.change.name) } : { on: true })" in script
+    # The details give the steps once, with their times and what belongs to each: the seat's
+    # price with the ride, the lines, the ticket and the link to it with a connection.
     card = script[script.index("card.innerHTML = `"):script.index('cardExtras("combined", m, card)')]
     details = card.index('<div class="match-details" hidden>')
     assert card.index("${tripLine(") < card.index("${tripHow(") < details < card.index('<div class="combined-steps">')
-    assert details < card.index("${esc(cost.parts)}")
+    assert "renderConnections(" not in script and "last-mile" not in script  # no second list of the connections
+    assert 't("price.perSeat", { price: fmtChf(m.price_chf) })' in script
+    assert "connectionLength(leg.connection)" in script and "connectionLines(leg.connection)" in script
+    assert "fareText(leg.fare)" in script and "ticketsLink(leg.connection)" in script
     # A card says when the trip is quicker than public transport alone, never that it is longer.
     assert 't("combined.vsFaster"' in script and "vsSlower" not in script and "vsSame" not in script
     # A ride between two public transport legs: three steps, a fare and a connection for each leg.

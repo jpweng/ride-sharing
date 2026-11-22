@@ -1,5 +1,6 @@
 {
   "match.aDriver": "A driver",
+  "match.demoNote": "A fictional example: it can't be booked.",
   "match.details": "Details",
   "match.directions": "Directions",
   "match.drives": "{name} drives you",

@@ -106,17 +106,18 @@ Still signed out in browser A. Searching is public: everything here must work wi
 
 - [ ] **2.7** Read the cards. **Expect:** at most 20. Each starts with the times in large figures
   ("hh:mm → hh:mm"), how long the ride takes and, at the right, "CHF N" with "train ≈ CHF N" under
-  it. Then a figure in a circle and "A driver takes you from (a stop) to (a stop)", with a "Demo"
-  label after "A driver"; "pickup N km from your start" or "drop-off N km from your destination"
-  only when that is more than 1 km. The price is never above the train fare. Demo cards have
-  no button to ask for a seat. Each card has a small arrow at the end of its first line, and
+  it. Then a car in a circle and "A driver takes you from (a town) to (a town)"; "pickup N km from
+  your start" or "drop-off N km from your destination" only when that is more than 1 km. The price
+  is never above the train fare. Demo cards have no button to ask for a seat: in its place, a
+  "Demo" label and "A fictional example: it can't be booked." Each card has a small arrow at the end of its first line, and
   pointing at a card outlines it in green. Under the cards, a green-tinted panel asks "Nothing
   that suits you?" with the filled button "Ask drivers for this ride".
-- [ ] **2.8** Click a card. **Expect:** its details open: the drive's route, the departure and the
-  free seats, how far the pickup and the drop-off are from your start and destination, "To the
+- [ ] **2.8** Click a card. **Expect:** its details open: the ride's times with "By car from (a
+  stop) to (a stop)" and how far these are from your start and destination, the drive's route, the
+  departure and the free seats, "To the
   pickup: N min on foot", "From the drop-off:" with times on foot, by car and by public transport,
-  "on time" or "N min earlier" or "later", "N km together" and "Show on map". The arrow points up,
-  and the card says "Demo drives are fictional and can't be booked." A second click closes them.
+  "on time" or "N min earlier" or "later", "N km together" and "Show on map". The arrow points up.
+  A second click closes them.
 - [ ] **2.9** Click "Directions" in the details. **Expect:** Google Maps opens in a new tab with the
   way between the two points. The card stays open.
 - [ ] **2.10** Look for a card whose pickup or drop-off is 3 km or more away. **Expect:** its
@@ -181,9 +182,11 @@ Still signed out in browser A. Searching is public: everything here must work wi
 - [ ] **2.27** Search Bulle → Genève, "Leave at" 06:50 on a weekday. **Expect:** a section "A ride
   and public transport" with up to four cards. Each starts with the whole trip: its times in large
   figures, how long it takes and, at the right, "≈ CHF N" with "train alone ≈ CHF N" under it.
-  Then two lines in order: "A driver takes you to (a stop)", then "Public transport to (a
-  station)". Open one: the details start with the two steps and their times, then "ride CHF N +
-  train ≈ CHF N". With no drive for the whole way, nothing is above the section's title. If the
+  Then two lines in order, a car and a public transport sign in circles joined by a line: "A
+  driver takes you to (a town)", then "Public transport to (a town)". Open one: the details give
+  the two steps with their times and the stops' full names; under the ride "CHF N per seat", under
+  the connection its lines, "Ticket, 2nd class: about CHF N (half fare about CHF N)" and "Tickets
+  on SBB". With no drive for the whole way, nothing is above the section's title. If the
   section is missing, try Sion → Genève at 06:20, or Genève → Bulle around 17:30. Step 5.21 makes
   one for certain.
 - [ ] **2.27b** Search again while watching the results. **Expect:** the drives (or "Searching…")
