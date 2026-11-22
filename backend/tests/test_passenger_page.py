@@ -206,6 +206,20 @@ def test_the_time_and_the_lists_show_only_when_there_is_something():
         assert re.search(rf'<div[^>]*\bid="{hidden}"[^>]*\bhidden\b', RIDE), hidden
 
 
+def test_a_date_field_offers_no_day_that_has_passed():
+    app = (FRONTEND / "app.js").read_text()
+    # The search's date and the driver's: both set up the same way.
+    assert '["drive", "ride"].forEach(setupDateTime);' in app
+    assert "noPastDates(document.getElementById(`${prefix}-date`));" in app
+    rule = app[app.index("function noPastDates(input) {"):app.index("// Rounded up to the next 5 minutes.")]
+    # The earliest date is today, set again each time the field is used (the page may be a day old).
+    assert "input.min = isoDate(new Date());" in rule
+    assert '["focus", "pointerdown"].forEach((type) => input.addEventListener(type, today));' in rule
+    # A date typed before today becomes today once the field is left, and the page is told.
+    assert 'input.addEventListener("blur", () => {' in rule and "if (input.value && input.value < input.min) {" in rule
+    assert 'input.dispatchEvent(new Event("change", { bubbles: true }));' in rule
+
+
 def test_the_search_starts_by_itself():
     script = (FRONTEND / "passenger.js").read_text()
     assert 'window.addEventListener("point:set"' in script and "findRide()" in script

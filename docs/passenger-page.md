@@ -41,6 +41,11 @@ is in the bar from the start), where it can be changed. Next to it, "Leave at" c
 A search opened from a ride request keeps the request's time and what it stands for. Only the
 latest search's answer is shown.
 
+The date's calendar offers no day that has passed, here and in the driver's form (`noPastDates` in
+`app.js`): the field's earliest date is today, and a date typed before today becomes today when
+the field is left. A time earlier today is still a time that has passed: the search goes back to
+now, and offering a drive answers `departure_past`.
+
 Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15 minutes ahead
 (`notify.REQUEST_MIN_AHEAD`): for a search made for now, the API's `request_too_soon` message says so.
 

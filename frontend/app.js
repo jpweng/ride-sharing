@@ -2218,13 +2218,36 @@ function setupDateTime(prefix) {
   document.getElementById(`${prefix}-minute`).innerHTML = options(
     [...Array(60 / MINUTE_STEP).keys()].map((i) => i * MINUTE_STEP)
   );
+  noPastDates(document.getElementById(`${prefix}-date`));
+}
+
+const isoDate = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+// A ride or a drive is never for a day that has passed: the calendar of a
+// date field offers none (its earliest date is today, set again each time
+// the field is used, since the page may have been open since yesterday),
+// and a date typed before today becomes today when the field is left (not
+// while it is typed: a year is a past one until its last digit).
+function noPastDates(input) {
+  const today = () => {
+    input.min = isoDate(new Date());
+  };
+  today();
+  ["focus", "pointerdown"].forEach((type) => input.addEventListener(type, today));
+  input.addEventListener("blur", () => {
+    today();
+    if (input.value && input.value < input.min) {
+      input.value = input.min;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
 }
 
 // Rounded up to the next 5 minutes.
 function setDateTime(prefix, date) {
   const step = MINUTE_STEP * 60 * 1000;
   const d = new Date(Math.ceil(date.getTime() / step) * step);
-  document.getElementById(`${prefix}-date`).value = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  document.getElementById(`${prefix}-date`).value = isoDate(d);
   document.getElementById(`${prefix}-hour`).value = pad2(d.getHours());
   document.getElementById(`${prefix}-minute`).value = pad2(d.getMinutes());
 }

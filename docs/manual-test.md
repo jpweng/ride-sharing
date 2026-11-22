@@ -149,6 +149,8 @@ Still signed out in browser A. Searching is public: everything here must work wi
   last change. Pickups are within four hours of 07:00.
 - [ ] **2.17** Choose a time earlier today. **Expect:** the time goes back to now, and the search is
   for now.
+- [ ] **2.17b** Open the date's calendar. **Expect:** the days before today can't be chosen. Type
+  yesterday's date by hand and click elsewhere. **Expect:** the date is today again.
 - [ ] **2.18** Click the round swap button. **Expect:** From and To change places and a new search
   runs.
 
@@ -380,7 +382,7 @@ As D in browser B, unless a step names another account.
 - [ ] **4.19** Click "Cancel drive" again and confirm. **Expect:** the drive leaves the list, and
   P's search Lausanne → Fribourg no longer finds it.
 - [ ] **4.20** Offer a drive with a departure earlier today. **Expect:** "This departure time has
-  passed. Choose a later one." Nothing is posted.
+  passed. Choose a later one." Nothing is posted. The date's calendar offers no day before today.
 
 ## Part 5. Booking, with both accounts
 
