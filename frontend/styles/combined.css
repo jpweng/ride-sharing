@@ -6,7 +6,7 @@
 /* Under the drives, while the combined trips are still being looked for. */
 .hint.combined-searching { margin: 10px 0 2px; font-size: 13px; }
 
-.combined-steps { margin: 8px 0 6px; }
+.combined-steps { margin: 8px 0 0; }
 .combined-step {
   display: flex;
   gap: 12px;
@@ -28,7 +28,6 @@
   stroke-linejoin: round;
 }
 .combined-gap { display: block; font-size: 12px; color: var(--muted); }
-.combined-total { margin-bottom: 6px; }
 
 @media (max-width: 520px) {
   .combined-step { flex-direction: column; gap: 0; }

@@ -406,6 +406,13 @@ def test_the_page_shows_them():
     assert 'id="ride-combined"' in html and scripts.index("combined.js") > scripts.index("app.js")
     script = (FRONTEND / "combined.js").read_text()
     assert "RESULT_SECTIONS.push(" in script and 'cardExtras("combined", m, card)' in script
+    # A card starts with the whole trip: its times, how long it takes, and the ride and the tickets together.
+    assert "${tripLine(m.starts, m.arrives, m.total_min, combinedPrice(m, legs))}" in script
+    price = script[script.index("function combinedPrice(m, legs) {"):script.index("// The car's part of a combined trip on the map")]
+    assert "t(`price.amount${approx}`, { price: fmtChf(m.price_chf + train) })" in price
+    assert "t(`price.rideAndTrain${approx}`, { ride: fmtChf(m.price_chf), train: fmtChf(train) })" in price
+    assert 't("price.withoutTicket")' in price  # a leg without a fare: the ride's price alone, saying so
+    assert script.index("${tripLine(") < script.index('<div class="combined-steps">') < script.index("${driverLine(m)}")
     # A card says when the trip is quicker than public transport alone, never that it is longer.
     assert 't("combined.vsFaster"' in script and "vsSlower" not in script and "vsSame" not in script
     # A ride between two public transport legs: three steps, a fare and a connection for each leg.

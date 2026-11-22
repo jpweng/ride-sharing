@@ -1,9 +1,9 @@
 {
+  "match.byCar": "Mit dem Auto",
   "match.details": "Details",
   "match.directions": "Route",
   "match.driver": "Fahrerin oder Fahrer",
   "match.dropoff": "Aussteigen ~{time}, {km} km von Ihrem Ziel",
-  "match.dropoffAt": "Aussteigen ~{time} nahe {place}, {km} km von Ihrem Ziel",
   "match.earlier": "{duration} früher",
   "match.firstMile": "Zum Einstieg:",
   "match.lastMile": "Ab dem Ausstieg:",
@@ -13,7 +13,6 @@
   "match.onwardTransit": "{duration} mit dem öffentlichen Verkehr",
   "match.onwardWalk": "{duration} zu Fuss",
   "match.pickup": "Einsteigen ~{time}, {km} km von Ihrem Start",
-  "match.pickupAt": "Einsteigen ~{time} nahe {place}, {km} km von Ihrem Start",
   "match.rideKm": "{km} km gemeinsam",
   "match.showOnMap": "Auf der Karte zeigen",
   "match.wider": "weiter entfernt"

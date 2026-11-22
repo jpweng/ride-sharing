@@ -6,7 +6,6 @@
   "combined.pickupGap": "prise en charge à {km} km de votre départ",
   "combined.searching": "Recherche de trajets en voiture combinés aux transports publics…",
   "combined.title": "Un trajet en voiture et les transports publics",
-  "combined.total": "{duration} en tout",
   "combined.transitTo": "Transports publics jusqu'à {place}",
   "combined.vsFaster": "{duration} de moins qu'en transports publics seuls"
 }
