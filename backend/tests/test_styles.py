@@ -39,3 +39,16 @@ def test_pages_with_pwa_js_have_its_styles():
         if '<script src="pwa.js"></script>' in html:
             assert "styles/pwa.css" in _own_stylesheets(page), page
 
+
+
+def test_the_map_holds_its_tiles_in_both_modes():
+    # Leaflet lays its tiles and controls out from the nearest positioned
+    # ancestor, and leaves the map's position alone when it is already
+    # positioned at creation: it is, in passenger mode (the page's default).
+    # So the map must be positioned in driver mode too, by the base rule.
+    css = (FRONTEND / "style.css").read_text()
+    base = re.search(r"^#map \{(.*?)\}", css, re.M | re.S).group(1)
+    assert "position: relative" in base
+    passenger = (FRONTEND / "styles" / "passenger.css").read_text()
+    hidden = re.search(r'body\[data-mode="passenger"\] #map \{(.*?)\}', passenger, re.S).group(1)
+    assert "position: fixed" in hidden
