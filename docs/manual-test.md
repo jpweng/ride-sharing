@@ -117,8 +117,10 @@ Still signed out in browser A. Searching is public: everything here must work wi
 - [ ] **2.10** Look for a card whose pickup or drop-off is 3 km or more away. **Expect:** its
   details propose public transport for that part: two stations and one or two connections. To the
   pickup, the connection arrives at least 10 minutes before the car.
-- [ ] **2.11** Click "Show on map" on a Demo card. **Expect:** a notice "Demo ride" saying it is
-  fictional, closed with OK. A real ride shows on the map in step 5.6.
+- [ ] **2.11** Click "Show on map" on a Demo card. **Expect:** the map opens over the page with its
+  route highlighted, the other routes grey, pins at your start and destination, and two markers,
+  "Pickup ~hh:mm" and "Drop-off ~hh:mm". A demo ride shows on the map like any ride; it only can't
+  be booked.
 
 **Public transport for the same trip**
 
@@ -176,8 +178,9 @@ Still signed out in browser A. Searching is public: everything here must work wi
   NN min in all" and the ride's price. With no drive for the whole way, one line above says so. If
   the section is missing, try Sion → Genève at 06:20, or Genève → Bulle around 17:30. Step 5.21
   makes one for certain.
-- [ ] **2.28** Read the end of each combined card's total line. **Expect:** how it compares with
-  public transport alone: "N min quicker", "as quick as" or "N min longer".
+- [ ] **2.28** Read the end of each combined card's total line. **Expect:** "N min quicker than
+  public transport alone" on a trip at least 5 minutes quicker. Nothing about it on the others: none
+  says it is slower.
 - [ ] **2.29** Open a combined card. **Expect:** the departure, seats and "N km together", the two
   stations, the ticket's price, the connection with "Tickets on SBB", and "Show on map".
 
