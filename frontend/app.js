@@ -388,6 +388,9 @@ async function geoAdminSearch(query, origins, limit) {
 const SETTLEMENT_CLASS = "tlm_siedlungsname";
 const MAX_PLACE_SUGGESTIONS = 4;
 const MAX_SUGGESTIONS = 8;
+// How long after the last key a search starts. The servers answer in about
+// 0.1 s; a longer wait than this shows nothing while someone types.
+const SEARCH_DELAY_MS = 150;
 
 // A gazetteer label: "<i>Quartier</i> <b>Oerlikon</b> (ZH) - Zürich" ->
 // "Oerlikon (ZH)", with "Quartier · Zürich" as detail.
@@ -509,10 +512,45 @@ async function searchPlaces(query) {
     : [...shownPlaces, ...shownPois, ...shownAddresses];
 }
 
+// Words that find nothing ("pneus direct sevaz": a shop neither source
+// knows) may still name a town: the same words without the first ones, and
+// without the last ones, the longest first.
+const MAX_SHORTER_QUERIES = 6;
+
+function shorterQueries(query) {
+  const words = query.trim().split(/\s+/);
+  const shorter = [];
+  for (let n = words.length - 1; n > 0; n--) {
+    shorter.push(words.slice(-n).join(" "), words.slice(0, n).join(" "));
+  }
+  return [...new Set(shorter)].filter((q) => q.length >= 3).slice(0, MAX_SHORTER_QUERIES);
+}
+
+// The towns, postcodes and settlements named by part of the words: {words,
+// places} for the longest part that names any, null when none does. geo.admin
+// also answers with names that only resemble the words, which are left out.
+async function searchTownAmong(query) {
+  const queries = shorterQueries(query);
+  const answers = await Promise.all(queries.map((q) => geoAdminSearch(q, "zipcode,gg25,gazetteer", 30)));
+  for (const [i, words] of queries.entries()) {
+    const places = [];
+    for (const a of answers[i]) {
+      const p = placeSuggestion(a, words);
+      if (p && nameMatches(p.label.replace(/ \([^)]*\)$/, ""), words) && !places.some((q) => q.label === p.label)) {
+        places.push(p);
+      }
+    }
+    if (places.length) return { words, places: places.slice(0, MAX_PLACE_SUGGESTIONS) };
+  }
+  return null;
+}
+
 // Scripts loaded after this one (passenger.js) add entries to a field's
 // list: role -> (query) => [items]. An item is a place ({label, detail, lat,
 // lon, kind}) or something to do ({label, detail, action}). They come after
 // the places found, and alone while there is nothing to search for yet.
+// The list itself adds a line to read ({label, detail, note: true}) when the
+// words find nothing.
 const FIELD_SUGGESTIONS = {};
 
 function fieldSuggestions(role, query) {
@@ -539,7 +577,7 @@ function setupAutocomplete(role) {
     list.innerHTML = items
       .map(
         (it, i) =>
-          `<li data-index="${i}" class="${i === activeIndex ? "active" : ""}${it.action ? " action" : ""}">${esc(it.label)}${
+          `<li data-index="${i}" class="${i === activeIndex ? "active" : ""}${it.action ? " action" : ""}${it.note ? " note" : ""}">${esc(it.label)}${
             it.detail ? `<span class="suggest-detail">${esc(it.detail)}</span>` : ""
           }</li>`
       )
@@ -557,6 +595,15 @@ function setupAutocomplete(role) {
     closeList();
   }
 
+  // The arrow keys skip the lines that are only there to be read.
+  function moveActive(step) {
+    for (let n = 0; n < items.length; n++) {
+      activeIndex = (activeIndex + step + items.length) % items.length;
+      if (!items[activeIndex].note) return;
+    }
+    activeIndex = -1;
+  }
+
   let searchCount = 0;
   const runSearch = debounce(async (query) => {
     const search = ++searchCount;
@@ -565,12 +612,19 @@ function setupAutocomplete(role) {
       showOwnEntries();
       return;
     }
-    const found = await searchPlaces(query);
+    let found = await searchPlaces(query);
     if (search !== searchCount) return; // a newer search has started
+    if (!found.length) {
+      // Say so, and offer the town the words name, if they name one.
+      const town = await searchTownAmong(query);
+      if (search !== searchCount) return;
+      const detail = town ? t("form.noMatchPlaces", { words: town.words }) : t("form.noMatchHint");
+      found = [{ label: t("form.noMatch"), detail, note: true }, ...(town ? town.places : [])];
+    }
     items = [...found, ...fieldSuggestions(role, query)];
     activeIndex = -1;
     renderList();
-  }, 300);
+  }, SEARCH_DELAY_MS);
 
   // Nothing to search for yet: what the field offers by itself, if anything.
   function showOwnEntries() {
@@ -589,11 +643,12 @@ function setupAutocomplete(role) {
     if (!items.length) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      activeIndex = (activeIndex + 1) % items.length;
+      moveActive(1);
       renderList();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      activeIndex = (activeIndex - 1 + items.length) % items.length;
+      if (activeIndex < 0) activeIndex = 0; // from the field, up is the last line
+      moveActive(-1);
       renderList();
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault();
@@ -607,7 +662,9 @@ function setupAutocomplete(role) {
     // mousedown (not click) fires before the input's blur handler closes the list
     const li = e.target.closest("li[data-index]");
     if (!li) return;
-    selectItem(items[Number(li.dataset.index)]);
+    const it = items[Number(li.dataset.index)];
+    if (it.note) return e.preventDefault(); // nothing to choose: the field keeps the focus
+    selectItem(it);
   });
 
   input.addEventListener("blur", closeList);

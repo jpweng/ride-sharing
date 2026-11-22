@@ -317,6 +317,14 @@ label output { color: var(--text); text-transform: none; }
   background: var(--bg);
 }
 
+/* A line to read, not to choose: the words typed found nothing. */
+.autocomplete-list li.note,
+.autocomplete-list li.note:hover {
+  background: none;
+  color: var(--muted);
+  cursor: default;
+}
+
 /* The card of a place proposed on the map while picking (app.js: proposePlace). */
 .pick-popup .leaflet-popup-content { margin: 12px 14px; }
 .pick-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
