@@ -333,6 +333,39 @@ def _simplified(connections: list, limit: int) -> list[dict]:
     return simplified
 
 
+# To arrive by a time, a connection that leaves before the quickest one and
+# takes this much longer isn't an option next to it: the timetable's answer
+# for a village with a few buses a day includes leaving the evening before.
+MUCH_LONGER_MIN = 60
+
+
+def _leaves(connection: dict) -> datetime:
+    return datetime.fromisoformat(connection["departure"])
+
+
+def _minutes(connection: dict) -> float:
+    return (datetime.fromisoformat(connection["arrival"]) - _leaves(connection)).total_seconds() / 60.0
+
+
+def best_first_to_arrive_by(connections: list[dict]) -> list[dict]:
+    """
+    The connections that arrive by a time (the timetable gives the earliest
+    first), the one that leaves last first: it is the one a passenger who
+    wants to be there by then takes. Without those that leave before the
+    quickest and take over MUCH_LONGER_MIN longer. Unchanged when a time
+    can't be read.
+    """
+    try:
+        quickest = min(connections, key=_minutes)
+        kept = [
+            c for c in connections
+            if _leaves(c) >= _leaves(quickest) or _minutes(c) <= _minutes(quickest) + MUCH_LONGER_MIN
+        ]
+        return sorted(kept, key=_leaves, reverse=True)
+    except (KeyError, TypeError, ValueError):
+        return connections
+
+
 def transit_option_for_trip(
     origin_lat: float, origin_lon: float,
     destination_lat: float, destination_lon: float,
@@ -343,8 +376,10 @@ def transit_option_for_trip(
 ) -> dict | None:
     """
     Convenience wrapper: resolve both ends to stations and fetch
-    connections (with arrive_by, those that get there by `when_iso`). origin_place / destination_place are the town names when
-    the user picked a town rather than an address (see resolve_station).
+    connections (with arrive_by, those that get there by `when_iso`, the one
+    that leaves last first: best_first_to_arrive_by). origin_place /
+    destination_place are the town names when the user picked a town rather
+    than an address (see resolve_station).
     The result's `fare` is the train fare between the two stations
     (fares.py: from OJP when configured, else the distance tariff).
     Returns None if station lookup or connection search fails (e.g. no
@@ -358,6 +393,8 @@ def transit_option_for_trip(
     connections = get_connections(origin_station["name"], dest_station["name"], when_iso, arrive_by=arrive_by)
     if not connections:
         return None
+    if arrive_by:
+        connections = best_first_to_arrive_by(connections)
 
     return {
         "from_station": origin_station["name"],

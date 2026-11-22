@@ -1651,7 +1651,9 @@ function renderTransitLeg(labelKey, leg) {
 }
 
 // Public transport for the whole trip, under the rides: one line (how many
-// connections, the first one's time and duration), opened on a click.
+// connections, the first one's times and duration), opened on a click. The
+// first is the one to take: the next to leave or, to arrive by a time, the
+// last that gets there (transit.py: best_first_to_arrive_by).
 const TRANSIT_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="3.5" width="13" height="13" rx="3"/><path d="M5.5 10.5h13M9 13.6h.01M15 13.6h.01M8.5 16.5l-2 4M15.5 16.5l2 4"/></svg>';
 
 function renderTransitOption(transit) {
@@ -1667,7 +1669,8 @@ function renderTransitOption(transit) {
   const open = container.querySelector("details")?.open; // stays open when the language changes
   const first = transit.connections[0];
   const summary = t("transit.summary", {
-    count: transit.connections.length, time: fmtClock(first.departure), duration: fmtDuration(first.duration),
+    count: transit.connections.length, departure: fmtClock(first.departure), arrival: fmtClock(first.arrival),
+    duration: fmtDuration(first.duration),
   });
   container.innerHTML = `<details class="transit-box alt"${open ? " open" : ""}>
     <summary>${TRANSIT_ICON}<span class="pt-title">${esc(t("ride.transitTitle"))}</span><span class="pt-summary">${esc(summary)}</span></summary>
