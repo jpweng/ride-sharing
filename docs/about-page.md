@@ -6,6 +6,24 @@ account, and is a text page like the privacy notice: one complete text per langu
 (`<article lang="xx" data-i18n-block>`), with the visitor's shown by `i18n.js`. Its title is
 `about.title` in `frontend/i18n/<lang>/about.json`.
 
+## What the service is for
+
+The page opens with the purpose, in this order:
+
+1. Carpooling for Switzerland: drivers who make a trip anyway take passengers along, so that more
+   people travel in fewer cars.
+2. Why: the country is getting denser, and roads and trains are full when everybody travels at
+   once. Three moments are named: the commute to work at peak hours, big events such as summer
+   festivals, and weekend trips.
+3. Public transport comes after that: a trip can be completed by train, bus or tram, and a search
+   shows the public transport connection for comparison. It is something the service does, not
+   what it is for. In particular the page doesn't present Ride and Rail as a way to cover the
+   first or the last kilometres to a station.
+
+Any other description of the service (README, store listings, the app's own texts) follows the same
+order. The three moments are where the service is meant to help; the site has no feature specific
+to one of them, and the page claims none.
+
 ## It describes the service as it is
 
 The page is the public description of the service, on the site and in the apps (the Android app
@@ -35,6 +53,7 @@ Where each statement comes from, to know what to reread when something changes:
 | First name and initial; optional profiles and who sees them | [profiles](profiles.md) |
 | Ratings and reports | [ratings and reports](ratings-and-reports.md) |
 | Browser, home screen, four languages | [PWA](pwa.md), [translations](translations.md) |
+| A demo version for now (the note under the title), not yet for real trips | the app's banner, the [privacy notice](../frontend/privacy.html), [the plan for the real site](demo-subdomain-plan.md): remove the note there when the real site opens |
 | Demo drives are fictional and can't be booked | [demo drives and data retention](demo-drives-and-data-retention.md) |
 | Writing to the team | [the contact page](contact.md) |
 | No advertising or analytics, 30 days, deleting one's account | [privacy notice](../frontend/privacy.html), `backend/maintenance.py` |
