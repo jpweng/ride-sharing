@@ -81,6 +81,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 
 ## Documentation
 
+- [The About page](docs/about-page.md): the public description of the service, and how it is kept
+  true to the site, the apps and these docs
 - [Demo drives and data retention](docs/demo-drives-and-data-retention.md): the rolling week of
   fictional drives, switching them off, how long users' data is kept
 - [Sign-in and accounts](docs/sign-in.md): email links, sessions, who may do what, limits, bans,
@@ -150,6 +152,7 @@ backend/
 frontend/
   index.html      pages: #/ride (public) in passenger mode, #/drive in driver mode, #/inbox, #/account;
                   #/signin, #/signin/<token> (opening a link) and first-sign-in profile
+  about.html      what Ride and Rail offers (docs/about-page.md), linked from the demo banner
   privacy.html    privacy notice, linked from the demo banner
   conduct.html    code of conduct (draft for legal review), accepted at first sign-in
   offline.html    shown by the service worker for an uncached page while offline
