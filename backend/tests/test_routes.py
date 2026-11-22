@@ -20,6 +20,7 @@ API_ROUTES = {
     ("get", "/api/auth/providers"),
     ("post", "/api/auth/link"),
     ("post", "/api/auth/verify"),
+    ("post", "/api/auth/code"),
     ("get", "/api/auth/me"),
     ("post", "/api/auth/profile"),
     ("post", "/api/auth/sign_out"),

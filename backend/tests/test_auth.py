@@ -9,6 +9,7 @@ import hashlib
 import re
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -77,6 +78,19 @@ def _ride_request(client, day=IN_TWO_DAYS, at="18:30"):
 
 def _code(response):
     return response.json()["detail"]["code"]
+
+
+def _email_code(email: dict) -> str:
+    """The code a sign-in email carries, next to its link."""
+    return re.search(r": (\d{6})$", email["text"], re.M).group(1)
+
+
+def _type_code(client, email, code):
+    return client.post("/api/auth/code", json={"email": email, "code": code})
+
+
+def _wrong(code: str) -> str:
+    return f"{(int(code) + 1) % 10**6:06d}"
 
 
 # ---------------------------------------------------------------------
@@ -149,6 +163,102 @@ def test_token_expires(client, outbox):
     assert _code(client.post("/api/auth/verify", json={"token": _token(outbox[-1])})) == "invalid_link"
 
 
+def test_the_emails_code_signs_in_where_the_link_was_asked_for(new_client, outbox):
+    # The app installed on an iPhone: the link opens in Safari, which has
+    # other cookies. The code is typed in the app itself.
+    app = new_client()
+    _ask_link(app, "Marie.Muster@example.ch", "fr")
+    code = _email_code(outbox[-1])
+    assert auth.CODE_DIGITS == 6 and re.fullmatch(r"\d{6}", code)
+
+    r = _type_code(app, " marie.muster@Example.ch ", f" {code[:3]} {code[3:]} ")  # as people type them
+    assert r.status_code == 200, r.json()
+    user = r.json()["user"]
+    assert (user["email"], user["profile_complete"]) == ("marie.muster@example.ch", False)
+    assert app.get("/api/auth/me").json()["user"]["email"] == "marie.muster@example.ch"
+    assert db.get_user_by_email("marie.muster@example.ch")["language"] == "fr"
+    cookie = r.headers["set-cookie"].lower()
+    assert "__host-session=" in cookie and "httponly" in cookie
+
+
+def test_a_link_and_its_code_are_one_sign_in(new_client, outbox):
+    first, second = new_client(), new_client()
+    _ask_link(first, "a@example.ch")
+    code, token = _email_code(outbox[-1]), _token(outbox[-1])
+    with sqlite3.connect(db.DB_PATH) as conn:  # stored hashed, like the token
+        stored = [r[0] for r in conn.execute("SELECT code_hash FROM sign_in_links")]
+    assert stored == [hashlib.sha256(f"a@example.ch:{code}".encode()).hexdigest()]
+
+    assert _type_code(first, "a@example.ch", code).status_code == 200
+    assert _code(_type_code(second, "a@example.ch", code)) == "invalid_code"  # works once
+    assert _code(second.post("/api/auth/verify", json={"token": token})) == "invalid_link"  # and uses the link up
+
+    _ask_link(first, "a@example.ch")
+    code, token = _email_code(outbox[-1]), _token(outbox[-1])
+    assert second.post("/api/auth/verify", json={"token": token}).status_code == 200
+    assert _code(_type_code(first, "a@example.ch", code)) == "invalid_code"  # the link uses the code up
+
+
+def test_a_code_only_works_for_its_address_and_its_time(client, outbox):
+    _ask_link(client, "a@example.ch")
+    code = _email_code(outbox[-1])
+    r = _type_code(client, "b@example.ch", code)
+    assert (r.status_code, _code(r)) == (400, "invalid_code")
+    assert _code(_type_code(client, "not an email", code)) == "invalid_email"
+    with sqlite3.connect(db.DB_PATH) as conn:
+        conn.execute("UPDATE sign_in_links SET expires_at = ?",
+                     ((datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(),))
+    assert _code(_type_code(client, "a@example.ch", code)) == "invalid_code"
+
+
+def test_a_few_wrong_codes_and_only_the_link_still_works(new_client, outbox):
+    client = new_client()
+    _ask_link(client, "a@example.ch")
+    code, token = _email_code(outbox[-1]), _token(outbox[-1])
+    assert auth.CODE_ATTEMPTS == 5
+
+    # What can't be a code isn't a guess.
+    for not_a_code in ("12345", "1234567", "abcdef", "١٢٣٤٥٦"):
+        assert _code(_type_code(client, "a@example.ch", not_a_code)) == "invalid_code"
+    for _ in range(auth.CODE_ATTEMPTS - 1):
+        assert _code(_type_code(client, "a@example.ch", _wrong(code))) == "invalid_code"
+    # Wrong codes for another address don't count against this one.
+    assert _code(_type_code(client, "b@example.ch", code)) == "invalid_code"
+    assert _code(_type_code(client, "a@example.ch", _wrong(code))) == "invalid_code"  # the fifth
+
+    assert _code(_type_code(client, "a@example.ch", code)) == "invalid_code"  # the right one, too late
+    # A new link starts again, and the first link itself still works.
+    _ask_link(client, "a@example.ch")
+    assert _type_code(new_client(), "a@example.ch", _email_code(outbox[-1])).status_code == 200
+    assert client.post("/api/auth/verify", json={"token": token}).status_code == 200
+
+
+def test_no_code_signs_a_banned_account_in(new_client, outbox):
+    client = new_client()
+    _sign_in(client, outbox, "a@example.ch")
+    _ask_link(client, "a@example.ch")
+    code = _email_code(outbox[-1])
+    assert db.set_banned("a@example.ch", True)
+    r = _type_code(new_client(), "a@example.ch", code)
+    assert (r.status_code, _code(r)) == (403, "account_banned")
+
+
+def test_the_sign_in_page_takes_the_code():
+    frontend = Path(__file__).resolve().parents[2] / "frontend"
+    html = (frontend / "index.html").read_text()
+    page = html[html.index('<section id="page-signin"'):html.index('<section id="page-verify"')]
+    form = re.search(r'<form id="signin-code-form" novalidate hidden>.*?</form>', page, re.S).group(0)
+    # After the link's form: it shows once a link was asked for.
+    assert page.index('id="signin-form"') < page.index(form) < page.index('id="signin-social"')
+    assert 'id="signin-code"' in form and 'autocomplete="one-time-code"' in form and 'inputmode="numeric"' in form
+    assert html.index('<script src="app.js">') < html.index('<script src="signin_code.js">')
+    # app.js says when a link was asked for; signin_code.js sends the code with that address.
+    assert 'new CustomEvent("signin:sent", { detail: { email } })' in (frontend / "app.js").read_text()
+    script = (frontend / "signin_code.js").read_text()
+    assert 'postJson("/api/auth/code", { email: askedFor, code })' in script
+    assert 'window.addEventListener("signin:sent"' in script and "setUser(data.user)" in script
+
+
 def test_session_cookie(client, outbox):
     _ask_link(client, "a@example.ch")
     r = client.post("/api/auth/verify", json={"token": _token(outbox[-1])})
@@ -218,11 +328,12 @@ def test_a_new_code_of_conduct_must_be_accepted(client, outbox, monkeypatch):
 
 def test_email_in_every_language():
     for language in mailer.LANGUAGES:
-        subject, text, html = mailer.sign_in_email(language, "https://x.ch/#/signin/abc", 15)
+        subject, text, html = mailer.sign_in_email(language, "https://x.ch/#/signin/abc", 15, "042917")
         assert subject == mailer.text(language, "email.signIn.subject")
         assert "https://x.ch/#/signin/abc" in text and 'href="https://x.ch/#/signin/abc"' in html
         assert "15" in text and "{" not in text
-    assert mailer.sign_in_email("xx", "l", 15)[0] == mailer.text("en", "email.signIn.subject")
+        assert "042917" in text and "042917" in html
+    assert mailer.sign_in_email("xx", "l", 15, "042917")[0] == mailer.text("en", "email.signIn.subject")
 
 
 def test_email_backend_chosen_by_environment(monkeypatch):

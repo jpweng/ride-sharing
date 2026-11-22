@@ -10,6 +10,13 @@ on every route.
    limit or a ban, so nobody can find out who has an account.
 2. verify: opening the link (the page POSTs the token, see app.js) marks it
    used and starts a session, creating the account on first sign-in.
+   verify_code does the same with the email's CODE_DIGITS-digit code, typed
+   on the page where the link was asked for: for someone who can't open the
+   link there (the app installed on an iPhone keeps its own cookies, apart
+   from the browser the link opens in; an email read on another device).
+   The link and its code are one sign-in: using either uses up both. A code
+   is short, so it can be guessed: after CODE_ATTEMPTS wrong codes for an
+   address, the codes of its links stop working (the links still do).
 3. complete_profile: on first sign-in, the user gives their first and last
    name, confirms they are 18 or older and accepts the code of conduct
    (frontend/conduct.html, CONDUCT_VERSION). Until then they can't do
@@ -34,6 +41,10 @@ import demo_drives
 import mailer
 
 TOKEN_TTL = timedelta(minutes=15)
+# The code in the sign-in email. With the links an address may be sent
+# (LINKS_PER_EMAIL), that is at most 50 guesses a day at a 1 in 10^6 code.
+CODE_DIGITS = 6
+CODE_ATTEMPTS = 5
 SESSION_TTL = timedelta(days=90)
 SESSION_EXTEND_AFTER = timedelta(days=1)
 DEMO_SESSION_TTL = timedelta(days=1)
@@ -77,6 +88,10 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _code_hash(email: str, code: str) -> str:
+    return hash_token(f"{email}:{code}")
+
+
 def normalize_email(email: str) -> str:
     email = (email or "").strip().lower()
     if len(email) > MAX_EMAIL_LENGTH or not EMAIL_RE.match(email):
@@ -110,11 +125,12 @@ def request_link(email: str, language: str, ip: str | None, base_url: str) -> bo
         return False
 
     token = secrets.token_urlsafe(32)
-    db.add_sign_in_link(hash_token(token), email, ip, language, _iso(now + TOKEN_TTL))
+    code = f"{secrets.randbelow(10 ** CODE_DIGITS):0{CODE_DIGITS}d}"
+    db.add_sign_in_link(hash_token(token), email, ip, language, _iso(now + TOKEN_TTL), _code_hash(email, code))
     # ?lang= opens the page in the language the link was asked for in.
     link = f"{base_url.rstrip('/')}/?lang={language}#/signin/{token}"
     try:
-        mailer.send_sign_in_link(email, language, link, int(TOKEN_TTL.total_seconds() // 60))
+        mailer.send_sign_in_link(email, language, link, int(TOKEN_TTL.total_seconds() // 60), code)
     except mailer.EmailError:
         db.delete_sign_in_link(hash_token(token))
         raise
@@ -127,6 +143,25 @@ def verify(token: str) -> tuple[dict, str]:
     link = db.use_sign_in_link(hash_token(token or ""), _iso(_now()))
     if link is None:
         raise AuthError(400, "invalid_link", "This sign-in link is invalid, expired or already used")
+    return _signed_in(link)
+
+
+def verify_code(email: str, code: str) -> tuple[dict, str]:
+    """Use the code of a sign-in email sent to `email`: (user, session
+    token), as verify does with the link's token."""
+    email = normalize_email(email)
+    code = re.sub(r"\s", "", code or "")
+    link = None
+    if re.fullmatch(rf"[0-9]{{{CODE_DIGITS}}}", code):  # anything else can't be one: not counted as a guess
+        link = db.use_sign_in_code(email, _code_hash(email, code), _iso(_now()), CODE_ATTEMPTS)
+    if link is None:
+        raise AuthError(400, "invalid_code", "This code is wrong, expired or already used")
+    return _signed_in(link)
+
+
+def _signed_in(link: dict) -> tuple[dict, str]:
+    """The user a used sign-in link ({email, language}) is for, and a new
+    session's token."""
     user = db.get_user_by_email(link["email"])
     if user is None:
         try:

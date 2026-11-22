@@ -37,13 +37,17 @@ RIDE_ROLES.forEach((role) => {
     {
       label: t("form.pickOnMap"),
       action: () => {
-        const input = document.getElementById(`name-${role}`);
-        input.value = ""; // the place picked gives the field its name
-        input.blur();
+        document.getElementById(`name-${role}`).blur(); // the place picked gives the field its name
         startPicking(role);
       },
     },
   ];
+  // A field left with other words than its place's name (emptied, half
+  // typed, the map closed without picking) shows that place again: it is
+  // still the one the search uses.
+  document.getElementById(`name-${role}`).addEventListener("blur", (e) => {
+    if (points[role] && e.target.value.trim() !== points[role].name) e.target.value = points[role].name;
+  });
 });
 
 // From and To change places.

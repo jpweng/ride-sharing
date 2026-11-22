@@ -2,7 +2,10 @@
 
 The site is a Progressive Web App: on Android, Chrome offers to install it; on iPhone, Safari's
 *Share → Add to Home Screen* gives a full-screen app (the iOS `apple-mobile-web-app-*` meta tags and
-`apple-touch-icon` in the pages' `<head>`). The pieces, all in [frontend/](../frontend/):
+`apple-touch-icon` in the pages' `<head>`). An app installed on an iPhone has its own cookies, apart
+from Safari's: the emailed sign-in link opens in Safari and can't sign the app in, so there the
+code of the same email is typed in the app (see [Sign-in and accounts](sign-in.md)). The pieces,
+all in [frontend/](../frontend/):
 
 - [manifest.webmanifest](../frontend/manifest.webmanifest): name, colours (the teal of `style.css`),
   start URL, standalone display, icons.

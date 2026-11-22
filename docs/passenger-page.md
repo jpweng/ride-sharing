@@ -21,6 +21,8 @@ map in [frontend/app.js](../frontend/app.js).
   Photon's reverse search on OpenStreetMap data (`placesAt` in `app.js`), and the driver's form
   and the driver's areas pick the same way.
 - The round button swaps the two.
+- A field always shows the place the search uses: left with other words than that place's name
+  (emptied, half typed, the map closed without picking), it shows the name again.
 
 Scripts add entries to a field's list through `FIELD_SUGGESTIONS` in `app.js` (role -> a function
 of what is typed, returning places or things to do).

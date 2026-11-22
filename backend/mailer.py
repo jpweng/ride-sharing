@@ -115,12 +115,13 @@ def text(language: str, key: str, **params) -> str:
     return template
 
 
-def sign_in_email(language: str, link: str, minutes: int) -> tuple[str, str, str]:
-    """(subject, plain text, HTML) of the sign-in email."""
+def sign_in_email(language: str, link: str, minutes: int, code: str) -> tuple[str, str, str]:
+    """(subject, plain text, HTML) of the sign-in email: the link, and the
+    code to type instead where the link can't be opened (auth.verify_code)."""
     t = lambda key, **p: text(language, f"email.signIn.{key}", **p)  # noqa: E731
     subject = t("subject")
     paragraphs = [t("greeting"), t("intro", minutes=minutes)]
-    after = [t("ignore"), t("signature")]
+    after = [t("code", code=code), t("ignore"), t("signature")]
     plain = "\n\n".join([*paragraphs, link, *after]) + "\n"
     html = (
         f'<!DOCTYPE html><html lang="{escape(language)}"><body style="font-family: sans-serif; line-height: 1.5">'
@@ -134,7 +135,7 @@ def sign_in_email(language: str, link: str, minutes: int) -> tuple[str, str, str
     return subject, plain, html
 
 
-def send_sign_in_link(to: str, language: str, link: str, minutes: int) -> None:
-    """Send a sign-in link. Raises EmailError if it can't be sent."""
-    subject, plain, html = sign_in_email(language, link, minutes)
+def send_sign_in_link(to: str, language: str, link: str, minutes: int, code: str) -> None:
+    """Send a sign-in link and its code. Raises EmailError if it can't be sent."""
+    subject, plain, html = sign_in_email(language, link, minutes, code)
     backend().send(to, subject, plain, html)

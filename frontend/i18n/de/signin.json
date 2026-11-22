@@ -1,5 +1,8 @@
 {
   "signin.backToSignIn": "Neuen Link anfordern",
+  "signin.codeHint": "Lesen Sie die E-Mail auf einem anderen Gerät, oder verwenden Sie die installierte App? Geben Sie stattdessen hier den Code aus der E-Mail ein.",
+  "signin.codeLabel": "Code aus der E-Mail",
+  "signin.codeSubmit": "Mit dem Code anmelden",
   "signin.deleted": "Ihr Konto und Ihre Daten wurden gelöscht.",
   "signin.demoDriver": "Fahrende Person (Demo)",
   "signin.demoHint": "Sehen Sie sich die Demo als eine der erfundenen fahrenden Personen an, ohne E-Mail-Adresse. Sie können sich umsehen, aber nichts ändern.",
@@ -8,6 +11,7 @@
   "signin.email": "E-Mail-Adresse",
   "signin.emailPlaceholder": "name@beispiel.ch",
   "signin.hint": "Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Anmelden, ganz ohne Passwort.",
+  "signin.needCode": "Geben Sie den 6-stelligen Code aus der E-Mail ein.",
   "signin.needEmail": "Geben Sie Ihre E-Mail-Adresse ein.",
   "signin.needed": "Melden Sie sich an, um einen Platz anzufragen oder Fahrerinnen und Fahrer um eine Fahrt zu bitten.",
   "signin.sending": "Wird gesendet…",

@@ -1,5 +1,8 @@
 {
   "signin.backToSignIn": "Demander un nouveau lien",
+  "signin.codeHint": "Vous lisez l'e-mail sur un autre appareil, ou vous utilisez l'application installée ? Saisissez plutôt ici le code reçu dans l'e-mail.",
+  "signin.codeLabel": "Code reçu dans l'e-mail",
+  "signin.codeSubmit": "Se connecter avec le code",
   "signin.deleted": "Votre compte et vos données ont été supprimés.",
   "signin.demoDriver": "Conducteur de démo",
   "signin.demoHint": "Découvrez la démo dans la peau d'un de ses conducteurs fictifs, sans adresse e-mail. Vous pouvez tout regarder, mais rien modifier.",
@@ -8,6 +11,7 @@
   "signin.email": "Adresse e-mail",
   "signin.emailPlaceholder": "nom@exemple.ch",
   "signin.hint": "Saisissez votre adresse e-mail : nous vous envoyons un lien pour vous connecter, sans mot de passe.",
+  "signin.needCode": "Saisissez le code à 6 chiffres reçu dans l'e-mail.",
   "signin.needEmail": "Saisissez votre adresse e-mail.",
   "signin.needed": "Connectez-vous pour demander une place ou pour demander un trajet aux conducteurs.",
   "signin.sending": "Envoi…",
