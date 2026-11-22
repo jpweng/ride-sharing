@@ -217,8 +217,30 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
   body[data-mode="passenger"] #page-ride { --bar-out: 200px; }
 }
 
-/* A match: who drives first, then what matters, the rest in its details. */
+/* A match: who drives first, then what matters, the rest in its details.
+   A card is something to choose: pointing at it outlines it, and the arrow
+   at its top right says it opens. */
 .match-card.open { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14); }
+.match-card.clickable:hover,
+.match-card.open { border-color: var(--accent); }
+.match-card.clickable .match-head::after {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin: 0 6px 5px auto;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+.match-card.clickable:hover .match-head::after { border-color: var(--accent); }
+.match-card.open .match-head::after { margin-bottom: -5px; transform: rotate(-135deg); }
+/* Asking for a seat is what a card is for: the filled button. */
+.match-card .booking-box .submit-btn { padding: 9px 16px; }
+/* A demo ride has no such button: once opened, it says why (bookings.js). */
+.match-card .demo-note { margin: 0; }
+.match-card:not(.open) .demo-note { display: none; }
 .match-head {
   display: flex;
   align-items: center;
@@ -252,25 +274,40 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
   object-fit: cover;
 }
 
-/* No ride found: a picture, a sentence, and asking the drivers as the one
-   filled button (app.js: renderMatches). */
+/* Asking the drivers for this ride, under the rides found: a panel of its
+   own, a question as its title and the filled button. */
+.ask-box {
+  margin: 20px 0 8px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+.ask-title { font-size: 16px; font-weight: 700; }
+.ask-box .hint { font-size: 13px; line-height: 1.45; color: var(--text); }
+.ask-box .submit-btn {
+  margin-top: 12px;
+  padding: 13px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+/* No ride found: a picture, a sentence, and asking the drivers straight on
+   the page, without the question (app.js: renderMatches). */
 .no-rides { padding: 20px 0 4px; text-align: center; }
 .no-rides img { display: block; margin: 0 auto 12px; }
 .no-rides-text { font-size: 16px; font-weight: 600; }
 #ride-results.no-matches .matches-title { display: none; }
 #ride-results.no-matches .ask-box {
-  margin-bottom: 20px;
+  margin: 4px 0 20px;
   padding: 0;
   border: none;
+  background: none;
   text-align: center;
 }
-#ride-results.no-matches .ask-box .hint { font-size: 13px; }
-#ride-results.no-matches .ask-box .submit-btn {
-  margin-top: 14px;
-  padding: 13px;
-  border-radius: 10px;
-  font-size: 15px;
-}
+#ride-results.no-matches .ask-title { display: none; }
+#ride-results.no-matches .ask-box .hint { color: var(--muted); }
+#ride-results.no-matches .ask-box .submit-btn { margin-top: 14px; }
 #ride-results.no-matches .ask-box .status-msg { text-align: left; }
 #ride-transit { margin-top: 14px; }
 .match-details {

@@ -1466,8 +1466,8 @@ function driverAvatar(m) {
 // `limits`: the search's answer, for its two distances. A card says who
 // drives, when and where the passenger gets in and out, and the price; a
 // click opens its details, and "Show on map" there opens the map on that
-// drive's route. Without any, asking the drivers is what the page proposes:
-// its button is then the filled one (styles/passenger.css: .no-matches).
+// drive's route. Without any, asking the drivers is what the page proposes
+// (styles/passenger.css: .no-matches).
 function renderMatches(matches, passengerOrigin, passengerDestination, limits = {}) {
   const container = document.getElementById("ride-matches");
   container.classList.remove("has-selection");
@@ -1477,7 +1477,6 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
   const combined = searching ? 0 : (limits.combined_matches || []).length;
   document.getElementById("ride-results").classList.toggle("no-matches", !matches.length && !combined && !searching);
   document.getElementById("ride-results").classList.toggle("no-direct", !matches.length && combined > 0);
-  document.getElementById("ride-ask").classList.toggle("secondary", matches.length + combined > 0 || searching);
   if (!matches.length && searching) {
     container.innerHTML = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
     return;

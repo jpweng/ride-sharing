@@ -62,13 +62,42 @@ def test_a_match_starts_with_who_drives():
 
 def test_without_a_ride_asking_the_drivers_leads():
     app = (FRONTEND / "app.js").read_text()
-    # The button is the filled one when nothing was found, the outlined one under rides
-    # (a ride for part of the way, combined.js, is one too).
+    # Nothing was found: no drive, and no ride for part of the way either (combined.js).
     # While those are still being looked for, the page doesn't say that nothing was found.
-    assert 'getElementById("ride-ask").classList.toggle("secondary", matches.length + combined > 0 || searching)' in app
     assert 'classList.toggle("no-matches", !matches.length && !combined && !searching)' in app
     assert '<img src="icons/no-rides.svg" alt=""' in app
     assert (FRONTEND / "icons" / "no-rides.svg").is_file()
+
+
+def test_a_card_looks_like_something_to_choose():
+    css = (FRONTEND / "styles" / "passenger.css").read_text()
+    # An arrow at the card's top right, turned when it is open; an outline when pointed at.
+    assert ".match-card.clickable .match-head::after {" in css
+    assert ".match-card.open .match-head::after {" in css
+    assert ".match-card.clickable:hover,\n.match-card.open { border-color: var(--accent); }" in css
+    # Asking for a seat is the filled button, signed in or not.
+    bookings = (FRONTEND / "bookings.js").read_text()
+    assert 'actionButton("booking.ask", "submit-btn", ' in bookings
+    assert 'actionButton("booking.signInToAsk", "submit-btn", ' in bookings
+    # A demo ride has no button: opened, it says that it can't be booked.
+    assert 'if (item.is_demo) box.innerHTML = `<div class="hint demo-note">${esc(t("errors.not_bookable"))}</div>`;' in bookings
+    assert ".match-card:not(.open) .demo-note { display: none; }" in css
+
+
+def test_asking_the_drivers_is_a_panel_with_a_filled_button():
+    html = (FRONTEND / "index.html").read_text()
+    box = html[html.index('<div class="ask-box">'):html.index('id="ride-ask-status"')]
+    assert box.index('data-i18n="ride.askTitle"') < box.index('data-i18n="ride.askHint"') < box.index('id="ride-ask"')
+    assert '<button class="submit-btn" id="ride-ask"' in box  # filled, with rides found or not
+    assert '"ride-ask").classList' not in (FRONTEND / "app.js").read_text()
+    css = (FRONTEND / "styles" / "passenger.css").read_text()
+    panel = css[css.index("\n.ask-box {"):css.index(".ask-title {")]
+    assert "background: var(--accent-soft);" in panel and "border: 1px solid var(--accent);" in panel
+    # Without any ride the page already says so: the question isn't asked again.
+    assert "#ride-results.no-matches .ask-title { display: none; }" in css
+    for lang in ("en", "de", "fr", "it"):
+        texts = json.loads((FRONTEND / "i18n" / lang / "ride.json").read_text())
+        assert texts["ride.askTitle"] and not texts["ride.askHint"].startswith(texts["ride.askTitle"])
 
 
 def test_public_transport_is_one_line_of_plain_rows():

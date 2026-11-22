@@ -15,14 +15,6 @@
 }
 .unread-count[hidden] { display: none; }
 
-.ask-box {
-  margin: 4px 0 8px;
-  padding: 10px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-}
-.ask-box .submit-btn { margin-top: 8px; }
-
 .notification.unread { border-left: 4px solid var(--accent); }
 .notification-actions {
   display: flex;
