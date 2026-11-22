@@ -45,8 +45,7 @@ A card starts with who drives: their photo if they have one (the match's `driver
 their drive below it. Then when and where the passenger gets in and out, and the price. A click
 opens its details: the departure, the way to the pickup and from the drop-off (see
 [Search limits](search-limits.md)), public transport legs, the driver's profile and "Show on map".
-Demo rides open their details like any ride; they can't be booked, and "Show on map" says they are
-fictional instead of showing them.
+Demo rides open their details and show on the map like any ride; they can't be booked.
 
 When no ride is found, the page says so with a small picture
 ([icons/no-rides.svg](../frontend/icons/no-rides.svg)), and "Ask drivers for this ride" is the one

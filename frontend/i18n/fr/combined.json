@@ -7,7 +7,5 @@
   "combined.title": "Un trajet en voiture et les transports publics",
   "combined.total": "{duration} en tout",
   "combined.transitTo": "Transports publics jusqu'à {place}",
-  "combined.vsFaster": "{duration} de moins qu'en transports publics seuls",
-  "combined.vsSame": "aussi rapide qu'en transports publics seuls",
-  "combined.vsSlower": "{duration} de plus qu'en transports publics seuls"
+  "combined.vsFaster": "{duration} de moins qu'en transports publics seuls"
 }

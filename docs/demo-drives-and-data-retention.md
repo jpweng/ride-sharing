@@ -16,8 +16,8 @@ At startup and then every hour, the app runs [backend/maintenance.py](../backend
   server (`OSRM_URL=https://router.project-osrm.org`), there's a one-second pause after each,
   its usage limit (`OSRM_PAUSE_S` overrides the pause). Demo drives made while routing was down
   get their road route at a later refresh. Demo drives are labelled "Demo", never bookable
-  (`"bookable": false` in the API); in a passenger's search results they are shown, but clicking
-  one opens a notice that it's fictional instead of selecting it, and real passengers' ride requests never reach demo drivers
+  (`"bookable": false` in the API); in a passenger's search results they open and show on the map
+  like any drive, and real passengers' ride requests never reach demo drivers
   (see [docs/ride-predictions.md](ride-predictions.md#demo-data)).
 - **Switching demo drives off**: set `DEMO_DRIVES=off` in the app's environment (default `on`).
   They're hidden everywhere at once, and the next maintenance run deletes them and their stored
