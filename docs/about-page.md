@@ -35,6 +35,7 @@ Where each statement comes from, to know what to reread when something changes:
 | First name and initial; optional profiles and who sees them | [profiles](profiles.md) |
 | Ratings and reports | [ratings and reports](ratings-and-reports.md) |
 | Browser, home screen, four languages | [PWA](pwa.md), [translations](translations.md) |
+| A demo version for now (the note under the title), not yet for real trips | the app's banner, the [privacy notice](../frontend/privacy.html), [the plan for the real site](demo-subdomain-plan.md): remove the note there when the real site opens |
 | Demo drives are fictional and can't be booked | [demo drives and data retention](demo-drives-and-data-retention.md) |
 | Writing to the team | [the contact page](contact.md) |
 | No advertising or analytics, 30 days, deleting one's account | [privacy notice](../frontend/privacy.html), `backend/maintenance.py` |
