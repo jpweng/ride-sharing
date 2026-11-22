@@ -116,6 +116,12 @@ def test_public_transport_is_one_line_of_plain_rows():
     app = (FRONTEND / "app.js").read_text()
     option = app[app.index("function renderTransitOption(transit) {"):app.index("function renderFare(fare) {")]
     assert "<details" in option and 't("transit.summary"' in option
+    # The line gives the first connection's two times: the one to take (transit.py puts it first).
+    assert "departure: fmtClock(first.departure), arrival: fmtClock(first.arrival)," in option
+    for lang in ("en", "de", "fr", "it"):
+        texts = json.loads((FRONTEND / "i18n" / lang / "transit.json").read_text())
+        for form in ("one", "other"):
+            assert "{departure} → {arrival} · {duration}" in texts[f"transit.summary.{form}"]
     # No title of its own above it.
     assert "ride.transitTitle" not in RIDE
     # No operator's logo, and the tickets are a link in the text's colours.
