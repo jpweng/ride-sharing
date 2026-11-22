@@ -104,12 +104,14 @@ Still signed out in browser A. Searching is public: everything here must work wi
 
 **The results**
 
-- [ ] **2.7** Read the cards. **Expect:** at most 20. Each shows a figure in a circle and "Driver"
-  instead of a name, a "Demo" label, the drive's own route, "Pickup ~hh:mm near (a stop), N km from
-  your start", the same for the drop-off, "CHF N per seat" and "train ≈ CHF N". The price is never
-  above the train fare. Demo cards have no button to ask for a seat. Each card has a small arrow at
-  its top right, and pointing at a card outlines it in green. Under the cards, a green-tinted panel
-  asks "Nothing that suits you?" with the filled button "Ask drivers for this ride".
+- [ ] **2.7** Read the cards. **Expect:** at most 20. Each starts with the times in large figures
+  ("hh:mm → hh:mm"), how long the ride takes and, at the right, "CHF N" with "train ≈ CHF N" under
+  it. Then "By car from (a stop) to (a stop)", with "pickup N km from your start" or "drop-off N km
+  from your destination" when the car doesn't pass there. Then a figure in a circle, "Driver"
+  instead of a name and a "Demo" label. The price is never above the train fare. Demo cards have
+  no button to ask for a seat. Each card has a small arrow at the end of its first line, and
+  pointing at a card outlines it in green. Under the cards, a green-tinted panel asks "Nothing
+  that suits you?" with the filled button "Ask drivers for this ride".
 - [ ] **2.8** Click a card. **Expect:** its details open: the departure and the free seats, "To the
   pickup: N min on foot", "From the drop-off:" with times on foot, by car and by public transport,
   "on time" or "N min earlier" or "later", "N km together" and "Show on map". The arrow points up,
@@ -126,10 +128,10 @@ Still signed out in browser A. Searching is public: everything here must work wi
 
 **Public transport for the same trip**
 
-- [ ] **2.12** Under the rides, find the line "Public transport", for example "3 connections from
-  12:27 · 1 h 05 min". Click it. **Expect:** the two stations, "Ticket, 2nd class: about CHF N (half
-  fare about CHF N)", and a row per connection: times, duration, transfers, lines and who runs them.
-  No operator logo.
+- [ ] **2.12** Under the rides, find the line "Public transport", for example "3 connections ·
+  12:27 → 13:32 · 1 h 05 min". Click it. **Expect:** the two stations, "Ticket, 2nd class: about
+  CHF N (half fare about CHF N)", and a row per connection: times, duration, transfers, lines and
+  who runs them. No operator logo.
 - [ ] **2.13** Click "Tickets on SBB". **Expect:** sbb.ch opens in a new tab, in the page's
   language, with that connection.
 
@@ -137,7 +139,8 @@ Still signed out in browser A. Searching is public: everything here must work wi
 
 - [ ] **2.14** Before touching the time, turn "Leave at" into "Arrive by". **Expect:** the time
   jumps to one hour from now and a new search runs. Every drop-off is at or before that time, the
-  latest first. Public transport connections arrive by it too.
+  latest first. Public transport connections arrive by it too, and the line gives the times of the
+  one that leaves last.
 - [ ] **2.15** Turn it back to "Leave at". **Expect:** the time is now again, and the search runs
   again.
 - [ ] **2.16** Choose tomorrow at 07:00. **Expect:** one new search, about half a second after the
@@ -175,11 +178,12 @@ Still signed out in browser A. Searching is public: everything here must work wi
   request a seat or to ask drivers for a ride." The browser's Back button returns to the search,
   still filled in.
 - [ ] **2.27** Search Bulle → Genève, "Leave at" 06:50 on a weekday. **Expect:** a section "A ride
-  and public transport" with up to four cards. Each has two steps in order with their times: "By car
-  to (a stop)" with "pickup N km from your start", then "Public transport to (a station)", then "N h
-  NN min in all" and the ride's price. With no drive for the whole way, nothing is above the
-  section's title. If the section is missing, try Sion → Genève at 06:20, or Genève → Bulle around
-  17:30. Step 5.21 makes one for certain.
+  and public transport" with up to four cards. Each starts with the whole trip: its times in large
+  figures, how long it takes and, at the right, "≈ CHF N" with "ride CHF N + train ≈ CHF N" under
+  it. Then two steps in order with their times: "By car to (a stop)" with "pickup N km from your
+  start", then "Public transport to (a station)". Then who drives. With no drive for the whole
+  way, nothing is above the section's title. If the section is missing, try Sion → Genève at
+  06:20, or Genève → Bulle around 17:30. Step 5.21 makes one for certain.
 - [ ] **2.27b** Search again while watching the results. **Expect:** the drives (or "Searching…")
   first; "Searching…" where the public transport line will be and, under drives,
   "Looking for rides combined with public transport…"; then each part in its place, without the

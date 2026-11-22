@@ -1,9 +1,9 @@
 {
+  "match.byCar": "En voiture",
   "match.details": "Détails",
   "match.directions": "Itinéraire",
   "match.driver": "Conductrice ou conducteur",
   "match.dropoff": "Dépose ~{time}, à {km} km de votre destination",
-  "match.dropoffAt": "Dépose ~{time} près de l'arrêt {place}, à {km} km de votre destination",
   "match.earlier": "{duration} plus tôt",
   "match.firstMile": "Jusqu'à la prise en charge :",
   "match.lastMile": "Depuis la dépose :",
@@ -13,7 +13,6 @@
   "match.onwardTransit": "{duration} en transports publics",
   "match.onwardWalk": "{duration} à pied",
   "match.pickup": "Prise en charge ~{time}, à {km} km de votre départ",
-  "match.pickupAt": "Prise en charge ~{time} près de l'arrêt {place}, à {km} km de votre départ",
   "match.rideKm": "{km} km ensemble",
   "match.showOnMap": "Voir sur la carte",
   "match.wider": "plus loin"

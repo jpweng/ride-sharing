@@ -46,17 +46,20 @@ Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15
 
 ## Results
 
-A card starts with who drives: their photo if they have one (the match's `driver_photo`, see
-[Profiles](profiles.md)), else the first letter of their name, then their name and rating, and
-their drive below it. Then when and where the passenger gets in and out, and the price. A click
-opens its details: the departure, the way to the pickup and from the drop-off (see
-[Search limits](search-limits.md)), public transport legs, the driver's profile and "Show on map".
-Demo rides open their details and show on the map like any ride; they can't be booked, and an
-opened one says so where the button would be.
+A card starts with the passenger's trip, as a timetable shows a connection: when they get in and
+out ("07:30 → 09:05"), how long the ride takes, and at the right its price for a seat, with the
+train fare for the same distance under it. Then one line says how: "By car from (a stop) to (a
+stop)", the places near which the car picks them up and drops them, with how far these are from
+their own start and destination when they aren't there. Then who drives: their photo if they have
+one (the match's `driver_photo`, see [Profiles](profiles.md)), else the first letter of their
+name, then their name and rating. A click opens its details: the drive's own route and departure,
+the way to the pickup and from the drop-off (see [Search limits](search-limits.md)), public
+transport legs, the driver's profile and "Show on map". Demo rides open their details and show on
+the map like any ride; they can't be booked, and an opened one says so where the button would be.
 
-A card looks like something to choose: an arrow at its top right says it opens (it turns when the
-card is open), pointing at the card outlines it, and "Request a seat" ("Sign in to request a seat"
-without an account) is a filled button.
+A card looks like something to choose: an arrow at the end of its first line says it opens (it
+turns when the card is open), pointing at the card outlines it, and "Request a seat" ("Sign in to
+request a seat" without an account) is a filled button.
 
 Under the rides, asking the drivers is a tinted panel of its own: the question "Nothing that suits
 you?", what asking does in one short sentence, and the filled button "Ask drivers for this ride".
@@ -64,10 +67,11 @@ When no ride is found, the page says so with a small picture
 ([icons/no-rides.svg](../frontend/icons/no-rides.svg)), and the same sentence and button follow
 straight on the page, without the question.
 
-Public transport for the same trip is one line under that ("3 connections from 12:27 · 3 h 55
-min"), opened on a click: the stations, the ticket's price, and a row per connection, as plain
-text (times, transfers, the lines and who runs them) with a link to its tickets. The page shows no
-operator's logo.
+Public transport for the same trip is one line under that ("3 connections · 12:27 → 16:22 · 3 h 55
+min": the times of the connection to take, the next to leave or, to arrive by a time, the last
+that gets there), opened on a click: the stations, the ticket's price, and a row per connection,
+as plain text (times, transfers, the lines and who runs them) with a link to its tickets. The page
+shows no operator's logo.
 
 The passenger's bookings and ride requests are listed below the search only when there are any.
 

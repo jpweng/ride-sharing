@@ -118,9 +118,14 @@ The page asks for them on their own, after the drives: `POST /api/match/combined
 
 ## On the page
 
-Under the matches, "A ride and public transport": a card per trip with its steps in order (two,
-or three for a ride between two public transport legs), each with its times, the total (and how
-much quicker than public transport alone, when it is), and the price of the ride. Its details give
+Under the matches, "A ride and public transport": a card per trip. Its first line is the whole
+trip, as on a drive's card ([The passenger page](passenger-page.md)): when it starts and ends, how
+long it takes, and what it costs, the ride's seat and the tickets of its public transport legs
+together (2nd class, full fare, "≈" when a fare is an estimate), with the two amounts under it
+("ride CHF 3.80 + train ≈ CHF 68.00"). Without a ticket's price it is the ride's alone, "without
+the train ticket". Then its steps in order (two, or three for a ride between two public transport
+legs), each with its times, how much quicker than public transport alone it is, when it is, and
+who drives. Its details give the drive's own route and
 each connection with its ticket link and fare. "Request a seat" asks for the car's part: from the
 passenger's start to the stop, from the stop to their destination, or from one stop to the other
 (`ride_from`, `ride_to`), a booking like any other ([Booking](booking.md)). Without a drive for

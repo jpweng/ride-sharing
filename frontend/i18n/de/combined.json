@@ -6,7 +6,6 @@
   "combined.pickupGap": "Einstieg {km} km von Ihrem Start",
   "combined.searching": "Mitfahrten mit öffentlichem Verkehr werden gesucht…",
   "combined.title": "Mitfahrt und öffentlicher Verkehr",
-  "combined.total": "{duration} insgesamt",
   "combined.transitTo": "Öffentlicher Verkehr bis {place}",
   "combined.vsFaster": "{duration} schneller als nur mit dem öffentlichen Verkehr"
 }

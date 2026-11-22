@@ -61,12 +61,23 @@ def test_a_field_shows_the_place_the_search_uses():
     assert ".blur()" in pick and 'value = ""' not in pick
 
 
-def test_a_match_starts_with_who_drives():
+def test_a_match_starts_with_the_trip_then_says_who_drives():
     app = (FRONTEND / "app.js").read_text()
     card = app[app.index("card.innerHTML = `"):app.index("container.appendChild(card);")]
-    head = card[card.index('<div class="match-head">'):card.index('${meetingPointSentence("pickup"')]
-    # The circle (initial or photo), the name, then the drive.
-    assert head.index("${driverAvatar(m)}") < head.index('class="match-name"') < head.index("m.origin_name")
+    # The trip's times, duration and price, how it goes, who drives; the drive's own route is in the details.
+    order = ["${tripLine(m.pickup.time, m.dropoff.time,", "ridePrice(m))}", "${rideStep(m)}", "${driverLine(m)}",
+             '<div class="match-details" hidden>', "${esc(m.origin_name)} → ${esc(m.destination_name)}"]
+    assert [card.index(part) for part in order] == sorted(card.index(part) for part in order)
+    line = app[app.index("function tripLine("):app.index("function tripPrice(")]
+    assert line.index('class="trip-times"') < line.index('class="trip-duration"') < line.index("${priceHtml}")
+    # The price for a seat, and the train fare for the same distance under it.
+    price = app[app.index("function ridePrice(m) {"):app.index("function gapsText(m) {")]
+    assert 't("price.amount", { price: fmtChf(m.price_chf) })' in price and '"price.trainApprox" : "price.train"' in price
+    # Where the car passes is said only when it isn't at the passenger's own start or destination.
+    assert ".filter(([, point]) => point.gap_km > 0)" in app
+    # The circle (initial or photo), then the name.
+    head = app[app.index("function driverLine(m) {"):app.index("function minutesBetween(")]
+    assert head.index("${driverAvatar(m)}") < head.index('class="match-name"')
     assert 't("match.driver")' in head  # signed out: no name
     # The rating goes next to the name, the photo into the circle.
     assert 'card.querySelector(".match-name, .route")' in (FRONTEND / "ratings.js").read_text()
@@ -85,9 +96,9 @@ def test_without_a_ride_asking_the_drivers_leads():
 
 def test_a_card_looks_like_something_to_choose():
     css = (FRONTEND / "styles" / "passenger.css").read_text()
-    # An arrow at the card's top right, turned when it is open; an outline when pointed at.
-    assert ".match-card.clickable .match-head::after {" in css
-    assert ".match-card.open .match-head::after {" in css
+    # An arrow at the end of the card's first line, turned when it is open; an outline when pointed at.
+    assert ".match-card.clickable .trip-line::after {" in css
+    assert ".match-card.open .trip-line::after {" in css
     assert ".match-card.clickable:hover,\n.match-card.open { border-color: var(--accent); }" in css
     # Asking for a seat is the filled button, signed in or not.
     bookings = (FRONTEND / "bookings.js").read_text()
@@ -130,6 +141,12 @@ def test_public_transport_is_one_line_of_plain_rows():
     app = (FRONTEND / "app.js").read_text()
     option = app[app.index("function renderTransitOption(transit) {"):app.index("function renderFare(fare) {")]
     assert "<details" in option and 't("transit.summary"' in option
+    # The line gives the first connection's two times: the one to take (transit.py puts it first).
+    assert "departure: fmtClock(first.departure), arrival: fmtClock(first.arrival)," in option
+    for lang in ("en", "de", "fr", "it"):
+        texts = json.loads((FRONTEND / "i18n" / lang / "transit.json").read_text())
+        for form in ("one", "other"):
+            assert "{departure} → {arrival} · {duration}" in texts[f"transit.summary.{form}"]
     # No title of its own above it.
     assert "ride.transitTitle" not in RIDE
     # No operator's logo, and the tickets are a link in the text's colours.

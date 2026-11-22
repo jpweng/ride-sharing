@@ -325,6 +325,65 @@ def test_address_to_address_trip_skips_address_pseudo_results(fake_http):
 
 
 # ---------------------------------------------------------------------------
+# To arrive by a time: the connection to take first
+# ---------------------------------------------------------------------------
+
+def _connection(departure, arrival):
+    return {"departure": departure, "arrival": arrival}
+
+
+def test_to_arrive_by_the_connection_that_leaves_last_comes_first():
+    # The timetable's answer, the earliest first.
+    answer = [
+        _connection("2026-11-23T09:07:00+0100", "2026-11-23T09:52:00+0100"),
+        _connection("2026-11-23T09:37:00+0100", "2026-11-23T10:22:00+0100"),
+        _connection("2026-11-23T10:07:00+0100", "2026-11-23T10:52:00+0100"),
+    ]
+    assert transit.best_first_to_arrive_by(answer) == answer[::-1]
+
+
+def test_to_arrive_by_leaving_the_evening_before_is_no_option():
+    """A village with a few buses a day (St. Gallen -> Sévaz, to arrive by
+    11:00): next to the connection of 3 h 54 in the morning, the timetable
+    gives two that leave before midnight and take 8 hours."""
+    evening = _connection("2026-11-22T23:54:00+0100", "2026-11-23T08:01:00+0100")
+    night = _connection("2026-11-22T23:56:00+0100", "2026-11-23T08:01:00+0100")
+    morning = _connection("2026-11-23T04:58:00+0100", "2026-11-23T08:52:00+0100")
+    assert transit.best_first_to_arrive_by([evening, night, morning]) == [morning]
+    # Up to an hour longer than the quickest, an earlier one is still an option.
+    slower = _connection("2026-11-23T03:10:00+0100", "2026-11-23T08:01:00+0100")  # 4 h 51
+    assert transit.best_first_to_arrive_by([evening, slower, morning]) == [morning, slower]
+    # One that leaves after the quickest stays, however long it takes.
+    last = _connection("2026-11-23T05:30:00+0100", "2026-11-23T10:55:00+0100")  # 5 h 25
+    assert transit.best_first_to_arrive_by([morning, last]) == [last, morning]
+
+
+def test_to_arrive_by_an_answer_without_times_is_left_as_it_is():
+    answer = [{"departure": None, "arrival": None}, _connection("2026-11-23T04:58:00+0100", "2026-11-23T08:52:00+0100")]
+    assert transit.best_first_to_arrive_by(answer) == answer
+    assert transit.best_first_to_arrive_by([]) == []
+
+
+def test_the_option_to_arrive_by_starts_with_the_connection_to_take(fake_http, monkeypatch):
+    fake_http.search["Villeneuve"] = VILLENEUVE_SEARCH
+    fake_http.search["Fribourg"] = FRIBOURG_SEARCH
+    answer = [
+        _connection("2026-10-17T23:40:00+0200", "2026-10-18T08:10:00+0200"),
+        _connection("2026-10-18T16:40:00+0200", "2026-10-18T17:50:00+0200"),
+        _connection("2026-10-18T17:10:00+0200", "2026-10-18T18:20:00+0200"),
+    ]
+    asked = []
+    monkeypatch.setattr(transit, "get_connections", lambda *args, **kwargs: asked.append(kwargs) or answer)
+    trip = (*VILLENEUVE_VD_CENTROID, *FRIBOURG_CENTROID, "2026-10-18T18:53", "Villeneuve (VD)", "Fribourg (FR)")
+
+    option = transit.transit_option_for_trip(*trip, arrive_by=True)
+    assert asked == [{"arrive_by": True}]
+    assert [c["departure"][11:16] for c in option["connections"]] == ["17:10", "16:40"]
+    # To leave at a time, the timetable's order is the right one.
+    assert transit.transit_option_for_trip(*trip)["connections"] == answer
+
+
+# ---------------------------------------------------------------------------
 # Answers are cached: many people at one event ask the same questions
 # ---------------------------------------------------------------------------
 

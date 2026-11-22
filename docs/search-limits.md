@@ -26,7 +26,10 @@ The time is one of two things (`time_kind`, `matching.match_drive`):
   (times show to the minute), and up to 4 hours before; the latest arrival in time comes first. It
   is the car's drop-off that is in time, not the passenger at their destination: the card says how
   far the drop-off is from it and how long the rest takes (below). The public transport
-  alternative is asked for connections that arrive by that time too.
+  alternative is asked for connections that arrive by that time too, and starts with the one to
+  take: the one that leaves last (`transit.best_first_to_arrive_by`). One that leaves before the
+  quickest and takes over an hour longer is left out: for a village with a few buses a day, the
+  timetable also answers with leaving the evening before.
 
 The results stay one list, the best first (closest in time and place), at most 20. Above them,
 the page says when it looked further, and those drives carry a "further away" label. A drive

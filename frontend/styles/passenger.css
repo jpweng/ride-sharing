@@ -228,39 +228,89 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
   body[data-mode="passenger"] #page-ride { --bar-out: 200px; }
 }
 
-/* A match: who drives first, then what matters, the rest in its details.
-   A card is something to choose: pointing at it outlines it, and the arrow
-   at its top right says it opens. */
+/* A match: the passenger's trip first, as a timetable shows a connection
+   (its times, how long it takes, its price), then how it goes, then who
+   drives; the rest in its details. A card is something to choose: pointing
+   at it outlines it, and the arrow at the end of its first line says it
+   opens. */
 .match-card.open { box-shadow: 0 1px 6px rgba(0, 0, 0, 0.14); }
 .match-card.clickable:hover,
 .match-card.open { border-color: var(--accent); }
-.match-card.clickable .match-head::after {
+.trip-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+/* On a narrow card, how long it takes goes under the times. */
+.trip-when {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  min-width: 0;
+}
+.trip-times { font-size: 20px; font-weight: 700; line-height: 1.25; white-space: nowrap; }
+.trip-duration { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.trip-price {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: 58%;
+  text-align: right;
+}
+.trip-amount { font-size: 17px; font-weight: 700; line-height: 1.45; white-space: nowrap; }
+.trip-price-note { font-size: 11px; color: var(--muted); }
+.trip-price-note span { white-space: nowrap; }
+.match-card.clickable .trip-line::after {
   content: "";
   flex: none;
   width: 9px;
   height: 9px;
-  margin: 0 6px 5px auto;
+  margin: 5px 4px 0 0;
   border-right: 2px solid var(--muted);
   border-bottom: 2px solid var(--muted);
   transform: rotate(45deg);
   transition: transform 0.15s;
 }
-.match-card.clickable:hover .match-head::after { border-color: var(--accent); }
-.match-card.open .match-head::after { margin-bottom: -5px; transform: rotate(-135deg); }
+.match-card.clickable:hover .trip-line::after { border-color: var(--accent); }
+.match-card.open .trip-line::after { margin-top: 10px; transform: rotate(-135deg); }
+/* A drive for the whole trip: by car, from where to where. */
+.trip-step {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  margin-top: 8px;
+  font-size: 14px;
+}
+.trip-step .pt-icon {
+  flex: none;
+  align-self: center;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.trip-gap { display: block; font-size: 12px; color: var(--muted); }
 /* Asking for a seat is what a card is for: the filled button. */
 .match-card .booking-box .submit-btn { padding: 9px 16px; }
 /* A demo ride has no such button: once opened, it says why (bookings.js). */
 .match-card .demo-note { margin: 0; }
 .match-card:not(.open) .demo-note { display: none; }
+/* Who drives, under the trip. */
 .match-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-top: 10px;
 }
-.match-who { min-width: 0; }
-.match-who .meta { margin-top: 2px; }
-.match-name { font-size: 16px; font-weight: 700; }
+.match-name { min-width: 0; font-size: 14px; font-weight: 600; }
+.match-head .avatar { width: 28px; height: 28px; font-size: 13px; }
+.match-head .avatar svg { width: 18px; height: 18px; }
 .avatar {
   position: relative;
   flex: none;

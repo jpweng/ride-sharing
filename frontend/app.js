@@ -1420,12 +1420,74 @@ function renderResults(arrived) {
   if (arrived !== "combined_matches") renderTransitOption(data.transit_option);
 }
 
-// A match's pickup or drop-off in one sentence: the time, the place's name
-// when we have one, and how far it is from the passenger's own start or
-// destination.
-function meetingPointSentence(kind, point) {
-  const params = { time: fmtClock(point.time), km: fmtNumber(point.gap_km), place: point.name };
-  return `<div class="meta">${esc(t(point.name ? `match.${kind}At` : `match.${kind}`, params))}</div>`;
+// A card's first line is the passenger's trip, as a timetable shows a
+// connection: when it starts and ends, how long it takes and what it costs
+// (`priceHtml`: tripPrice's). The arrow at its end says the card opens
+// (styles/passenger.css).
+function tripLine(startIso, endIso, minutes, priceHtml) {
+  return `<div class="trip-line">
+    <span class="trip-when">
+      <span class="trip-times">${fmtClock(startIso)} → ${fmtClock(endIso)}</span>
+      <span class="trip-duration">${esc(fmtMinutes(Math.round(minutes)))}</span>
+    </span>
+    ${priceHtml}
+  </div>`;
+}
+
+// The price on a card's first line, with a few words under it: what it is
+// compared with, or made of ("ride CHF 4 + train CHF 20": on a narrow card
+// that breaks at the "+", not inside an amount).
+function tripPrice(amount, note, hint = "") {
+  const parts = note.split(" + ").map((part, i) => `<span>${i ? "+ " : ""}${esc(part)}</span>`).join(" ");
+  return `<span class="trip-price"><span class="trip-amount">${esc(amount)}</span>${
+    note ? `<span class="trip-price-note"${hint ? ` title="${esc(hint)}"` : ""}>${parts}</span>` : ""
+  }</span>`;
+}
+
+// A ride's price for one seat, and the train fare for the same distance.
+function ridePrice(m) {
+  if (typeof m.price_chf !== "number") return "";
+  const train = m.train_fare;
+  const note = train ? t(train.approximate ? "price.trainApprox" : "price.train", { price: fmtChf(train.full_chf) }) : "";
+  return tripPrice(t("price.amount", { price: fmtChf(m.price_chf) }), note, train ? t("price.trainHint") : "");
+}
+
+// Where the car picks the passenger up and drops them, when it isn't at
+// their own start or destination: "pickup 0.5 km from your start".
+function gapsText(m) {
+  return [["combined.pickupGap", m.pickup], ["combined.dropoffGap", m.dropoff]]
+    .filter(([, point]) => point.gap_km > 0)
+    .map(([key, point]) => t(key, { km: fmtNumber(point.gap_km) }))
+    .join(" · ");
+}
+
+// A drive for the whole trip in one line: by car, between the two places
+// where the passenger gets in and out when they have a name.
+const CAR_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5v-4l1.8-4.6a2 2 0 0 1 1.9-1.4h7.6a2 2 0 0 1 1.9 1.4l1.8 4.6v4M3.5 12.5h17M7 16.5v2M17 16.5v2M7.5 14.6h.01M16.5 14.6h.01"/></svg>';
+
+function rideStep(m) {
+  const [from, to] = [m.pickup.name, m.dropoff.name];
+  const byCar = from && to ? t("combined.carBetween", { from, to })
+    : from ? t("combined.carFrom", { place: from })
+    : to ? t("combined.carTo", { place: to })
+    : t("match.byCar");
+  const gaps = gapsText(m);
+  return `<div class="trip-step">${CAR_ICON}<span>${esc(byCar)}${
+    gaps ? `<span class="trip-gap">${esc(gaps)}</span>` : ""
+  }</span></div>`;
+}
+
+// Who drives, under the trip: the circle, the name (ratings.js puts the
+// rating next to it) and the demo label.
+function driverLine(m) {
+  return `<div class="match-head">
+    ${driverAvatar(m)}
+    <div class="match-name">${esc(m.driver_name || t("match.driver"))}${demoBadge(m)}</div>
+  </div>`;
+}
+
+function minutesBetween(startIso, endIso) {
+  return (new Date(endIso) - new Date(startIso)) / 60000;
 }
 
 // For a match's details: the way between the passenger's own point and the
@@ -1463,8 +1525,9 @@ function driverAvatar(m) {
 }
 
 // The drives that serve the trip, the best first (see backend/search.py).
-// `limits`: the search's answer, for its two distances. A card says who
-// drives, when and where the passenger gets in and out, and the price; a
+// `limits`: the search's answer, for its two distances. A card says when the
+// passenger gets in and out, how long the ride takes and its price, then
+// where, then who drives; a
 // click opens its details, and "Show on map" there opens the map on that
 // drive's route. Without any, asking the drivers is what the page proposes
 // (styles/passenger.css: .no-matches).
@@ -1562,19 +1625,12 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     const color = routeColors[idx % routeColors.length];
     card.style.borderLeftColor = color;
     card.innerHTML = `
-      <div class="match-head">
-        ${driverAvatar(m)}
-        <div class="match-who">
-          <div class="match-name">${esc(m.driver_name || t("match.driver"))}${demoBadge(m)}</div>
-          <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)}</div>
-        </div>
-      </div>
-      ${meetingPointSentence("pickup", m.pickup)}
-      ${meetingPointSentence("dropoff", m.dropoff)}
-      ${priceBadges(m)}
+      ${tripLine(m.pickup.time, m.dropoff.time, minutesBetween(m.pickup.time, m.dropoff.time), ridePrice(m))}
+      ${rideStep(m)}
       ${m.wider ? `<span class="badge wider">${esc(t("match.wider"))}</span>` : ""}
+      ${driverLine(m)}
       <div class="match-details" hidden>
-        <div class="meta">${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
+        <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
         ${onwardLine("pickup", m.pickup, passengerOrigin, null)}
         ${onwardLine("dropoff", m.dropoff, passengerDestination, m.dropoff.onward)}
         ${timeDiffBadge(m.time_diff_min)}
@@ -1651,7 +1707,9 @@ function renderTransitLeg(labelKey, leg) {
 }
 
 // Public transport for the whole trip, under the rides: one line (how many
-// connections, the first one's time and duration), opened on a click.
+// connections, the first one's times and duration), opened on a click. The
+// first is the one to take: the next to leave or, to arrive by a time, the
+// last that gets there (transit.py: best_first_to_arrive_by).
 const TRANSIT_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="3.5" width="13" height="13" rx="3"/><path d="M5.5 10.5h13M9 13.6h.01M15 13.6h.01M8.5 16.5l-2 4M15.5 16.5l2 4"/></svg>';
 
 function renderTransitOption(transit) {
@@ -1667,7 +1725,8 @@ function renderTransitOption(transit) {
   const open = container.querySelector("details")?.open; // stays open when the language changes
   const first = transit.connections[0];
   const summary = t("transit.summary", {
-    count: transit.connections.length, time: fmtClock(first.departure), duration: fmtDuration(first.duration),
+    count: transit.connections.length, departure: fmtClock(first.departure), arrival: fmtClock(first.arrival),
+    duration: fmtDuration(first.duration),
   });
   container.innerHTML = `<details class="transit-box alt"${open ? " open" : ""}>
     <summary>${TRANSIT_ICON}<span class="pt-title">${esc(t("ride.transitTitle"))}</span><span class="pt-summary">${esc(summary)}</span></summary>
