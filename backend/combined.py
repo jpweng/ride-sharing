@@ -11,13 +11,13 @@ Two shapes, for a passenger going from A to B:
       drive's route, where the drive picks them up and drops them near B.
 
 A drive that passes near both ends is a plain match (search.py), not one of
-these. And the car has to do a real part of the way: it brings the passenger
-at least MIN_PROGRESS_KM and MIN_PROGRESS_SHARE of the straight line closer
-(or starts that much closer, for the second shape).
+these. And the ride has to be worth a change: it lasts at least MIN_RIDE_MIN,
+and it goes the passenger's way, bringing them closer to their destination
+by at least MIN_CLOSER_SHARE of the km ridden.
 
 How it is found:
-  1. the drives of the time window that can pass near one end and far
-     enough towards the other, from their two ends alone (as search.py does);
+  1. the drives of the time window that last long enough and can pass near
+     one end, from their two ends alone (as search.py does);
   2. on the routes of those closest in time (MAX_ROUTES_LOADED routes),
      where the passenger gets in and out, and when (plain geometry, as
      matching.py);
@@ -58,10 +58,12 @@ logger = logging.getLogger("uvicorn.error")
 RIDE_FIRST = "ride_then_transit"
 TRANSIT_FIRST = "transit_then_ride"
 
-# The car's part: how much closer to the destination it brings the passenger
-# (for transit_then_ride: how much of the way is left when they get in).
-MIN_PROGRESS_KM = 10.0
-MIN_PROGRESS_SHARE = 0.15
+# The car's part: a ride shorter than this isn't worth a change. (A drive
+# for the whole trip is a plain match, however short.)
+MIN_RIDE_MIN = 10
+# And it goes the passenger's way: they are closer to their destination when
+# they get out than when they got in, by at least this share of the km ridden.
+MIN_CLOSER_SHARE = 0.5
 
 # This many routes are loaded at most, those of the drives closest in time
 # (_away_min). Demo drives on the same trip share one route.
@@ -114,10 +116,6 @@ def _total_min(starts: datetime, arrives: datetime) -> float:
     return (arrives.replace(second=0, microsecond=0) - starts.replace(second=0, microsecond=0)).total_seconds() / 60.0
 
 
-def _needed_progress_km(trip_km: float) -> float:
-    return max(MIN_PROGRESS_KM, MIN_PROGRESS_SHARE * trip_km)
-
-
 def _nearest_before(route: list, point: tuple, to_km: float) -> dict | None:
     """matching.nearest_on_route() for the part of `route` up to `to_km`
     along it: the same search on the route read backwards."""
@@ -135,7 +133,8 @@ def car_part(drive: dict, route: list, origin: tuple, destination: tuple, shape:
              radius_km: float = search.SEARCH_RADIUS_KM) -> dict | None:
     """
     Where the passenger gets into `drive` and out of it for a combined trip
-    of `shape`, or None when the drive doesn't make one: {pickup, dropoff
+    of `shape`, or None when the drive doesn't make one (it doesn't pass near
+    their end, or the ride is too short or not their way): {pickup, dropoff
     ({lat, lon, gap_km, route_km, time}), ride_km, far_gap_km}. "gap_km" is
     the distance to the passenger's own start (pickup) or destination
     (dropoff); far_gap_km is the one public transport covers.
@@ -146,7 +145,6 @@ def car_part(drive: dict, route: list, origin: tuple, destination: tuple, shape:
 
 def _car_places(route: list, origin: tuple, destination: tuple, shape: str, radius_km: float) -> dict | None:
     """car_part() without the times: the same for every drive on `route`."""
-    trip_km = matching.haversine_km(*origin, *destination)
     if shape == RIDE_FIRST:
         pickup = matching.nearest_on_route(route, origin)
         if pickup is None or pickup["gap_km"] > radius_km:
@@ -163,16 +161,17 @@ def _car_places(route: list, origin: tuple, destination: tuple, shape: str, radi
         if pickup is None or pickup["gap_km"] <= radius_km:
             return None
         far_gap_km = pickup["gap_km"]
-    if trip_km - far_gap_km < _needed_progress_km(trip_km):
+    ride_km = dropoff["route_km"] - pickup["route_km"]
+    closer_km = (matching.haversine_km(pickup["lat"], pickup["lon"], *destination)
+                 - matching.haversine_km(dropoff["lat"], dropoff["lon"], *destination))
+    if closer_km < MIN_CLOSER_SHARE * ride_km:
         return None
-    return {
-        "pickup": pickup, "dropoff": dropoff, "far_gap_km": far_gap_km,
-        "ride_km": dropoff["route_km"] - pickup["route_km"],
-    }
+    return {"pickup": pickup, "dropoff": dropoff, "far_gap_km": far_gap_km, "ride_km": ride_km}
 
 
-def _with_times(places: dict, drive: dict, route: list) -> dict:
-    """The car part of `drive` at `places` (_car_places): with the times it is at each."""
+def _with_times(places: dict, drive: dict, route: list) -> dict | None:
+    """The car part of `drive` at `places` (_car_places), with the times it
+    is at each; None when the ride is shorter than MIN_RIDE_MIN."""
     total_km = route[-1][2]
     duration_s = drive.get("route_duration_s") or total_km / matching.FALLBACK_SPEED_KMH * 3600.0
     departure = _naive(drive["departure_time"])
@@ -180,22 +179,25 @@ def _with_times(places: dict, drive: dict, route: list) -> dict:
     def time_at(route_km: float) -> datetime:
         return departure + timedelta(seconds=duration_s * (route_km / total_km if total_km > 0 else 0.0))
 
+    gets_in, gets_out = time_at(places["pickup"]["route_km"]), time_at(places["dropoff"]["route_km"])
+    if gets_out - gets_in < timedelta(minutes=MIN_RIDE_MIN):
+        return None
     return {
         **places,
-        "pickup": {**places["pickup"], "time": time_at(places["pickup"]["route_km"])},
-        "dropoff": {**places["dropoff"], "time": time_at(places["dropoff"]["route_km"])},
+        "pickup": {**places["pickup"], "time": gets_in},
+        "dropoff": {**places["dropoff"], "time": gets_out},
     }
 
 
 def _could_make(drive: dict, origin: tuple, destination: tuple, shape: str, radius_km: float) -> bool:
-    """From the drive's two ends alone: whether its route can pass near one
-    end of the trip and far enough towards the other (matching.could_pass_near)."""
-    trip_km = matching.haversine_km(*origin, *destination)
-    reach_km = trip_km - _needed_progress_km(trip_km)
-    if reach_km <= radius_km:
+    """From the drive's two ends and its duration alone: whether it lasts
+    long enough for a ride and its route can pass near the passenger's end
+    of the car part (matching.could_pass_near)."""
+    if matching.haversine_km(*origin, *destination) <= radius_km:
         return False  # too short a trip for the car to do a part of it only
-    near, far = (origin, destination) if shape == RIDE_FIRST else (destination, origin)
-    return matching.could_pass_near(drive, near, radius_km) and matching.could_pass_near(drive, far, reach_km)
+    if (drive.get("route_duration_s") or MIN_RIDE_MIN * 60) < MIN_RIDE_MIN * 60:
+        return False
+    return matching.could_pass_near(drive, origin if shape == RIDE_FIRST else destination, radius_km)
 
 
 def _estimate(part: dict, shape: str) -> tuple[datetime, datetime]:
@@ -295,8 +297,8 @@ def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: s
         else:
             route = matching.prepare_route(None, d)
             where = _car_places(route, origin, destination, shape, radius_km)
-        if where is not None:
-            part = _with_times(where, d, route)
+        part = _with_times(where, d, route) if where is not None else None
+        if part is not None:
             starts, arrives = _estimate(part, shape)
             off = _off_by_min(starts, arrives, asked, time_kind, tolerance_min, ESTIMATE_SLACK_MIN)
             if off is None:

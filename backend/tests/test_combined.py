@@ -56,14 +56,29 @@ def test_no_car_part(origin, destination, shape):
     assert combined.car_part(DRIVE, ROUTE, origin, destination, shape) is None
 
 
-def test_the_car_must_do_a_real_part_of_the_way():
-    # 12 km of a 290 km trip: not worth a change.
-    short = {**DRIVE, "destination_lat": 46.11, "route_distance_m": 12_000, "route_duration_s": 720}
-    route = matching.prepare_route(None, short)
+def test_a_ride_lasts_at_least_ten_minutes():
+    # 12 km of a 290 km trip in 12 minutes: a ride, however long the trip.
     far = (48.6, 7.0)
-    assert combined.car_part(short, route, A, far, combined.RIDE_FIRST) is None
-    assert combined._could_make(short, A, far, combined.RIDE_FIRST, 10.0) is False
-    assert combined._could_make(DRIVE, NEAR_A, FAR_NORTH, combined.RIDE_FIRST, 10.0) is True
+    short = {**DRIVE, "destination_lat": 46.11, "route_distance_m": 12_000, "route_duration_s": 720}
+    part = combined.car_part(short, matching.prepare_route(None, short), A, far, combined.RIDE_FIRST)
+    assert 12 < part["ride_km"] < 12.5 and part["dropoff"]["time"].strftime("%H:%M") == "08:12"
+    assert combined._could_make(short, A, far, combined.RIDE_FIRST, 10.0) is True
+    # The same 12 km in 9 minutes: not worth a change.
+    quick = {**short, "route_duration_s": 540}
+    assert combined.car_part(quick, matching.prepare_route(None, quick), A, far, combined.RIDE_FIRST) is None
+    assert combined._could_make(quick, A, far, combined.RIDE_FIRST, 10.0) is False
+    # A drive that doesn't pass near the passenger's start isn't one for a ride first.
+    assert combined._could_make(DRIVE, FAR_SOUTH, FAR_NORTH, combined.RIDE_FIRST, 10.0) is False
+
+
+def test_a_ride_goes_the_passengers_way():
+    # 60 km round a bend, east then north-west: the passenger ends 8 km closer to a
+    # destination due north. Less than half of the km ridden: not their way.
+    bend = {**DRIVE, "route_distance_m": 60_000, "route_duration_s": 3600}
+    route = matching.prepare_route([[7.0, 46.0], [7.38, 46.0], [7.0, 46.07]], bend)
+    assert combined.car_part(bend, route, A, FAR_NORTH, combined.RIDE_FIRST) is None
+    # Straight north for the same time: it is.
+    assert combined.car_part(DRIVE, ROUTE, A, FAR_NORTH, combined.RIDE_FIRST) is not None
 
 
 # --- The search's answer ----------------------------------------------------------

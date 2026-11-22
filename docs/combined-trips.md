@@ -17,8 +17,11 @@ A drive that passes near both ends is a plain match, not one of these.
 
 ## Which are proposed
 
-- **The car does a real part of the way:** it brings the passenger at least 10 km and 15 % of the
-  straight line between the two ends closer (`MIN_PROGRESS_KM`, `MIN_PROGRESS_SHARE`).
+- **The ride lasts at least 10 minutes** (`MIN_RIDE_MIN`), however long the whole trip is: 20
+  minutes by car to or from a station count on a trip across the country. (A drive for the whole
+  trip is a match, however short.)
+- **It goes the passenger's way:** when they get out they are closer to their destination than
+  when they got in, by at least half of the km ridden (`MIN_CLOSER_SHARE`).
 - **A stop within 3 km** of the point where they change, and **a connection that fits the car's
   time**: it leaves the stop at least 10 minutes after the car arrives and within the hour, or
   arrives 10 minutes to an hour before the car leaves (`TRANSFER_MIN`, `MAX_WAIT_MIN`), counted in
@@ -35,8 +38,8 @@ A drive that passes near both ends is a plain match, not one of these.
 
 ## How they are found
 
-1. From the drives of the time window, those that can pass near one end of the trip and far
-   enough towards the other, from their two ends alone (as a search does).
+1. From the drives of the time window, those that last at least 10 minutes and can pass near one
+   end of the trip, from their two ends alone (as a search does).
 2. On the routes of those closest in time (80 routes at most; demo drives on the same trip share
    one), where the passenger gets in and out, and when: plain geometry on the stored routes, no
    routing call. "Closest in time" is about when the passenger is at the car's end of the trip,
