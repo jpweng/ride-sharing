@@ -3,7 +3,6 @@
   "combined.carFrom": "By car from {place}",
   "combined.carTo": "By car to {place}",
   "combined.dropoffGap": "drop-off {km} km from your destination",
-  "combined.noDirect": "Nobody is driving the whole way around that time. A ride can take you part of the way, and public transport the rest:",
   "combined.pickupGap": "pickup {km} km from your start",
   "combined.searching": "Looking for rides combined with public transport…",
   "combined.title": "A ride and public transport",

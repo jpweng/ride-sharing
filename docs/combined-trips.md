@@ -124,4 +124,4 @@ much quicker than public transport alone, when it is), and the price of the ride
 each connection with its ticket link and fare. "Request a seat" asks for the car's part: from the
 passenger's start to the stop, from the stop to their destination, or from one stop to the other
 (`ride_from`, `ride_to`), a booking like any other ([Booking](booking.md)). Without a drive for
-the whole way, the page says so in one line above them.
+the whole way, the section's title is all the page says about it.

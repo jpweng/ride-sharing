@@ -3,7 +3,6 @@
   "combined.carFrom": "En voiture depuis {place}",
   "combined.carTo": "En voiture jusqu'à {place}",
   "combined.dropoffGap": "dépose à {km} km de votre destination",
-  "combined.noDirect": "Personne ne fait tout le trajet à cette heure. Une voiture peut vous emmener une partie du chemin, et les transports publics le reste :",
   "combined.pickupGap": "prise en charge à {km} km de votre départ",
   "combined.searching": "Recherche de trajets en voiture combinés aux transports publics…",
   "combined.title": "Un trajet en voiture et les transports publics",

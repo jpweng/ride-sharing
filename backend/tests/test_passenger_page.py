@@ -98,6 +98,18 @@ def test_asking_the_drivers_is_a_panel_with_a_filled_button():
     for lang in ("en", "de", "fr", "it"):
         texts = json.loads((FRONTEND / "i18n" / lang / "ride.json").read_text())
         assert texts["ride.askTitle"] and not texts["ride.askHint"].startswith(texts["ride.askTitle"])
+        # What asking does, in one short sentence.
+        assert len(texts["ride.askHint"]) <= 130 and texts["ride.askHint"].count(".") == 1
+
+
+def test_rides_for_part_of_the_way_need_no_sentence_above_them():
+    # Without a drive for the whole way, the section's own title is enough.
+    app = (FRONTEND / "app.js").read_text()
+    assert 'if (!matches.length && combined) {\n    container.innerHTML = "";' in app
+    assert 'classList.toggle("no-direct", !matches.length && combined > 0)' in app
+    assert "#ride-results.no-direct .matches-title { display: none; }" in (FRONTEND / "styles" / "combined.css").read_text()
+    for lang in ("en", "de", "fr", "it"):
+        assert "combined.noDirect" not in json.loads((FRONTEND / "i18n" / lang / "combined.json").read_text())
 
 
 def test_public_transport_is_one_line_of_plain_rows():

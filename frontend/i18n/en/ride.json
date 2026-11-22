@@ -1,7 +1,7 @@
 {
   "ride.arriveBy": "Arrive by",
   "ride.ask": "Ask drivers for this ride",
-  "ride.askHint": "Ask the drivers who often make this trip or drive around there. A few of them are told, drivers with an area there see your request in their list, and your inbox tells you when a drive that fits is posted.",
+  "ride.askHint": "Drivers who go that way see your request, and your inbox tells you when a ride fits.",
   "ride.askSent.one": "Request sent: {count} driver who makes this trip or drives around there was told. Your inbox tells you when a drive that fits is posted.",
   "ride.askSent.other": "Request sent: {count} drivers who make this trip or drive around there were told. Your inbox tells you when a drive that fits is posted.",
   "ride.askSentDemo.one": "Demo request: it only reaches fictional demo drivers. {count} was told: {names}. Sign out and continue under that name to see the request arrive.",
