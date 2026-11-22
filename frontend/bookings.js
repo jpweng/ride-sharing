@@ -98,14 +98,17 @@ CARD_EXTRAS.push((kind, item, card) => {
 // A search result or a listed drive: what became of the passenger's
 // request, if they made one, and "Request a seat" unless it's waiting or
 // accepted (after a decline or a cancellation, they can ask again).
-// Nothing on one's own drives, on demo drives (fictional), or before
-// signing in.
+// Nothing on one's own drives. A demo drive (fictional) has no button: its
+// opened card says why (styles/passenger.css: .demo-note).
 function fillAsk(box, kind, item, sent = false) {
   box.innerHTML = "";
-  if (!item.bookable) return;
+  if (!item.bookable) {
+    if (item.is_demo) box.innerHTML = `<div class="hint demo-note">${esc(t("errors.not_bookable"))}</div>`;
+    return;
+  }
   if (!signedIn()) {
     // Asking for a seat needs an account: the button leads to signing in.
-    if (item.seats_available > 0) box.appendChild(actionButton("booking.signInToAsk", "submit-btn secondary", goToSignIn));
+    if (item.seats_available > 0) box.appendChild(actionButton("booking.signInToAsk", "submit-btn", goToSignIn));
     return;
   }
   if (currentUser.is_demo || item.driver_name === currentUser.name) return;
@@ -116,7 +119,7 @@ function fillAsk(box, kind, item, sent = false) {
     if (mine.status === "requested" || mine.status === "accepted") return;
   }
   if (!(item.seats_available > 0)) return;
-  box.appendChild(actionButton("booking.ask", "submit-btn secondary", () => showAskForm(box, kind, item)));
+  box.appendChild(actionButton("booking.ask", "submit-btn", () => showAskForm(box, kind, item)));
 }
 
 function showAskForm(box, kind, item) {

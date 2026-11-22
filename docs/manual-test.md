@@ -107,11 +107,13 @@ Still signed out in browser A. Searching is public: everything here must work wi
 - [ ] **2.7** Read the cards. **Expect:** at most 20. Each shows a figure in a circle and "Driver"
   instead of a name, a "Demo" label, the drive's own route, "Pickup ~hh:mm near (a stop), N km from
   your start", the same for the drop-off, "CHF N per seat" and "train ≈ CHF N". The price is never
-  above the train fare. Demo cards have no button to ask for a seat.
+  above the train fare. Demo cards have no button to ask for a seat. Each card has a small arrow at
+  its top right, and pointing at a card outlines it in green. Under the cards, a green-tinted panel
+  asks "Nothing that suits you?" with the filled button "Ask drivers for this ride".
 - [ ] **2.8** Click a card. **Expect:** its details open: the departure and the free seats, "To the
   pickup: N min on foot", "From the drop-off:" with times on foot, by car and by public transport,
-  "on time" or "N min earlier" or "later", "N km together" and "Show on map". A second click closes
-  them.
+  "on time" or "N min earlier" or "later", "N km together" and "Show on map". The arrow points up,
+  and the card says "Demo drives are fictional and can't be booked." A second click closes them.
 - [ ] **2.9** Click "Directions" in the details. **Expect:** Google Maps opens in a new tab with the
   way between the two points. The card stays open.
 - [ ] **2.10** Look for a card whose pickup or drop-off is 3 km or more away. **Expect:** its
