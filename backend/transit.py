@@ -110,6 +110,11 @@ _cache = _TtlCache(CACHE_MAX_ENTRIES)
 # Guards against same-named places elsewhere in the country.
 PLACE_STATION_MAX_KM = 10.0
 
+# How far a stop may be from a point of interest of the same name (the main
+# station's entry in the map data sits at one of its entrances, not in the
+# middle of the station).
+POI_STATION_MAX_M = 500.0
+
 # SBB's timetable takes stops as "<name>_I<station id>" joined by "~", the
 # date as YYYY-MM-DD and the time as HH_MM (verified against the live site:
 # it opens with the journey prefilled, priced and bookable). One SBB ticket
@@ -229,14 +234,57 @@ def station_for_place(place_name: str, lat: float, lon: float) -> dict | None:
     return fallback
 
 
-def resolve_station(lat: float, lon: float, place_name: str | None = None) -> dict | None:
+def station_for_poi(poi_name: str, lat: float, lon: float) -> dict | None:
+    """
+    The stop a point of interest the user picked by name is, when it is one
+    ("Zürich HB, Zurich" -> "Zürich HB"). The coordinate query would return
+    whichever stop happens to be listed first near the point (a lake pier
+    next to the main station), so the part of the label before the comma is
+    searched by name instead. A stop counts only when its name starts with
+    that part and it lies within POI_STATION_MAX_M of the point; a train
+    station wins over other stops. None otherwise, so callers fall back to
+    the nearest stop.
+    """
+    name = poi_name.split(",")[0].strip().casefold()
+    if not name:
+        return None
+    try:
+        stations = _search_stations(poi_name.split(",")[0].strip())
+    except (requests.RequestException, ValueError, KeyError, TypeError):
+        return None
+    fallback = None
+    for station in stations:
+        coordinate = station.get("coordinate") or {}
+        if not station.get("id") or coordinate.get("x") is None or coordinate.get("y") is None:
+            continue
+        if not (station.get("name") or "").casefold().startswith(name):
+            continue
+        distance_m = matching.haversine_km(lat, lon, coordinate["x"], coordinate["y"]) * 1000.0
+        if distance_m > POI_STATION_MAX_M:
+            continue
+        if station.get("icon") == "train":
+            return _named_station(station, round(distance_m))
+        if fallback is None and station.get("icon") != "cableway":
+            fallback = _named_station(station, round(distance_m))
+    return fallback
+
+
+def resolve_station(
+    lat: float, lon: float, place_name: str | None = None, poi_name: str | None = None,
+) -> dict | None:
     """
     The stop a passenger's journey should start/end at: the town's train
-    station when they picked a town by name (place_name given), otherwise
-    -- for a street address or a point on the map -- the nearest stop.
+    station when they picked a town by name (place_name given), the stop
+    of that name when they picked a point of interest (poi_name given),
+    otherwise -- for a street address or a point on the map -- the nearest
+    stop.
     """
     if place_name:
         station = station_for_place(place_name, lat, lon)
+        if station:
+            return station
+    if poi_name:
+        station = station_for_poi(poi_name, lat, lon)
         if station:
             return station
     return nearest_named_station(lat, lon)
@@ -373,6 +421,8 @@ def transit_option_for_trip(
     origin_place: str | None = None,
     destination_place: str | None = None,
     arrive_by: bool = False,
+    origin_poi: str | None = None,
+    destination_poi: str | None = None,
 ) -> dict | None:
     """
     Convenience wrapper: resolve both ends to stations and fetch
@@ -385,8 +435,8 @@ def transit_option_for_trip(
     Returns None if station lookup or connection search fails (e.g. no
     network access to transport.opendata.ch).
     """
-    origin_station = resolve_station(origin_lat, origin_lon, origin_place)
-    dest_station = resolve_station(destination_lat, destination_lon, destination_place)
+    origin_station = resolve_station(origin_lat, origin_lon, origin_place, origin_poi)
+    dest_station = resolve_station(destination_lat, destination_lon, destination_place, destination_poi)
     if not origin_station or not dest_station:
         return None
 

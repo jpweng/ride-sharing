@@ -242,7 +242,8 @@ function usePlace(role, place) {
 }
 
 // kind: "place" (a town picked by name -- public transport then starts/ends at
-// its train station), "address", or "point" (clicked on the map).
+// its train station), "poi" (a named place -- at its stop), "address", or
+// "point" (clicked on the map).
 function setPointCoords(role, lat, lon, name, kind = "point") {
   clearPoint(role);
   const marker = L.circleMarker([lat, lon], {
@@ -469,8 +470,9 @@ async function searchPhoton(query) {
       const street = [p.street, p.housenumber].filter(Boolean).join(" ");
       const town = [p.postcode, p.city].filter(Boolean).join(" ");
       const country = p.countrycode && p.countrycode !== "CH" ? p.country : "";
-      // "address": public transport starts/ends at the nearest stop.
-      pois.push({ label, detail: [street, town, country].filter(Boolean).join(", "), lat, lon, kind: "address" });
+      // "poi": public transport starts/ends at the stop of that name (Zürich HB),
+      // else at the nearest stop.
+      pois.push({ label, detail: [street, town, country].filter(Boolean).join(", "), lat, lon, kind: "poi" });
     }
     return pois;
   } catch {

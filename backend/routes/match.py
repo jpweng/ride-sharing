@@ -87,6 +87,8 @@ def transit_alone(payload: MatchRequest) -> dict | None:
         origin_place=payload.origin.name if payload.origin.kind == "place" else None,
         destination_place=payload.destination.name if payload.destination.kind == "place" else None,
         arrive_by=payload.time_kind == "arrive",
+        origin_poi=payload.origin.name if payload.origin.kind == "poi" else None,
+        destination_poi=payload.destination.name if payload.destination.kind == "poi" else None,
     )
 
 

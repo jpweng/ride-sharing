@@ -110,6 +110,7 @@ class LatLon(BaseModel):
     lon: float
     # How the user specified this point: "place" (picked a town/municipality
     # by name -- transit then starts/ends at that town's train station),
-    # "address" (a street address) or "point" (clicked on the map). The
-    # latter two use the nearest stop.
-    kind: Literal["place", "address", "point"] = "point"
+    # "poi" (a named point of interest -- transit then uses the stop of that
+    # name when there is one), "address" (a street address) or "point"
+    # (clicked on the map). The latter two use the nearest stop.
+    kind: Literal["place", "poi", "address", "point"] = "point"
