@@ -257,6 +257,60 @@ def test_the_search_answers_with_combined_trips(network, force_haversine):
     assert trip["driver_name"] is None              # not signed in: who drives isn't said
 
 
+def test_next_to_enough_drives_for_the_whole_way_demo_drives_are_left_out(network):
+    demo = db.create_drive(
+        driver_name="Demo", origin_name="A", origin_lat=A[0], origin_lon=A[1],
+        destination_name="B", destination_lat=B[0], destination_lon=B[1],
+        departure_time=f"{DAY}T08:00", seats_available=3, route_geometry=[[A[1], A[0]], [B[1], B[0]]],
+        route_distance_m=100_000, route_duration_s=6000, route_source="osrm", is_demo=True,
+    )
+    # Three drives found for the whole trip: the demo drive's part of the way is proposed too.
+    assert [t["id"] for t in combined.find(START, END, f"{DAY}T08:00", exclude_ids={101, 102, 103})] == [demo]
+    network.connection_queries.clear()
+    # Four: it isn't, and the timetable isn't asked.
+    assert combined.find(START, END, f"{DAY}T08:00", exclude_ids={101, 102, 103, 104}) == []
+    assert network.connection_queries == []
+    # A drive that can be booked still is.
+    real = _the_drive("08:15")
+    assert [t["id"] for t in combined.find(START, END, f"{DAY}T08:00", exclude_ids={101, 102, 103, 104})] == [real]
+
+
+def test_public_transport_alone_can_be_given_as_it_arrives(network):
+    _the_drive()
+    asked = []
+
+    def alone():
+        asked.append(len(network.connection_queries))
+        return {"connections": [_connection("08:10", "10:55")]}
+
+    [trip] = combined.find(START, END, f"{DAY}T08:00", transit_option=alone)
+    assert trip["vs_transit_min"] == 10
+    assert asked == [1]   # once, after the trip's own connection was looked up
+
+
+def test_the_search_asks_the_timetable_side_by_side(network, force_haversine, monkeypatch):
+    import threading
+    _the_drive()
+    started = threading.Event()
+    find = combined.find
+
+    def find_and_say_so(*args, **kwargs):
+        started.set()
+        return find(*args, **kwargs)
+
+    # Public transport alone answers only once the combined trips are being looked for.
+    monkeypatch.setattr(match_routes.combined, "find", find_and_say_so)
+    monkeypatch.setattr(match_routes.transit, "transit_option_for_trip", lambda *a, **k: (
+        {"from_station": "Start, station", "to_station": "End, station", "fare": None,
+         "connections": [_connection("08:10", "10:55")]} if started.wait(5) else None
+    ))
+    answer = match_routes.match_ride(match_routes.MatchRequest(
+        origin=START.model_dump(), destination=END.model_dump(), requested_time=f"{DAY}T08:00",
+    ))
+    assert answer["transit_option"]["to_station"] == "End, station"
+    assert [trip["vs_transit_min"] for trip in answer["combined_matches"]] == [10]
+
+
 # --- A ride between two public transport legs -----------------------------------------
 # The drive A -> B is near neither end of a trip from 89 km south of A to 100 km north of B.
 SOUTH = LatLon(name="Far", lat=FAR_SOUTH[0], lon=FAR_SOUTH[1])

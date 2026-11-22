@@ -39,6 +39,10 @@ A drive that passes near both ends is a plain match, not one of these.
   isn't says nothing about it.
 - At most 4, the earliest arrival first ("Leave at") or the latest start first ("Arrive by");
   two drives at the same time on the same trip make one proposal.
+- **Next to 4 or more drives for the whole way, only drives that can be booked:** the fictional
+  demo drives are then left out of the combined trips (as they are of the search's wider look,
+  [search limits](search-limits.md)). Such a search usually answers without a single timetable
+  lookup for them.
 
 A ride between two public transport legs has two changes, so it has rules of its own:
 
@@ -83,6 +87,11 @@ A ride between two public transport legs has two changes, so it has rules of its
    the end of the trip the time is about, one lookup at the time asked for serves every drive
    there, as in step 3; the 2 most promising drives that fit get a lookup for their other leg, at
    the car's own time.
+
+A search doesn't do its waiting in a row ([backend/routes/match.py](../backend/routes/match.py)):
+public transport alone is asked for when the search starts, the stop names and the legs to the
+drives found while the combined trips are looked for. A combined trip is compared with public
+transport alone once both are there.
 
 That is up to 9 connection lookups per search at the free timetable service, usually 6 or fewer,
 and up to 6 more when rides between two public transport legs are looked for (answers are cached

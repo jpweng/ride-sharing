@@ -19,7 +19,10 @@ Three shapes, for a passenger going from A to B:
       (MAX_SLOWER_BETWEEN).
 
 A drive that passes near both ends is a plain match (search.py), not one of
-these. And the ride has to be worth a change: it lasts at least MIN_RIDE_MIN,
+these. When a search has MAX_RESULTS of those or more, the fictional demo
+drives are left out here (as in search.py's wider look): only drives that
+can be booked are worth a change next to that many for the whole way, and
+the search answers without waiting for the timetable. And the ride has to be worth a change: it lasts at least MIN_RIDE_MIN,
 and it goes the passenger's way, bringing them closer to their destination
 by at least MIN_CLOSER_SHARE of the km ridden.
 
@@ -279,16 +282,18 @@ def _route_key(drive: dict):
 
 
 def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: str,
-                tolerance_min: float, radius_km: float, exclude_ids: set) -> list[dict]:
+                tolerance_min: float, radius_km: float, exclude_ids: set,
+                include_demo: bool = True) -> list[dict]:
     """The drives that can make a combined trip around the time asked for,
-    with their car part, the most promising first."""
+    with their car part, the most promising first. `include_demo`: False
+    leaves the demo drives out."""
     # Public transport may take a while before the car, or after it.
     slack = timedelta(minutes=tolerance_min + 1) + timedelta(hours=matching.MAX_DRIVE_HOURS)
     drives = db.list_drives(
         upcoming_only=True, with_geometry=False,
         departing_from=_iso(asked - slack - timedelta(hours=matching.MAX_DRIVE_HOURS)),
         departing_until=_iso(asked + slack),
-        include_demo=demo_drives.enabled(),
+        include_demo=include_demo and demo_drives.enabled(),
     )
     trip_km = matching.haversine_km(*origin, *destination)
     possible = []
@@ -690,7 +695,8 @@ def find(origin, destination, requested_time: str, time_kind: str = "depart",
     time to leave at, the earliest arrival; for a time to arrive by, the
     latest start. `exclude_ids`: the drives already found as plain matches.
     `transit_option`: public transport for the whole trip (transit.py), to
-    leave out what is much slower. Never raises: without the timetable
+    leave out what is much slower; or a function that gives it, called once
+    the trips are found (the caller can look it up meanwhile). Never raises: without the timetable
     service, or anything else going wrong, there are none.
     """
     try:
@@ -705,8 +711,15 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
           time_tolerance_min, radius_km) -> list[dict]:
     asked = _naive(requested_time)
     start, end = (origin.lat, origin.lon), (destination.lat, destination.lon)
-    alone_min = _transit_alone_min(transit_option)
     stations = {}
+    alone = []
+
+    def alone_min() -> float | None:
+        """Public transport alone, in minutes: asked for when the first trip
+        is compared with it."""
+        if not alone:
+            alone.append(_transit_alone_min(transit_option() if callable(transit_option) else transit_option))
+        return alone[0]
 
     def station(shape: str) -> dict | None:
         """The passenger's own stop at the end where a trip of `shape` is by
@@ -738,11 +751,11 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
         if off is None:
             return None
         total_min = _total_min(starts, arrives)
-        if alone_min is not None and total_min > alone_min * slower + grace_min:
+        if alone_min() is not None and total_min > alone_min() * slower + grace_min:
             return None
         trip = as_trip(off)
-        if alone_min is not None:
-            trip["vs_transit_min"] = round(total_min - alone_min)  # negative: quicker than public transport alone
+        if alone_min() is not None:
+            trip["vs_transit_min"] = round(total_min - alone_min())  # negative: quicker than public transport alone
         return trip
 
     def best(trips: list[dict]) -> list[dict]:
@@ -759,8 +772,11 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
     # car is, and each drive's own time decides: a lookup per drive.
     asked_end = RIDE_FIRST if time_kind == "arrive" else TRANSIT_FIRST
     began = time.monotonic()
+    # Next to enough drives for the whole way, only what can be booked.
+    enough = len(exclude_ids) >= MAX_RESULTS
     with search._search_slots:  # routes are parsed: one search's worth at a time
-        candidates = _candidates(start, end, asked, time_kind, time_tolerance_min, radius_km, exclude_ids)
+        candidates = _candidates(start, end, asked, time_kind, time_tolerance_min, radius_km, exclude_ids,
+                                 include_demo=not enough)
     futures = []
     for shape in (RIDE_FIRST, TRANSIT_FIRST):
         if not any(c["shape"] == shape for c in candidates) or not station(shape):
