@@ -74,7 +74,7 @@ lot, a village square).
 
 - `frontend/app.js`: `searchGeoAdmin(query)` calls the geo.admin.ch SearchServer directly from the
   browser (no backend proxy needed, same pattern as the existing Nominatim reverse-geocode call), debounced
-  (300ms, 3-char minimum). Fails soft — an empty result list on network error, so "Pick on map" is always
+  (150ms since the change below, 3-char minimum). Fails soft — an empty result list on network error, so "Pick on map" is always
   a working fallback. `setupAutocomplete(role)` wires a dropdown (mouse + arrow-key/Enter selection) under
   each of the four place-name inputs; selecting a suggestion sets the point (and its map marker) exactly
   like a map click does, via the existing `setPointCoords`.
@@ -148,3 +148,23 @@ data, called from the browser in parallel with geo.admin.ch.
   after geo.admin.ch's places and before its addresses, as "Astra Hotel, Vevey" with the address under
   it. They count as an address: public transport starts/ends at the nearest stop.
 - Queries go to komoot in Germany; the privacy notice lists it.
+
+### Words that find nothing, and the wait before a search
+
+A shop that neither source knows ("pneus direct sevaz": geo.admin.ch has no businesses, and
+OpenStreetMap only those someone has added) left the list with "Pick on map" alone, which looked like
+a broken search. The list now starts with a line saying that nothing was found. If part of the words
+names a town, a postcode or a settlement, those are offered under it ("Sévaz (FR)"):
+`searchTownAmong` in `app.js` searches the words without the first ones and without the last ones,
+the longest part first, in geo.admin.ch's places only, and keeps the names that contain the words
+(geo.admin.ch also answers with names that only resemble them). This costs up to six more requests,
+only for words that found nothing.
+
+A search started 300 ms after the last key, while the servers answer in about 0.1 s: most of the wait
+was ours, and nothing showed while someone typed. It now starts after 150 ms (`SEARCH_DELAY_MS`).
+Measured in a headless browser, the list shows about 0.25 s after the last key instead of 0.4 s. The
+first search of a visit takes about 0.1 s more, for the connections to the two servers; a
+`<link rel="preconnect">` added when a field gets the focus did not change that in the same test.
+
+Still not found: a business missing from OpenStreetMap, by its name. Only a commercial directory
+(Option 1 or 3) would find those.

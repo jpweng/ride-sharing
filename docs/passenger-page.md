@@ -11,6 +11,8 @@ map in [frontend/app.js](../frontend/app.js).
 ## The two fields
 
 - Typing finds addresses and places, as before (`setupAutocomplete` in `app.js`).
+  Words that find nothing (a shop neither search knows) get a line saying so, and under it the
+  town they name, if they name one. See [address auto complete.md](../address%20auto%20complete.md).
 - A field that is still empty offers the places of the passenger's recent searches (the same
   `GET /api/ride_requests` that used to fill the "recent searches" list), for From their starts
   first, for To their destinations.
