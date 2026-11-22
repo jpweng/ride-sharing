@@ -113,6 +113,9 @@ match (`pickup`, `dropoff`, `ride_km`, the prices of the part ridden, `bookable`
 
 As for matches, who drives is left out for someone who isn't signed in.
 
+The page asks for them on their own, after the drives: `POST /api/match/combined`
+([The passenger page](passenger-page.md), "In steps").
+
 ## On the page
 
 Under the matches, "A ride and public transport": a card per trip with its steps in order (two,

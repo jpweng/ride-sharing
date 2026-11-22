@@ -54,7 +54,34 @@ class _TtlCache:
     def __init__(self, max_entries: int):
         self.max_entries = max_entries
         self.entries = {}
+        self.asking = {}
         self.lock = threading.Lock()
+
+    def fetch(self, key, ask, ttl_s: float):
+        """
+        The cached answer for `key`, or ask()'s, kept for `ttl_s`. The same
+        question asked at the same time (the parts of one search, each in
+        its own request) is asked once: the others wait for that answer.
+        When it fails (ask() raises), they ask in their turn.
+        """
+        while True:
+            with self.lock:
+                hit = self.entries.get(key)
+                if hit is not None and hit[0] >= time.monotonic():
+                    return hit[1]
+                answered = self.asking.get(key)
+                if answered is None:
+                    answered = self.asking[key] = threading.Event()
+                    break
+            answered.wait(REQUEST_TIMEOUT_S * 2)
+        try:
+            value = ask()
+            self.put(key, value, ttl_s)
+            return value
+        finally:
+            with self.lock:
+                self.asking.pop(key, None)
+            answered.set()
 
     def get(self, key):
         with self.lock:
@@ -73,6 +100,7 @@ class _TtlCache:
     def clear(self):
         with self.lock:
             self.entries.clear()
+            self.asking.clear()
 
 
 _cache = _TtlCache(CACHE_MAX_ENTRIES)
@@ -104,24 +132,22 @@ def _nearby_stops(lat: float, lon: float) -> list[dict]:
     Raises on network/parse errors; callers fail soft. Cached by the
     coordinate rounded to ~10 m.
     """
-    key = ("stops", round(lat, 4), round(lon, 4))
-    stops = _cache.get(key)
-    if stops is not None:
+    def ask() -> list[dict]:
+        resp = requests.get(
+            f"{TRANSPORT_API_BASE}/locations",
+            params={"x": lat, "y": lon, "type": "coordinate"},
+            timeout=REQUEST_TIMEOUT_S,
+        )
+        resp.raise_for_status()
+        stops = []
+        for station in resp.json().get("stations", []):
+            coordinate = station.get("coordinate") or {}
+            if not station.get("id") or coordinate.get("x") is None or coordinate.get("y") is None:
+                continue
+            stops.append(station)
         return stops
-    resp = requests.get(
-        f"{TRANSPORT_API_BASE}/locations",
-        params={"x": lat, "y": lon, "type": "coordinate"},
-        timeout=REQUEST_TIMEOUT_S,
-    )
-    resp.raise_for_status()
-    stops = []
-    for station in resp.json().get("stations", []):
-        coordinate = station.get("coordinate") or {}
-        if not station.get("id") or coordinate.get("x") is None or coordinate.get("y") is None:
-            continue
-        stops.append(station)
-    _cache.put(key, stops, STOPS_TTL_S)
-    return stops
+
+    return _cache.fetch(("stops", round(lat, 4), round(lon, 4)), ask, STOPS_TTL_S)
 
 
 def _named_station(station: dict, distance_m: float | None) -> dict:
@@ -149,19 +175,16 @@ def nearest_named_station(lat: float, lon: float) -> dict | None:
 
 
 def _search_stations(query: str) -> list[dict]:
-    key = ("search", query)
-    stations = _cache.get(key)
-    if stations is not None:
-        return stations
-    resp = requests.get(
-        f"{TRANSPORT_API_BASE}/locations",
-        params={"query": query, "type": "station"},
-        timeout=REQUEST_TIMEOUT_S,
-    )
-    resp.raise_for_status()
-    stations = resp.json().get("stations", [])
-    _cache.put(key, stations, STOPS_TTL_S)
-    return stations
+    def ask() -> list[dict]:
+        resp = requests.get(
+            f"{TRANSPORT_API_BASE}/locations",
+            params={"query": query, "type": "station"},
+            timeout=REQUEST_TIMEOUT_S,
+        )
+        resp.raise_for_status()
+        return resp.json().get("stations", [])
+
+    return _cache.fetch(("search", query), ask, STOPS_TTL_S)
 
 
 def station_for_place(place_name: str, lat: float, lon: float) -> dict | None:
@@ -255,18 +278,19 @@ def get_connections(
         except ValueError:
             pass
 
-    key = ("connections", tuple(sorted(params.items())))
-    cached = _cache.get(key)
-    if cached is not None:
-        return cached
-    try:
+    def ask() -> list[dict]:
         resp = requests.get(f"{TRANSPORT_API_BASE}/connections", params=params, timeout=REQUEST_TIMEOUT_S)
         resp.raise_for_status()
-        data = resp.json()
-        connections = data.get("connections", [])
+        return _simplified(resp.json().get("connections", []), limit)
+
+    try:
+        return _cache.fetch(("connections", tuple(sorted(params.items()))), ask, CONNECTIONS_TTL_S)
     except (requests.RequestException, ValueError, KeyError):
         return []
 
+
+def _simplified(connections: list, limit: int) -> list[dict]:
+    """The API's connections as get_connections() gives them."""
     simplified = []
     for conn in connections[:limit]:
         try:
@@ -306,7 +330,6 @@ def get_connections(
             })
         except (KeyError, TypeError):
             continue
-    _cache.put(key, simplified, CONNECTIONS_TTL_S)
     return simplified
 
 

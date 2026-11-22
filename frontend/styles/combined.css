@@ -4,6 +4,9 @@
 /* No drive for the whole way: the combined trips' own title is enough. */
 #ride-results.no-direct .matches-title { display: none; }
 
+/* Under the drives, while the combined trips are still being looked for. */
+.hint.combined-searching { margin: 10px 0 2px; font-size: 13px; }
+
 .combined-steps { margin: 8px 0 6px; }
 .combined-step {
   display: flex;

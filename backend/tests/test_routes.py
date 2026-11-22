@@ -51,6 +51,8 @@ API_ROUTES = {
     ("post", "/api/bookings/{booking_id}/report"),
     ("get", "/api/price_band"),
     ("post", "/api/match"),
+    ("post", "/api/match/transit"),
+    ("post", "/api/match/combined"),
     ("get", "/api/ride_requests"),
     ("post", "/api/requests"),
     ("get", "/api/requests"),

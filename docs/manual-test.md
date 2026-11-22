@@ -178,6 +178,10 @@ Still signed out in browser A. Searching is public: everything here must work wi
   NN min in all" and the ride's price. With no drive for the whole way, one line above says so. If
   the section is missing, try Sion → Genève at 06:20, or Genève → Bulle around 17:30. Step 5.21
   makes one for certain.
+- [ ] **2.27b** Search again while watching the results. **Expect:** the drives (or "Searching…")
+  first; "Searching…" where the public transport line will be and, under drives,
+  "Looking for rides combined with public transport…"; then each part in its place, without the
+  drives' cards moving or closing.
 - [ ] **2.28** Read the end of each combined card's total line. **Expect:** "N min quicker than
   public transport alone" on a trip at least 5 minutes quicker. Nothing about it on the others: none
   says it is slower.

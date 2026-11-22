@@ -1358,12 +1358,26 @@ async function findRide() {
   resultsLayer.clearLayers();
   lastResults = null;
 
+  // The drives come first: finding them waits for nothing. Public transport
+  // alone and the rides for part of the way (combined.js) wait for the
+  // timetable, and are filled in as they arrive (see renderResults).
+  const later = (path, body, key, none) => postJson(path, body).then((part) => part[key], () => none);
+  const transitAlone = later("/api/match/transit", payload, "transit_option", null);
   try {
-    const data = await postJson("/api/match", payload);
+    const data = await postJson("/api/match", { ...payload, drives_only: true });
     if (search !== searchNumber) return; // a newer search has started
+    Object.assign(data, { combined_matches: STILL_SEARCHING, transit_option: STILL_SEARCHING });
     lastResults = { data, origin, destination };
     renderResults();
     loadRecentSearches();
+    const fillIn = (key) => (value) => {
+      if (search !== searchNumber) return;
+      data[key] = value;
+      renderResults(key);
+    };
+    transitAlone.then(fillIn("transit_option"));
+    later("/api/match/combined", { ...payload, exclude_ids: data.driver_matches.map((m) => m.id) }, "combined_matches", [])
+      .then(fillIn("combined_matches"));
   } catch (err) {
     if (search !== searchNumber) return;
     showStatus("ride-status", err.message, false);
@@ -1390,11 +1404,20 @@ let lastResults = null;
 // results: each function gets the search's answer and the passenger's two ends.
 const RESULT_SECTIONS = [];
 
-function renderResults() {
+// A part of the results that hasn't arrived yet ("combined_matches",
+// "transit_option"): the page says it is still searching there.
+const STILL_SEARCHING = "searching";
+
+// `arrived`: the part that has just come in, when the rest is already shown.
+// The drives' cards are then left as they are (one may be open), unless
+// there are none: what the page says instead depends on the combined trips.
+function renderResults(arrived) {
   const { data, origin, destination } = lastResults;
-  renderMatches(data.driver_matches, origin, destination, data);
-  RESULT_SECTIONS.forEach((render) => render(data, origin, destination));
-  renderTransitOption(data.transit_option);
+  if (arrived !== "transit_option") {
+    if (!arrived || !data.driver_matches.length) renderMatches(data.driver_matches, origin, destination, data);
+    RESULT_SECTIONS.forEach((render) => render(data, origin, destination));
+  }
+  if (arrived !== "combined_matches") renderTransitOption(data.transit_option);
 }
 
 // A match's pickup or drop-off in one sentence: the time, the place's name
@@ -1449,10 +1472,16 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
   const container = document.getElementById("ride-matches");
   container.classList.remove("has-selection");
   // A ride for part of the way (combined.js) is something to choose too.
-  const combined = (limits.combined_matches || []).length;
-  document.getElementById("ride-results").classList.toggle("no-matches", !matches.length && !combined);
+  // While those are still being looked for, nothing is said about there being none.
+  const searching = limits.combined_matches === STILL_SEARCHING;
+  const combined = searching ? 0 : (limits.combined_matches || []).length;
+  document.getElementById("ride-results").classList.toggle("no-matches", !matches.length && !combined && !searching);
   document.getElementById("ride-results").classList.toggle("no-direct", !matches.length && combined > 0);
-  document.getElementById("ride-ask").classList.toggle("secondary", matches.length + combined > 0);
+  document.getElementById("ride-ask").classList.toggle("secondary", matches.length + combined > 0 || searching);
+  if (!matches.length && searching) {
+    container.innerHTML = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
+    return;
+  }
   if (!matches.length && combined) {
     container.innerHTML = `<div class="hint no-direct">${esc(t("combined.noDirect"))}</div>`;
     return;
@@ -1627,6 +1656,10 @@ const TRANSIT_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true
 
 function renderTransitOption(transit) {
   const container = document.getElementById("ride-transit");
+  if (transit === STILL_SEARCHING) {
+    container.innerHTML = `<div class="empty-state">${esc(t("ride.searching"))}</div>`;
+    return;
+  }
   if (!transit || !transit.connections.length) {
     container.innerHTML = `<div class="empty-state">${esc(t("ride.noTransit"))}</div>`;
     return;

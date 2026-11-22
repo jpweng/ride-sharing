@@ -45,6 +45,8 @@ Rides:
   for the best ones where it makes sense (`first_mile_transit`, `last_mile_transit`; see
   [Search limits](search-limits.md)), trips that combine a ride with public transport
   (`combined_matches`; see [A ride and public transport](combined-trips.md)), and a pure public-transport alternative
+  (`transit_option`). With `"drives_only": true` it answers with the drives alone, at once: the
+  page asks for the other two on their own (see [The passenger page](passenger-page.md), "In steps").
 - `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`),
   at least 15 minutes and at most 14 days ahead (400 `request_too_soon`, `request_too_far`), between
   two different places (400 `no_distance`). To
