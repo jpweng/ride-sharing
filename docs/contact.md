@@ -66,9 +66,6 @@ masks those of secrets. The address is never shown to visitors.
 With Amazon SES still in sandbox mode, the address must be a verified one
 (`ses_sandbox_test_recipients`, see [Deploying to AWS](deploying-to-aws.md)).
 
-The privacy notice names where the mailbox is hosted (the "Services the site uses" section); change
-it there when the mailbox moves.
-
 ## Endpoints
 
 - `GET  /api/contact` — public; `{"enabled": true|false}`, whether the form is switched on
