@@ -4,6 +4,12 @@ reach the pickup in the time window, and their routes only for those that
 can pass near both ends, then matches them (see matching.py). Used by
 /api/match and by ride requests (notify.py).
 
+Two things keep that short with a week of demo drives in the database
+(tens of thousands in a search's time window): the database leaves out
+most of the drives that can't pass near both ends (db.list_drives'
+passing_near), and the routes, once read and thinned out for matching, are
+kept for the next searches (prepared_routes).
+
 The passenger gives a start, a destination and a time (when to leave, or
 when to arrive: time_kind, see matching.py), nothing else: how
 far a drive may pass from each end and how far from their time it may be
@@ -22,6 +28,8 @@ they're left out altogether.
 """
 import os
 import threading
+import time
+from collections import OrderedDict
 from datetime import datetime, timedelta
 
 import database as db
@@ -36,6 +44,61 @@ import matching
 # each, and the server does the most searches per second.
 SEARCH_CONCURRENCY = int(os.environ.get("SEARCH_CONCURRENCY", "1"))
 _search_slots = threading.BoundedSemaphore(SEARCH_CONCURRENCY)
+
+
+# Routes ready for matching (matching.prepare_route), kept between searches:
+# reading a stored route and thinning it out is most of what a search
+# computes, and the drives of a demo trip all share one. The last
+# ROUTES_KEPT used, each for ROUTES_KEPT_S at most (a demo trip's route can
+# be fetched again, maintenance.py). About 40 KB each on average.
+ROUTES_KEPT = 400
+ROUTES_KEPT_S = 3600.0
+_routes = OrderedDict()
+_routes_lock = threading.Lock()
+
+
+def route_key(drive: dict):
+    """What tells one stored route from another before they are loaded: demo
+    drives between the same two places share theirs, a posted drive has its own."""
+    if drive.get("is_demo"):
+        return (drive["origin_lat"], drive["origin_lon"], drive["destination_lat"], drive["destination_lon"],
+                drive.get("route_distance_m"))
+    return drive["id"]
+
+
+def prepared_routes(drives: list[dict]) -> dict[int, list]:
+    """
+    drive id -> its route as matching.prepare_route() gives it, for each of
+    `drives` (without their geometry, as db.list_drives gives them). Drives
+    that share a route (route_key) get the same list: nobody changes it.
+    Only the routes not kept from an earlier search are read.
+    """
+    now = time.monotonic()
+    routes, missing = {}, {}
+    with _routes_lock:
+        for d in drives:
+            key = route_key(d)
+            kept = _routes.get(key)
+            if kept is not None and kept[0] > now:
+                _routes.move_to_end(key)
+                routes[d["id"]] = kept[1]
+            else:
+                missing.setdefault(key, []).append(d)
+    if missing:
+        geometries = db.route_geometries([same[0]["id"] for same in missing.values()])
+        prepared = {
+            key: matching.prepare_route(geometries.get(same[0]["id"]), same[0]) for key, same in missing.items()
+        }
+        with _routes_lock:
+            for key, route in prepared.items():
+                _routes[key] = (now + ROUTES_KEPT_S, route)
+                _routes.move_to_end(key)
+            while len(_routes) > ROUTES_KEPT:
+                _routes.popitem(last=False)
+        for key, same in missing.items():
+            for d in same:
+                routes[d["id"]] = prepared[key]
+    return routes
 
 
 def with_bookable(drive: dict) -> dict:
@@ -122,6 +185,8 @@ def _upcoming_matches(
         departing_from=(asked - tolerance - timedelta(hours=matching.MAX_DRIVE_HOURS)).isoformat(timespec="minutes"),
         departing_until=(asked + tolerance).isoformat(timespec="minutes"),
         include_demo=include_demo and demo_drives.enabled(),
+        # Left out by the database already: most of those that can't pass near both ends.
+        passing_near=[(*origin, pickup_radius_km), (*destination, dropoff_radius_km)],
     )
     # Routes (large) only for the drives that can pass near both ends.
     candidates = [
@@ -130,9 +195,6 @@ def _upcoming_matches(
         and matching.could_pass_near(d, origin, pickup_radius_km)
         and matching.could_pass_near(d, destination, dropoff_radius_km)
     ]
-    geometries = db.route_geometries([d["id"] for d in candidates])
-    for d in candidates:
-        d["route_geometry"] = geometries.get(d["id"])
     return [with_bookable(m) for m in matching.find_matches(
         candidates, origin, destination, requested_time,
         pickup_radius_km=pickup_radius_km,
@@ -140,4 +202,5 @@ def _upcoming_matches(
         time_tolerance_min=time_tolerance_min,
         max_results=max_results,
         time_kind=time_kind,
+        routes=prepared_routes(candidates),
     )]
