@@ -4,7 +4,9 @@
 // A ride for part of the way and public transport for the rest
 // (docs/combined-trips.md): the search's "combined_matches", shown under the
 // drives that make the whole trip. A card says who drives and gives the
-// trip's two steps, in order, with their times; a click opens its details.
+// trip's steps, in order, with their times: the ride and public transport
+// before it, after it, or both ("transit_ride_transit": a drive that is near
+// neither end of the trip). A click opens its details.
 // Loaded after app.js, whose results, cards and map it uses.
 // ---------------------------------------------------------------------
 const CAR_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5v-4l1.8-4.6a2 2 0 0 1 1.9-1.4h7.6a2 2 0 0 1 1.9 1.4l1.8 4.6v4M3.5 12.5h17M7 16.5v2M17 16.5v2M7.5 14.6h.01M16.5 14.6h.01"/></svg>';
@@ -47,24 +49,31 @@ function showCombinedOnMap(m, origin, destination) {
 }
 
 function combinedCard(m, origin, destination) {
+  const between = m.shape === "transit_ride_transit";
   const rideFirst = m.shape === "ride_then_transit";
-  const connection = m.transit.connection;
+  // Public transport before the car, after it, or both.
+  const before = between ? m.transit_before : rideFirst ? null : m.transit;
+  const after = between ? m.transit_after : rideFirst ? m.transit : null;
+  const legs = [before, after].filter(Boolean);
   // The car's part, for asking for a seat on it (bookings.js): to or from
-  // the stop where the passenger changes.
-  m.ride_from = rideFirst ? origin : m.change;
-  m.ride_to = rideFirst ? m.change : destination;
+  // the stop where the passenger changes, or between the two.
+  m.ride_from = between ? m.change_before : rideFirst ? origin : m.change;
+  m.ride_to = between ? m.change_after : rideFirst ? m.change : destination;
 
-  const gap = rideFirst
-    ? t("combined.pickupGap", { km: fmtNumber(m.pickup.gap_km) })
-    : t("combined.dropoffGap", { km: fmtNumber(m.dropoff.gap_km) });
-  const ride = combinedStep(
-    CAR_ICON, m.pickup.time, m.dropoff.time,
-    `${esc(t(rideFirst ? "combined.carTo" : "combined.carFrom", { place: m.change.name }))}<span class="combined-gap">${esc(gap)}</span>`,
-  );
-  const transit = combinedStep(
-    TRANSIT_ICON, connection.departure, connection.arrival,
-    esc(t("combined.transitTo", { place: m.transit.to_station })),
-  );
+  let byCar;
+  if (between) {
+    byCar = esc(t("combined.carBetween", { from: m.change_before.name, to: m.change_after.name }));
+  } else {
+    const gap = rideFirst
+      ? t("combined.pickupGap", { km: fmtNumber(m.pickup.gap_km) })
+      : t("combined.dropoffGap", { km: fmtNumber(m.dropoff.gap_km) });
+    byCar = `${esc(t(rideFirst ? "combined.carTo" : "combined.carFrom", { place: m.change.name }))}<span class="combined-gap">${esc(gap)}</span>`;
+  }
+  const ride = combinedStep(CAR_ICON, m.pickup.time, m.dropoff.time, byCar);
+  const transitStep = (leg) => (leg ? combinedStep(
+    TRANSIT_ICON, leg.connection.departure, leg.connection.arrival,
+    esc(t("combined.transitTo", { place: leg.to_station })),
+  ) : "");
 
   const card = document.createElement("div");
   card.className = `match-card combined-card clickable${m.is_demo ? " demo" : ""}`;
@@ -76,15 +85,15 @@ function combinedCard(m, origin, destination) {
         <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)}</div>
       </div>
     </div>
-    <div class="combined-steps">${rideFirst ? ride + transit : transit + ride}</div>
+    <div class="combined-steps">${transitStep(before)}${ride}${transitStep(after)}</div>
     <div class="meta combined-total">${esc(
       [t("combined.total", { duration: fmtMinutes(m.total_min) }), quickerThanTransit(m.vs_transit_min)].filter(Boolean).join(" · ")
     )}</div>
     ${priceBadges(m)}
     <div class="match-details" hidden>
       <div class="meta">${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))} · ${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</div>
-      <div class="last-mile"><strong>${esc(m.transit.from_station)} → ${esc(m.transit.to_station)}</strong>
-        ${renderFare(m.transit.fare)}${renderConnections([connection])}</div>
+      ${legs.map((leg) => `<div class="last-mile"><strong>${esc(leg.from_station)} → ${esc(leg.to_station)}</strong>
+        ${renderFare(leg.fare)}${renderConnections([leg.connection])}</div>`).join("")}
       <button type="button" class="link-btn match-on-map">${esc(t("match.showOnMap"))}</button>
     </div>
   `;

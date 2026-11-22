@@ -5,13 +5,17 @@ public transport: the car for part of the way, the train or the bus for the rest
 [backend/combined.py](../backend/combined.py) finds them; the page shows them in
 [frontend/combined.js](../frontend/combined.js).
 
-## The two shapes
+## The three shapes
 
 - **A ride, then public transport** (`ride_then_transit`): a drive picks the passenger up near
   their start (within a search's 10 km) and takes them towards their destination. They get out
   where its route is closest to the destination and go on from the stop there.
 - **Public transport, then a ride** (`transit_then_ride`): public transport takes them to a stop
   on a drive's route, where the drive picks them up and drops them near their destination.
+- **Public transport, a ride, public transport** (`transit_ride_transit`): a drive that is near
+  neither end of the trip but goes the passenger's way, like Zürich → Fribourg for someone going
+  from St. Gallen to a village near Payerne. They ride all of it: public transport takes them to
+  the stop where the drive starts, and on from the stop where it ends.
 
 A drive that passes near both ends is a plain match, not one of these.
 
@@ -36,6 +40,21 @@ A drive that passes near both ends is a plain match, not one of these.
 - At most 4, the earliest arrival first ("Leave at") or the latest start first ("Arrive by");
   two drives at the same time on the same trip make one proposal.
 
+A ride between two public transport legs has two changes, so it has rules of its own:
+
+- **Only when there is room:** they are looked for when the search has fewer than 4 drives and
+  combined trips to show, and fill what is left of the 4.
+- **The whole drive, near neither end:** it starts more than 10 km from the passenger's start and
+  ends more than 10 km from their destination (nearer, it is one of the other shapes). The rules
+  above about the ride and the stops apply to it, the stops being within 3 km of its two ends.
+- **Not much of a detour:** from the passenger's start to where the drive starts, the drive, and
+  from where it ends to their destination are together at most 1.15 times the straight line
+  between their two ends (`MAX_DETOUR`). Zürich → Bern is on the way from St. Gallen to Payerne,
+  Zürich → Basel is not.
+- **It may take longer than the others:** up to 1.5 times public transport alone plus 30 minutes
+  (`MAX_SLOWER_BETWEEN`), since two changes seldom make a quick trip. The card says how long it
+  takes, as every card does.
+
 ## How they are found
 
 1. From the drives of the time window, those that last at least 10 minutes and can pass near one
@@ -58,18 +77,28 @@ A drive that passes near both ends is a plain match, not one of these.
      arrive by it, or leave from it) serves every drive that changes there; the 2 best that fit
      one of them are kept. When none fits and a drive is at the stop well before those
      connections (or well after), the closest one gets a lookup at its own time.
+4. When that leaves room, the rides between two public transport legs, in what is left of the 5
+   seconds (not started with less than a second left). The drives come from their two ends and
+   times alone, no route is loaded to find them. For the 2 most promising places to change at, at
+   the end of the trip the time is about, one lookup at the time asked for serves every drive
+   there, as in step 3; the 2 most promising drives that fit get a lookup for their other leg, at
+   the car's own time.
 
-That is up to 9 more connection lookups per search at the free, rate-limited timetable service,
-usually 6 or fewer (answers are cached for 5 minutes).
+That is up to 9 connection lookups per search at the free timetable service, usually 6 or fewer,
+and up to 6 more when rides between two public transport legs are looked for (answers are cached
+for 5 minutes). The service has no fixed limit per client and asks applications to cache; it
+throttles one that asks the same question every few seconds.
 
 ## In the API
 
 `POST /api/match` returns `combined_matches` next to `driver_matches`: each is the drive, as a
 match (`pickup`, `dropoff`, `ride_km`, the prices of the part ridden, `bookable`), with:
 
-- `shape`: `ride_then_transit` or `transit_then_ride`;
+- `shape`: `ride_then_transit`, `transit_then_ride` or `transit_ride_transit`;
 - `transit`: `{from_station, to_station, connection, fare}`, the connection as in `transit_option`;
 - `change`: `{name, lat, lon}`, the stop where the passenger changes;
+- for `transit_ride_transit`, instead of those two: `transit_before` and `transit_after` (each as
+  `transit`), `change_before` and `change_after` (the stops where the passenger gets in and out);
 - `starts`, `arrives`, `total_min`: the whole trip;
 - `vs_transit_min`: minutes longer (negative: shorter) than public transport alone, when known.
 
@@ -77,9 +106,10 @@ As for matches, who drives is left out for someone who isn't signed in.
 
 ## On the page
 
-Under the matches, "A ride and public transport": a card per trip with its two steps in order,
-each with its times, the total (and how much quicker than public transport alone, when it is), and the price of
-the ride. Its details give the connection with its ticket link and fare. "Request a seat" asks for
-the car's part: from the passenger's start to the stop, or from the stop to their destination
+Under the matches, "A ride and public transport": a card per trip with its steps in order (two,
+or three for a ride between two public transport legs), each with its times, the total (and how
+much quicker than public transport alone, when it is), and the price of the ride. Its details give
+each connection with its ticket link and fare. "Request a seat" asks for the car's part: from the
+passenger's start to the stop, from the stop to their destination, or from one stop to the other
 (`ride_from`, `ride_to`), a booking like any other ([Booking](booking.md)). Without a drive for
 the whole way, the page says so in one line above them.

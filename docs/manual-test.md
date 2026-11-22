@@ -451,6 +451,12 @@ minute, or at once when you change page.
   (a stop in Lausanne)", then "Public transport to Genève", with "Request a seat".
 - [ ] **5.22** Ask for a seat on that card. **Expect:** the booking in "Your bookings" is for the
   car's part only. D sees the request with the trip from Bulle to that stop.
+- [ ] **5.22b** As D, offer Lausanne → Bern, tomorrow 09:00 (if not offered yet). As P, search Genève → Burgdorf, "Leave
+  at" tomorrow 07:30. **Expect:** under "A ride and public transport", a card for Daniel D. with
+  three steps: "Public transport to (a stop in Lausanne)", "By car from (that stop) to (a stop in
+  Bern)", "Public transport to Burgdorf", then the total. Its details give both connections, each
+  with its ticket's price and "Tickets on SBB". (Such a card appears when the search has fewer than
+  four drives and combined trips to show.)
 - [ ] **5.23** As P, search Rolle → Bern, tomorrow 08:00. **Expect:** above the results, "No ride
   you can book passes within 10 km of your start and destination. The ones marked “further away”
   pass within 30 km…". Daniel D.'s Lausanne → Bern drive carries the "further away" label and can be

@@ -1,4 +1,5 @@
 {
+  "combined.carBetween": "By car from {from} to {to}",
   "combined.carFrom": "By car from {place}",
   "combined.carTo": "By car to {place}",
   "combined.dropoffGap": "drop-off {km} km from your destination",
