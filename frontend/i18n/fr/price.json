@@ -5,6 +5,8 @@
   "price.rideAndTrain": "voiture CHF {ride} + train CHF {train}",
   "price.rideAndTrainApprox": "voiture CHF {ride} + train ≈ CHF {train}",
   "price.train": "train CHF {price}",
+  "price.trainAlone": "train seul CHF {price}",
+  "price.trainAloneApprox": "train seul ≈ CHF {price}",
   "price.trainApprox": "train ≈ CHF {price}",
   "price.trainHint": "Billet de train 2e classe, plein tarif, pour la même distance",
   "price.withPassengers": "{n} passagers : CHF {price} chacun",

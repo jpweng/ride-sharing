@@ -1452,38 +1452,50 @@ function ridePrice(m) {
   return tripPrice(t("price.amount", { price: fmtChf(m.price_chf) }), note, train ? t("price.trainHint") : "");
 }
 
-// Where the car picks the passenger up and drops them, when it isn't at
-// their own start or destination: "pickup 0.5 km from your start".
-function gapsText(m) {
+// Where the car picks the passenger up and drops them, when that is more
+// than `overKm` from their own start or destination: "pickup 0.5 km from
+// your start". A card's details say it from the first metre; the card itself
+// only beyond a short walk (FAR_GAP_KM), where the trip doesn't end at the
+// door.
+const FAR_GAP_KM = 1;
+
+function gapsText(m, overKm = 0) {
   return [["combined.pickupGap", m.pickup], ["combined.dropoffGap", m.dropoff]]
-    .filter(([, point]) => point.gap_km > 0)
+    .filter(([, point]) => point.gap_km > overKm)
     .map(([key, point]) => t(key, { km: fmtNumber(point.gap_km) }))
     .join(" · ");
 }
 
-// A drive for the whole trip in one line: by car, between the two places
-// where the passenger gets in and out when they have a name.
-const CAR_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5v-4l1.8-4.6a2 2 0 0 1 1.9-1.4h7.6a2 2 0 0 1 1.9 1.4l1.8 4.6v4M3.5 12.5h17M7 16.5v2M17 16.5v2M7.5 14.6h.01M16.5 14.6h.01"/></svg>';
-
-function rideStep(m) {
-  const [from, to] = [m.pickup.name, m.dropoff.name];
-  const byCar = from && to ? t("combined.carBetween", { from, to })
-    : from ? t("combined.carFrom", { place: from })
-    : to ? t("combined.carTo", { place: to })
-    : t("match.byCar");
-  const gaps = gapsText(m);
-  return `<div class="trip-step">${CAR_ICON}<span>${esc(byCar)}${
-    gaps ? `<span class="trip-gap">${esc(gaps)}</span>` : ""
-  }</span></div>`;
+function farGapsNote(m) {
+  const gaps = gapsText(m, FAR_GAP_KM);
+  return gaps ? `<div class="trip-gap">${esc(gaps)}</div>` : "";
 }
 
-// Who drives, under the trip: the circle, the name (ratings.js puts the
-// rating next to it) and the demo label.
-function driverLine(m) {
-  return `<div class="match-head">
-    ${driverAvatar(m)}
-    <div class="match-name">${esc(m.driver_name || t("match.driver"))}${demoBadge(m)}</div>
-  </div>`;
+// The car, for a combined trip's steps (combined.js).
+const CAR_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5v-4l1.8-4.6a2 2 0 0 1 1.9-1.4h7.6a2 2 0 0 1 1.9 1.4l1.8 4.6v4M3.5 12.5h17M7 16.5v2M17 16.5v2M7.5 14.6h.01M16.5 14.6h.01"/></svg>';
+
+// Who drives, in words that can't be taken for anything else: "Judith
+// drives you to Zürich" (a person, at the wheel, in their car), with their
+// circle in front, their name in bold and the demo label (ratings.js puts
+// the rating next to the name). Without a name (signed out): "A driver takes
+// you to Zürich". `places`: {from, to}, either one, none, or {on: true}
+// ("on from there": the place was just named, by the public transport
+// before).
+const NAME_HERE = "\u0001";
+
+function whoDrives(m, places = {}) {
+  const form = places.on ? "On" : places.from && places.to ? "Between" : places.to ? "To" : places.from ? "From" : "";
+  const sentence = t(`match.${m.driver_name ? "drives" : "takes"}${form}`, {
+    name: NAME_HERE, from: places.from, to: places.to, place: places.to || places.from,
+  });
+  const name = `<span class="match-name">${esc(m.driver_name || t("match.aDriver"))}${demoBadge(m)}</span>`;
+  return `<span class="trip-part">${driverAvatar(m)}<span>${esc(sentence).replace(NAME_HERE, name)}</span></span>`;
+}
+
+// A trip's parts, in order, one a line: "Judith drives you to Zürich", then
+// "Public transport to Sévaz".
+function tripHow(parts) {
+  return `<div class="trip-how">${parts.filter(Boolean).join("")}</div>`;
 }
 
 function minutesBetween(startIso, endIso) {
@@ -1527,7 +1539,7 @@ function driverAvatar(m) {
 // The drives that serve the trip, the best first (see backend/search.py).
 // `limits`: the search's answer, for its two distances. A card says when the
 // passenger gets in and out, how long the ride takes and its price, then
-// where, then who drives; a
+// who drives them from where to where; a
 // click opens its details, and "Show on map" there opens the map on that
 // drive's route. Without any, asking the drivers is what the page proposes
 // (styles/passenger.css: .no-matches).
@@ -1626,11 +1638,12 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     card.style.borderLeftColor = color;
     card.innerHTML = `
       ${tripLine(m.pickup.time, m.dropoff.time, minutesBetween(m.pickup.time, m.dropoff.time), ridePrice(m))}
-      ${rideStep(m)}
+      ${tripHow([whoDrives(m, { from: m.pickup.name, to: m.dropoff.name })])}
+      ${farGapsNote(m)}
       ${m.wider ? `<span class="badge wider">${esc(t("match.wider"))}</span>` : ""}
-      ${driverLine(m)}
       <div class="match-details" hidden>
         <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
+        ${gapsText(m) ? `<div class="meta">${esc(gapsText(m))}</div>` : ""}
         ${onwardLine("pickup", m.pickup, passengerOrigin, null)}
         ${onwardLine("dropoff", m.dropoff, passengerDestination, m.dropoff.onward)}
         ${timeDiffBadge(m.time_diff_min)}

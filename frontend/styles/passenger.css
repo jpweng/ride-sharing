@@ -276,41 +276,57 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
 }
 .match-card.clickable:hover .trip-line::after { border-color: var(--accent); }
 .match-card.open .trip-line::after { margin-top: 10px; transform: rotate(-135deg); }
-/* A drive for the whole trip: by car, from where to where. */
-.trip-step {
+/* How the trip goes, its parts in order, one a line: who drives the
+   passenger (their circle, their name in bold), and public transport before
+   or after it (its sign in a circle of the same size). */
+.trip-how {
   display: flex;
+  flex-direction: column;
   gap: 6px;
-  align-items: baseline;
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 14px;
+  line-height: 1.35;
 }
-.trip-step .pt-icon {
+.trip-part {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.trip-part .avatar,
+.trip-icon {
   flex: none;
-  align-self: center;
-  width: 16px;
-  height: 16px;
+  width: 28px;
+  height: 28px;
+}
+.trip-part .avatar { font-size: 13px; }
+.trip-part .avatar svg { width: 18px; height: 18px; }
+.trip-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eef0f3;
+  color: var(--muted);
+}
+.trip-icon .pt-icon {
+  width: 17px;
+  height: 17px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.trip-gap { display: block; font-size: 12px; color: var(--muted); }
+.match-name { font-weight: 700; }
+/* Beyond a short walk, how far the car passes from the passenger's own start
+   or destination. */
+.trip-gap { margin: 4px 0 0 36px; font-size: 12px; color: var(--muted); }
 /* Asking for a seat is what a card is for: the filled button. */
 .match-card .booking-box .submit-btn { padding: 9px 16px; }
 /* A demo ride has no such button: once opened, it says why (bookings.js). */
 .match-card .demo-note { margin: 0; }
 .match-card:not(.open) .demo-note { display: none; }
-/* Who drives, under the trip. */
-.match-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-.match-name { min-width: 0; font-size: 14px; font-weight: 600; }
-.match-head .avatar { width: 28px; height: 28px; font-size: 13px; }
-.match-head .avatar svg { width: 18px; height: 18px; }
 .avatar {
   position: relative;
   flex: none;

@@ -4,10 +4,11 @@
 // A ride for part of the way and public transport for the rest
 // (docs/combined-trips.md): the search's "combined_matches", shown under the
 // drives that make the whole trip. A card starts with the whole trip (its
-// times, how long it takes, the ride and the ticket together), then gives
-// its steps, in order, with their times: the ride and public transport
-// before it, after it, or both ("transit_ride_transit": a drive that is near
-// neither end of the trip), then who drives. A click opens its details.
+// times, how long it takes, the ride and the ticket together), then says how
+// it goes, in order: who drives the passenger, and public transport before
+// that, after it, or both ("transit_ride_transit": a drive that is near
+// neither end of the trip). A click opens its details: the steps with their
+// times, what the price is made of, each connection.
 // Loaded after app.js, whose results, cards and map it uses.
 // ---------------------------------------------------------------------
 
@@ -28,21 +29,30 @@ function quickerThanTransit(minutes) {
 }
 
 // What the whole trip costs: the ride's seat and the tickets of its public
-// transport legs (2nd class, full fare; the details give the half fare),
-// with the two amounts under it. Without a ticket's price, the ride's alone,
-// saying so.
-function combinedPrice(m, legs) {
-  if (typeof m.price_chf !== "number") return "";
+// transport legs (2nd class, full fare; the details give the half fare).
+// `total`: the amount, or null without a ticket's price. `parts`: the two
+// amounts it is made of ("ride CHF 4 + train ≈ CHF 20").
+function combinedCost(m, legs) {
   const fares = legs.map((leg) => leg.fare);
-  if (!fares.every((fare) => fare && typeof fare.full_chf === "number")) {
-    return tripPrice(t("price.amount", { price: fmtChf(m.price_chf) }), t("price.withoutTicket"));
-  }
+  if (typeof m.price_chf !== "number" || !fares.every((fare) => fare && typeof fare.full_chf === "number")) return null;
   const train = fares.reduce((sum, fare) => sum + fare.full_chf, 0);
   const approx = fares.some((fare) => fare.approximate) ? "Approx" : "";
-  return tripPrice(
-    t(`price.amount${approx}`, { price: fmtChf(m.price_chf + train) }),
-    t(`price.rideAndTrain${approx}`, { ride: fmtChf(m.price_chf), train: fmtChf(train) }),
-  );
+  return {
+    total: t(`price.amount${approx}`, { price: fmtChf(m.price_chf + train) }),
+    parts: t(`price.rideAndTrain${approx}`, { ride: fmtChf(m.price_chf), train: fmtChf(train) }),
+  };
+}
+
+// On the card's first line: that amount, and under it what the train alone
+// costs for the whole trip (the search's "transit_alone_fare"), to compare.
+// Not known: what the amount is made of. Without a ticket's price, the
+// ride's alone, saying so.
+function combinedPrice(m, cost) {
+  if (typeof m.price_chf !== "number") return "";
+  if (!cost) return tripPrice(t("price.amount", { price: fmtChf(m.price_chf) }), t("price.withoutTicket"));
+  const alone = m.transit_alone_fare;
+  if (!alone || typeof alone.full_chf !== "number") return tripPrice(cost.total, cost.parts);
+  return tripPrice(cost.total, t(alone.approximate ? "price.trainAloneApprox" : "price.trainAlone", { price: fmtChf(alone.full_chf) }));
 }
 
 // The car's part of a combined trip on the map: its route, where the
@@ -95,15 +105,28 @@ function combinedCard(m, origin, destination) {
     esc(t("combined.transitTo", { place: leg.to_station })),
   ) : "");
 
+  // On the card: who drives the passenger and to where, in the trip's order.
+  // After public transport the place was just named: "on from there".
+  const transitPart = (leg) => (leg ? `<span class="trip-part"><span class="trip-icon">${TRANSIT_ICON}</span><span>${
+    esc(t("combined.transitTo", { place: leg.to_station }))
+  }</span></span>` : "");
+  const drives = whoDrives(m, between ? { to: m.change_after.name } : rideFirst ? { to: m.change.name } : { on: true });
+  // Beyond a short walk, the card says how far the car's end of the trip is
+  // from the passenger's own (a ride between two legs has no such end).
+  const carEnd = between ? {} : rideFirst ? { pickup: m.pickup } : { dropoff: m.dropoff };
+
   const card = document.createElement("div");
   card.className = `match-card combined-card clickable${m.is_demo ? " demo" : ""}`;
   const quicker = quickerThanTransit(m.vs_transit_min);
+  const cost = combinedCost(m, legs);
   card.innerHTML = `
-    ${tripLine(m.starts, m.arrives, m.total_min, combinedPrice(m, legs))}
-    <div class="combined-steps">${transitStep(before)}${ride}${transitStep(after)}</div>
+    ${tripLine(m.starts, m.arrives, m.total_min, combinedPrice(m, cost))}
+    ${tripHow([transitPart(before), drives, transitPart(after)])}
+    ${farGapsNote({ pickup: {}, dropoff: {}, ...carEnd })}
     ${quicker ? `<span class="score">${esc(quicker)}</span>` : ""}
-    ${driverLine(m)}
     <div class="match-details" hidden>
+      <div class="combined-steps">${transitStep(before)}${ride}${transitStep(after)}</div>
+      ${cost ? `<div class="meta">${esc(cost.parts)}</div>` : ""}
       <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))} · ${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</div>
       ${legs.map((leg) => `<div class="last-mile"><strong>${esc(leg.from_station)} → ${esc(leg.to_station)}</strong>
         ${renderFare(leg.fare)}${renderConnections([leg.connection])}</div>`).join("")}

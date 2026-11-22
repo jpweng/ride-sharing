@@ -227,6 +227,18 @@ def test_much_slower_than_public_transport_alone_is_left_out(network):
     as_quick = {"connections": [_connection("08:10", "10:55")]}
     [trip] = combined.find(START, END, f"{DAY}T08:00", transit_option=as_quick)
     assert trip["vs_transit_min"] == 10
+    assert "transit_alone_fare" not in trip  # no fare known for public transport alone
+
+
+def test_a_trip_says_what_the_train_alone_costs(network):
+    _the_drive()
+    fare = {"full_chf": 42.0, "half_chf": 21.0, "approximate": True}
+    alone = {"connections": [_connection("08:10", "10:55")], "fare": fare}
+    [trip] = combined.find(START, END, f"{DAY}T08:00", transit_option=alone)
+    assert trip["transit_alone_fare"] == fare
+    # Without public transport alone, there is nothing to compare with.
+    [trip] = combined.find(START, END, f"{DAY}T08:00")
+    assert "vs_transit_min" not in trip and "transit_alone_fare" not in trip
 
 
 def test_two_drives_at_the_same_time_make_one_proposal(network):
@@ -407,12 +419,21 @@ def test_the_page_shows_them():
     script = (FRONTEND / "combined.js").read_text()
     assert "RESULT_SECTIONS.push(" in script and 'cardExtras("combined", m, card)' in script
     # A card starts with the whole trip: its times, how long it takes, and the ride and the tickets together.
-    assert "${tripLine(m.starts, m.arrives, m.total_min, combinedPrice(m, legs))}" in script
-    price = script[script.index("function combinedPrice(m, legs) {"):script.index("// The car's part of a combined trip on the map")]
+    assert "${tripLine(m.starts, m.arrives, m.total_min, combinedPrice(m, cost))}" in script
+    price = script[script.index("function combinedCost(m, legs) {"):script.index("// The car's part of a combined trip on the map")]
     assert "t(`price.amount${approx}`, { price: fmtChf(m.price_chf + train) })" in price
     assert "t(`price.rideAndTrain${approx}`, { ride: fmtChf(m.price_chf), train: fmtChf(train) })" in price
     assert 't("price.withoutTicket")' in price  # a leg without a fare: the ride's price alone, saying so
-    assert script.index("${tripLine(") < script.index('<div class="combined-steps">') < script.index("${driverLine(m)}")
+    # Under the amount: what the train alone costs for the whole trip, to compare.
+    assert 't(alone.approximate ? "price.trainAloneApprox" : "price.trainAlone", { price: fmtChf(alone.full_chf) })' in price
+    # Then how it goes, in order: who drives the passenger, public transport before or after.
+    assert "${tripHow([transitPart(before), drives, transitPart(after)])}" in script
+    assert "whoDrives(m, between ? { to: m.change_after.name } : rideFirst ? { to: m.change.name } : { on: true })" in script
+    # The steps with their times and what the price is made of are in the details.
+    card = script[script.index("card.innerHTML = `"):script.index('cardExtras("combined", m, card)')]
+    details = card.index('<div class="match-details" hidden>')
+    assert card.index("${tripLine(") < card.index("${tripHow(") < details < card.index('<div class="combined-steps">')
+    assert details < card.index("${esc(cost.parts)}")
     # A card says when the trip is quicker than public transport alone, never that it is longer.
     assert 't("combined.vsFaster"' in script and "vsSlower" not in script and "vsSame" not in script
     # A ride between two public transport legs: three steps, a fare and a connection for each leg.

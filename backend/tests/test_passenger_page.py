@@ -64,21 +64,36 @@ def test_a_field_shows_the_place_the_search_uses():
 def test_a_match_starts_with_the_trip_then_says_who_drives():
     app = (FRONTEND / "app.js").read_text()
     card = app[app.index("card.innerHTML = `"):app.index("container.appendChild(card);")]
-    # The trip's times, duration and price, how it goes, who drives; the drive's own route is in the details.
-    order = ["${tripLine(m.pickup.time, m.dropoff.time,", "ridePrice(m))}", "${rideStep(m)}", "${driverLine(m)}",
+    # The trip's times, duration and price, then who drives the passenger from where to where;
+    # the drive's own route is in the details.
+    order = ["${tripLine(m.pickup.time, m.dropoff.time,", "ridePrice(m))}",
+             "${tripHow([whoDrives(m, { from: m.pickup.name, to: m.dropoff.name })])}",
              '<div class="match-details" hidden>', "${esc(m.origin_name)} → ${esc(m.destination_name)}"]
     assert [card.index(part) for part in order] == sorted(card.index(part) for part in order)
     line = app[app.index("function tripLine("):app.index("function tripPrice(")]
     assert line.index('class="trip-times"') < line.index('class="trip-duration"') < line.index("${priceHtml}")
     # The price for a seat, and the train fare for the same distance under it.
-    price = app[app.index("function ridePrice(m) {"):app.index("function gapsText(m) {")]
+    price = app[app.index("function ridePrice(m) {"):app.index("function gapsText(")]
     assert 't("price.amount", { price: fmtChf(m.price_chf) })' in price and '"price.trainApprox" : "price.train"' in price
-    # Where the car passes is said only when it isn't at the passenger's own start or destination.
-    assert ".filter(([, point]) => point.gap_km > 0)" in app
-    # The circle (initial or photo), then the name.
-    head = app[app.index("function driverLine(m) {"):app.index("function minutesBetween(")]
-    assert head.index("${driverAvatar(m)}") < head.index('class="match-name"')
-    assert 't("match.driver")' in head  # signed out: no name
+    # How far the car passes from the passenger's own start or destination: in the details,
+    # and on the card itself only beyond a short walk.
+    assert "const FAR_GAP_KM = 1;" in app and ".filter(([, point]) => point.gap_km > overKm)" in app
+    assert "${farGapsNote(m)}" in card[:card.index('<div class="match-details" hidden>')]
+    assert "gapsText(m)" in card[card.index('<div class="match-details" hidden>'):]
+    # Who drives, in words: the circle (initial or photo), then "Judith drives you to …", the
+    # name in bold; signed out, "A driver takes you to …".
+    who = app[app.index("function whoDrives(m, places = {}) {"):app.index("function tripHow(parts) {")]
+    assert '`match.${m.driver_name ? "drives" : "takes"}${form}`' in who
+    assert '<span class="match-name">${esc(m.driver_name || t("match.aDriver"))}${demoBadge(m)}</span>' in who
+    assert who.index("${driverAvatar(m)}") < who.index("esc(sentence).replace(NAME_HERE, name)")
+    forms = ("", "To", "From", "Between", "On")
+    for lang in ("en", "de", "fr", "it"):
+        texts = json.loads((FRONTEND / "i18n" / lang / "match.json").read_text())
+        for key in [f"match.{verb}{form}" for verb in ("drives", "takes") for form in forms]:
+            assert texts[key].startswith("{name} "), (lang, key)
+    english = json.loads((FRONTEND / "i18n" / "en" / "match.json").read_text())
+    assert english["match.drivesTo"] == "{name} drives you to {place}"
+    assert english["match.aDriver"] == "A driver" and english["match.takesTo"] == "{name} takes you to {place}"
     # The rating goes next to the name, the photo into the circle.
     assert 'card.querySelector(".match-name, .route")' in (FRONTEND / "ratings.js").read_text()
     profiles = (FRONTEND / "profiles.js").read_text()

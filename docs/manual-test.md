@@ -106,13 +106,14 @@ Still signed out in browser A. Searching is public: everything here must work wi
 
 - [ ] **2.7** Read the cards. **Expect:** at most 20. Each starts with the times in large figures
   ("hh:mm → hh:mm"), how long the ride takes and, at the right, "CHF N" with "train ≈ CHF N" under
-  it. Then "By car from (a stop) to (a stop)", with "pickup N km from your start" or "drop-off N km
-  from your destination" when the car doesn't pass there. Then a figure in a circle, "Driver"
-  instead of a name and a "Demo" label. The price is never above the train fare. Demo cards have
+  it. Then a figure in a circle and "A driver takes you from (a stop) to (a stop)", with a "Demo"
+  label after "A driver"; "pickup N km from your start" or "drop-off N km from your destination"
+  only when that is more than 1 km. The price is never above the train fare. Demo cards have
   no button to ask for a seat. Each card has a small arrow at the end of its first line, and
   pointing at a card outlines it in green. Under the cards, a green-tinted panel asks "Nothing
   that suits you?" with the filled button "Ask drivers for this ride".
-- [ ] **2.8** Click a card. **Expect:** its details open: the departure and the free seats, "To the
+- [ ] **2.8** Click a card. **Expect:** its details open: the drive's route, the departure and the
+  free seats, how far the pickup and the drop-off are from your start and destination, "To the
   pickup: N min on foot", "From the drop-off:" with times on foot, by car and by public transport,
   "on time" or "N min earlier" or "later", "N km together" and "Show on map". The arrow points up,
   and the card says "Demo drives are fictional and can't be booked." A second click closes them.
@@ -179,11 +180,12 @@ Still signed out in browser A. Searching is public: everything here must work wi
   still filled in.
 - [ ] **2.27** Search Bulle → Genève, "Leave at" 06:50 on a weekday. **Expect:** a section "A ride
   and public transport" with up to four cards. Each starts with the whole trip: its times in large
-  figures, how long it takes and, at the right, "≈ CHF N" with "ride CHF N + train ≈ CHF N" under
-  it. Then two steps in order with their times: "By car to (a stop)" with "pickup N km from your
-  start", then "Public transport to (a station)". Then who drives. With no drive for the whole
-  way, nothing is above the section's title. If the section is missing, try Sion → Genève at
-  06:20, or Genève → Bulle around 17:30. Step 5.21 makes one for certain.
+  figures, how long it takes and, at the right, "≈ CHF N" with "train alone ≈ CHF N" under it.
+  Then two lines in order: "A driver takes you to (a stop)", then "Public transport to (a
+  station)". Open one: the details start with the two steps and their times, then "ride CHF N +
+  train ≈ CHF N". With no drive for the whole way, nothing is above the section's title. If the
+  section is missing, try Sion → Genève at 06:20, or Genève → Bulle around 17:30. Step 5.21 makes
+  one for certain.
 - [ ] **2.27b** Search again while watching the results. **Expect:** the drives (or "Searching…")
   first; "Searching…" where the public transport line will be and, under drives,
   "Looking for rides combined with public transport…"; then each part in its place, without the
@@ -365,7 +367,7 @@ As D in browser B, unless a step names another account.
   drive is found, without a "Demo" label, above demo drives that fit as well, with a "Request a
   seat" button.
 - [ ] **4.16** In a private window, signed out: the same search. **Expect:** the same card says
-  "Driver" instead of the name and offers "Sign in to request a seat", which leads to the sign-in
+  "A driver" instead of the name and offers "Sign in to request a seat", which leads to the sign-in
   page.
 - [ ] **4.17** As D, switch to passenger mode and run the same search. **Expect:** your own drive is
   listed without "Request a seat". Switch back to driver mode.
@@ -820,7 +822,7 @@ site's sender reputation.
 
 - [ ] **12.8** In a private window, sign in with a new `+` address and stop at "Welcome to Ride and
   Rail". Open `#/drive` and `#/inbox`. **Expect:** the welcome page each time. The cards of a search
-  still show "Driver" instead of names.
+  still show "A driver" instead of names.
 - [ ] **12.9** On the welcome page, click "Delete your account", then "Delete my account", and
   confirm. **Expect:** the sign-in page with "Your account and your data have been deleted."
 

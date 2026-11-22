@@ -1,8 +1,12 @@
 {
-  "match.byCar": "En voiture",
+  "match.aDriver": "Quelqu'un",
   "match.details": "Détails",
   "match.directions": "Itinéraire",
-  "match.driver": "Conductrice ou conducteur",
+  "match.drives": "{name} vous emmène en voiture",
+  "match.drivesBetween": "{name} vous emmène en voiture de {from} à {to}",
+  "match.drivesFrom": "{name} vous emmène en voiture depuis {place}",
+  "match.drivesOn": "{name} vous emmène en voiture à partir de là",
+  "match.drivesTo": "{name} vous emmène en voiture jusqu'à {place}",
   "match.dropoff": "Dépose ~{time}, à {km} km de votre destination",
   "match.earlier": "{duration} plus tôt",
   "match.firstMile": "Jusqu'à la prise en charge :",
@@ -15,5 +19,10 @@
   "match.pickup": "Prise en charge ~{time}, à {km} km de votre départ",
   "match.rideKm": "{km} km ensemble",
   "match.showOnMap": "Voir sur la carte",
+  "match.takes": "{name} vous emmène en voiture",
+  "match.takesBetween": "{name} vous emmène en voiture de {from} à {to}",
+  "match.takesFrom": "{name} vous emmène en voiture depuis {place}",
+  "match.takesOn": "{name} vous emmène en voiture à partir de là",
+  "match.takesTo": "{name} vous emmène en voiture jusqu'à {place}",
   "match.wider": "plus loin"
 }
