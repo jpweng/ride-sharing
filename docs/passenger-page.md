@@ -88,4 +88,7 @@ map" in a field. `revealMap()` in `app.js` does that (`openMap`); the button, a 
 map and Escape close it (`closeMap`), and so does a change of page. On phones it takes the whole
 screen. Its tiles are only loaded while it can be seen.
 
-In driver mode nothing changes: the map is beside the form, above it on phones.
+In driver mode nothing changes: the map is beside the form, above it on phones. Leaflet draws its
+tiles and controls from the nearest positioned element, and only positions the map itself when it
+is created unpositioned, which it isn't (the page starts in passenger mode); so `#map` is
+`position: relative` in `style.css`, for the map to hold its tiles in driver mode too.
