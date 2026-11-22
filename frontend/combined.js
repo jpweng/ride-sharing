@@ -7,21 +7,16 @@
 // times, how long it takes, the ride and the ticket together), then says how
 // it goes, in order: who drives the passenger, and public transport before
 // that, after it, or both ("transit_ride_transit": a drive that is near
-// neither end of the trip). A click opens its details: the steps with their
-// times, what the price is made of, each connection.
+// neither end of the trip). A click opens its details: the trip's steps,
+// once, with their times and what belongs to each (the ride: where the car
+// passes and the seat's price; a connection: its lines, its ticket and the
+// link to it).
 // Loaded after app.js, whose results, cards and map it uses.
 // ---------------------------------------------------------------------
 
 // A trip quicker than public transport alone by at least this says so on its
 // card. One that isn't says nothing about it.
 const QUICKER_WORTH_SAYING_MIN = 5;
-
-function combinedStep(icon, from, to, text) {
-  return `<div class="combined-step">
-    <span class="combined-time">${fmtClock(from)} → ${fmtClock(to)}</span>
-    <span class="combined-what">${icon}<span>${text}</span></span>
-  </div>`;
-}
 
 function quickerThanTransit(minutes) {
   if (typeof minutes !== "number" || minutes > -QUICKER_WORTH_SAYING_MIN) return "";
@@ -88,32 +83,29 @@ function combinedCard(m, origin, destination) {
   m.ride_from = between ? m.change_before : rideFirst ? origin : m.change;
   m.ride_to = between ? m.change_after : rideFirst ? m.change : destination;
 
-  let byCar;
-  if (between) {
-    byCar = esc(t("combined.carBetween", { from: m.change_before.name, to: m.change_after.name }));
-  } else {
-    // How far the car's end of the trip is from the passenger's own, unless it is there.
-    const end = rideFirst ? m.pickup : m.dropoff;
-    const gap = end.gap_km > 0 ? t(rideFirst ? "combined.pickupGap" : "combined.dropoffGap", { km: fmtNumber(end.gap_km) }) : "";
-    byCar = `${esc(t(rideFirst ? "combined.carTo" : "combined.carFrom", { place: m.change.name }))}${
-      gap ? `<span class="combined-gap">${esc(gap)}</span>` : ""
-    }`;
-  }
-  const ride = combinedStep(CAR_ICON, m.pickup.time, m.dropoff.time, byCar);
-  const transitStep = (leg) => (leg ? combinedStep(
-    TRANSIT_ICON, leg.connection.departure, leg.connection.arrival,
-    esc(t("combined.transitTo", { place: leg.to_station })),
-  ) : "");
-
-  // On the card: who drives the passenger and to where, in the trip's order.
-  // After public transport the place was just named: "on from there".
-  const transitPart = (leg) => (leg ? `<span class="trip-part"><span class="trip-icon">${TRANSIT_ICON}</span><span>${
-    esc(t("combined.transitTo", { place: leg.to_station }))
-  }</span></span>` : "");
-  const drives = whoDrives(m, between ? { to: m.change_after.name } : rideFirst ? { to: m.change.name } : { on: true });
   // Beyond a short walk, the card says how far the car's end of the trip is
   // from the passenger's own (a ride between two legs has no such end).
-  const carEnd = between ? {} : rideFirst ? { pickup: m.pickup } : { dropoff: m.dropoff };
+  const carEnd = { pickup: {}, dropoff: {}, ...(between ? {} : rideFirst ? { pickup: m.pickup } : { dropoff: m.dropoff }) };
+
+  // In the details, the steps by their stops' full names. The ride: how far
+  // the car's end of the trip is from the passenger's own, and the seat's price.
+  const byCar = between ? t("combined.carBetween", { from: m.change_before.name, to: m.change_after.name })
+    : t(rideFirst ? "combined.carTo" : "combined.carFrom", { place: m.change.name });
+  const about = [gapsText(carEnd), typeof m.price_chf === "number" ? t("price.perSeat", { price: fmtChf(m.price_chf) }) : ""];
+  const ride = tripStep(CAR_ICON, m.pickup.time, m.dropoff.time,
+    `${esc(byCar)}<span class="combined-gap">${esc(about.filter(Boolean).join(" · "))}</span>`);
+  // A connection: how long it takes and its lines, then its ticket and the link to it.
+  const transitStep = (leg) => (leg ? tripStep(TRANSIT_ICON, leg.connection.departure, leg.connection.arrival,
+    `${esc(t("combined.transitTo", { place: leg.to_station }))}
+    <span class="combined-gap">${esc(connectionLength(leg.connection))} · ${esc(connectionLines(leg.connection))}</span>
+    <span class="combined-gap">${leg.fare ? `${esc(fareText(leg.fare))} ` : ""}${ticketsLink(leg.connection)}</span>`,
+  ) : "");
+
+  // On the card: who drives the passenger and to where, in the trip's order,
+  // the stops by their towns. After public transport the place was just
+  // named: "on from there".
+  const part = (leg) => (leg ? transitPart(leg.to_station) : "");
+  const drives = whoDrives(m, between ? { to: townOf(m.change_after.name) } : rideFirst ? { to: townOf(m.change.name) } : { on: true });
 
   const card = document.createElement("div");
   card.className = `match-card combined-card clickable${m.is_demo ? " demo" : ""}`;
@@ -121,15 +113,13 @@ function combinedCard(m, origin, destination) {
   const cost = combinedCost(m, legs);
   card.innerHTML = `
     ${tripLine(m.starts, m.arrives, m.total_min, combinedPrice(m, cost))}
-    ${tripHow([transitPart(before), drives, transitPart(after)])}
-    ${farGapsNote({ pickup: {}, dropoff: {}, ...carEnd })}
+    ${tripHow([part(before), drives, part(after)])}
+    ${farGapsNote(carEnd)}
     ${quicker ? `<span class="score">${esc(quicker)}</span>` : ""}
+    ${demoNote(m)}
     <div class="match-details" hidden>
       <div class="combined-steps">${transitStep(before)}${ride}${transitStep(after)}</div>
-      ${cost ? `<div class="meta">${esc(cost.parts)}</div>` : ""}
       <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))} · ${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</div>
-      ${legs.map((leg) => `<div class="last-mile"><strong>${esc(leg.from_station)} → ${esc(leg.to_station)}</strong>
-        ${renderFare(leg.fare)}${renderConnections([leg.connection])}</div>`).join("")}
       <button type="button" class="link-btn match-on-map">${esc(t("match.showOnMap"))}</button>
     </div>
   `;

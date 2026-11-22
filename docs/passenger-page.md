@@ -49,16 +49,22 @@ Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15
 A card starts with the passenger's trip, as a timetable shows a connection: when they get in and
 out ("07:30 → 09:05"), how long the ride takes, and at the right its price for a seat, with the
 train fare for the same distance under it. Then one line says who drives them, in words that can't
-be taken for anything else: "Judith drives you from (a stop) to (a stop)", the places near which
-the car picks them up and drops them, after the driver's photo if they have one (the match's
-`driver_photo`, see [Profiles](profiles.md)), else the first letter of their name, with their name
-in bold and their rating. Without a name (signed out): "A driver takes you from … to …". How far
-the car passes from their own start and destination is in the details; the card itself says it
-only beyond 1 km (`FAR_GAP_KM`), where the trip doesn't end at the door. A click opens the
-details: the drive's own route and departure, those distances,
+be taken for anything else: after a car's sign in a circle, "Judith drives you from Zürich to
+Bern", with the driver's small photo if they have one (the match's `driver_photo`, see
+[Profiles](profiles.md)), else the first letter of their name, their name in bold and their
+rating. Without a name (signed out): "A driver takes you from … to …". The places are the towns
+of the stops near which the car picks them up and drops them ("Zürich" for "Zürich,
+Bahnhofquai/HB"; the full names when both are in the same town). How far the car passes from
+their own start and destination is in the details; the card itself says it only beyond 1 km
+(`FAR_GAP_KM`), where the trip doesn't end at the door. A click opens the details: the ride as a
+step with its times, between the stops by their full names, with those distances; the drive's own
+route and departure,
 the way to the pickup and from the drop-off (see [Search limits](search-limits.md)), public
-transport legs, the driver's profile and "Show on map". Demo rides open their details and show on
-the map like any ride; they can't be booked, and an opened one says so where the button would be.
+transport legs, the driver's profile and "Show on map".
+
+Demo rides open their details and show on the map like any ride, but they can't be booked. Where
+a ride has its button, a demo ride's card says so, open or not: the "Demo" label and "A fictional
+example: it can't be booked."
 
 A card looks like something to choose: an arrow at the end of its first line says it opens (it
 turns when the card is open), pointing at the card outlines it, and "Request a seat" ("Sign in to

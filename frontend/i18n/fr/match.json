@@ -1,5 +1,6 @@
 {
   "match.aDriver": "Quelqu'un",
+  "match.demoNote": "Un exemple fictif : il ne peut pas être réservé.",
   "match.details": "Détails",
   "match.directions": "Itinéraire",
   "match.drives": "{name} vous emmène en voiture",

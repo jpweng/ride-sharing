@@ -1471,16 +1471,38 @@ function farGapsNote(m) {
   return gaps ? `<div class="trip-gap">${esc(gaps)}</div>` : "";
 }
 
-// The car, for a combined trip's steps (combined.js).
 const CAR_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5v-4l1.8-4.6a2 2 0 0 1 1.9-1.4h7.6a2 2 0 0 1 1.9 1.4l1.8 4.6v4M3.5 12.5h17M7 16.5v2M17 16.5v2M7.5 14.6h.01M16.5 14.6h.01"/></svg>';
 
+// On a card a stop goes by its town: "Zürich, Bahnhofquai/HB" is "Zürich"
+// there, and the details give the stop.
+function townOf(stop) {
+  return stop ? stop.split(",")[0].trim() : stop;
+}
+
+// The two ends of a ride by their towns, unless that is the same town twice.
+function townsOf(from, to) {
+  const [a, b] = [townOf(from), townOf(to)];
+  return a && a === b ? { from, to } : { from: a, to: b };
+}
+
+// One part of a trip on a card: the sign of what the passenger rides, in a
+// circle, and a few words. In a row they read as a journey: the signs are
+// joined by a line (styles/passenger.css).
+function tripPart(kind, html) {
+  return `<span class="trip-part"><span class="trip-icon ${kind}">${kind === "car" ? CAR_ICON : TRANSIT_ICON}</span><span>${html}</span></span>`;
+}
+
+function transitPart(stop) {
+  return tripPart("transit", esc(t("combined.transitTo", { place: townOf(stop) })));
+}
+
 // Who drives, in words that can't be taken for anything else: "Judith
-// drives you to Zürich" (a person, at the wheel, in their car), with their
-// circle in front, their name in bold and the demo label (ratings.js puts
-// the rating next to the name). Without a name (signed out): "A driver takes
-// you to Zürich". `places`: {from, to}, either one, none, or {on: true}
-// ("on from there": the place was just named, by the public transport
-// before).
+// drives you to Zürich" (a person, at the wheel, in their car), after the
+// car's sign, with their small circle (initial or photo) and their name in
+// bold (ratings.js puts the rating next to it). Without a name (signed
+// out): "A driver takes you to Zürich". `places`: {from, to}, either one,
+// none, or {on: true} ("on from there": the place was just named, by the
+// public transport before).
 const NAME_HERE = "\u0001";
 
 function whoDrives(m, places = {}) {
@@ -1488,14 +1510,42 @@ function whoDrives(m, places = {}) {
   const sentence = t(`match.${m.driver_name ? "drives" : "takes"}${form}`, {
     name: NAME_HERE, from: places.from, to: places.to, place: places.to || places.from,
   });
-  const name = `<span class="match-name">${esc(m.driver_name || t("match.aDriver"))}${demoBadge(m)}</span>`;
-  return `<span class="trip-part">${driverAvatar(m)}<span>${esc(sentence).replace(NAME_HERE, name)}</span></span>`;
+  const name = `${m.driver_name ? driverAvatar(m) : ""}<span class="match-name">${esc(m.driver_name || t("match.aDriver"))}</span>`;
+  return tripPart("car", esc(sentence).replace(NAME_HERE, name));
 }
 
 // A trip's parts, in order, one a line: "Judith drives you to Zürich", then
 // "Public transport to Sévaz".
 function tripHow(parts) {
   return `<div class="trip-how">${parts.filter(Boolean).join("")}</div>`;
+}
+
+// A demo ride is fictional and has no button to ask for a seat: where a
+// ride has it, the card says what it is, open or not.
+function demoNote(m) {
+  return m.is_demo ? `<div class="demo-note">${demoBadge(m)}<span>${esc(t("match.demoNote"))}</span></div>` : "";
+}
+
+// A step of a trip in a card's details: its times, the sign of what the
+// passenger rides, and `html` (a few words, with smaller lines under them).
+function tripStep(icon, from, to, html) {
+  return `<div class="combined-step">
+    <span class="combined-time">${fmtClock(from)} → ${fmtClock(to)}</span>
+    <span class="combined-what">${icon}<span>${html}</span></span>
+  </div>`;
+}
+
+// In the details of a drive for the whole trip: the ride as a step, between
+// the stops near which the car picks the passenger up and drops them, by
+// their full names, and how far these are from their own start and
+// destination. Without a stop's name, those distances alone.
+function rideStepDetail(m) {
+  const [from, to] = [m.pickup.name, m.dropoff.name];
+  const gaps = gapsText(m);
+  if (!from && !to) return gaps ? `<div class="meta">${esc(gaps)}</div>` : "";
+  const byCar = from && to ? t("combined.carBetween", { from, to }) : t(from ? "combined.carFrom" : "combined.carTo", { place: from || to });
+  return `<div class="combined-steps">${tripStep(CAR_ICON, m.pickup.time, m.dropoff.time,
+    `${esc(byCar)}${gaps ? `<span class="combined-gap">${esc(gaps)}</span>` : ""}`)}</div>`;
 }
 
 function minutesBetween(startIso, endIso) {
@@ -1638,12 +1688,13 @@ function renderMatches(matches, passengerOrigin, passengerDestination, limits = 
     card.style.borderLeftColor = color;
     card.innerHTML = `
       ${tripLine(m.pickup.time, m.dropoff.time, minutesBetween(m.pickup.time, m.dropoff.time), ridePrice(m))}
-      ${tripHow([whoDrives(m, { from: m.pickup.name, to: m.dropoff.name })])}
+      ${tripHow([whoDrives(m, townsOf(m.pickup.name, m.dropoff.name))])}
       ${farGapsNote(m)}
       ${m.wider ? `<span class="badge wider">${esc(t("match.wider"))}</span>` : ""}
+      ${demoNote(m)}
       <div class="match-details" hidden>
+        ${rideStepDetail(m)}
         <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))}</div>
-        ${gapsText(m) ? `<div class="meta">${esc(gapsText(m))}</div>` : ""}
         ${onwardLine("pickup", m.pickup, passengerOrigin, null)}
         ${onwardLine("dropoff", m.dropoff, passengerDestination, m.dropoff.onward)}
         ${timeDiffBadge(m.time_diff_min)}
@@ -1751,9 +1802,12 @@ function renderTransitOption(transit) {
 // The train ticket's price, 2nd class (see fares.py): from the SBB price
 // service when the server has a key, else estimated from the distance.
 function renderFare(fare) {
-  if (!fare) return "";
+  return fare ? `<div class="pt-fare">${esc(fareText(fare))}</div>` : "";
+}
+
+function fareText(fare) {
   const key = fare.approximate ? "transit.fareApprox" : "transit.fare";
-  return `<div class="pt-fare">${esc(t(key, { full: fmtChf(fare.full_chf), half: fmtChf(fare.half_chf) }))}</div>`;
+  return t(key, { full: fmtChf(fare.full_chf), half: fmtChf(fare.half_chf) });
 }
 
 // One row per connection: times, duration and transfers, the lines taken
@@ -1761,26 +1815,35 @@ function renderFare(fare) {
 // ticket covers every Swiss operator on the journey).
 function renderConnections(connections) {
   return connections
-    .map((c) => {
-      const lines = (c.legs || [])
-        .map((l) => [l.category, l.number].filter(Boolean).join(" ") || l.operator?.code || "?")
-        .join(" · ");
-      const operators = (c.operators || []).map((o) => o.name).join(", ");
-      const transfers = t("transit.transfers", { count: c.transfers });
-      return `
+    .map((c) => `
         <div class="pt-conn">
           <div class="pt-body">
-            <div class="pt-times"><span class="pt-clock">${fmtClock(c.departure)} → ${fmtClock(c.arrival)}</span><span class="pt-meta">${esc(fmtDuration(c.duration))} · ${esc(transfers)}</span></div>
-            <div class="pt-lines">${esc(lines)}${operators ? ` (${esc(operators)})` : ""}</div>
+            <div class="pt-times"><span class="pt-clock">${fmtClock(c.departure)} → ${fmtClock(c.arrival)}</span><span class="pt-meta">${esc(connectionLength(c))}</span></div>
+            <div class="pt-lines">${esc(connectionLines(c))}</div>
           </div>
-          ${
-            c.booking_url
-              ? `<a class="pt-book" href="${esc(sbbUrl(c.booking_url))}" target="_blank" rel="noopener">${esc(t("transit.tickets"))}</a>`
-              : ""
-          }
-        </div>`;
-    })
+          ${ticketsLink(c)}
+        </div>`)
     .join("");
+}
+
+// "2 h 28 min · 2 transfers"
+function connectionLength(c) {
+  return `${fmtDuration(c.duration)} · ${t("transit.transfers", { count: c.transfers })}`;
+}
+
+// The lines taken and who runs them: "IC 1 · S 30 · B 554 (SBB CFF FFS, TPF)".
+function connectionLines(c) {
+  const lines = (c.legs || [])
+    .map((l) => [l.category, l.number].filter(Boolean).join(" ") || l.operator?.code || "?")
+    .join(" · ");
+  const operators = (c.operators || []).map((o) => o.name).join(", ");
+  return `${lines}${operators ? ` (${operators})` : ""}`;
+}
+
+function ticketsLink(c) {
+  return c.booking_url
+    ? `<a class="pt-book" href="${esc(sbbUrl(c.booking_url))}" target="_blank" rel="noopener">${esc(t("transit.tickets"))}</a>`
+    : "";
 }
 
 // SBB's site in the visitor's language: the backend links to /en.

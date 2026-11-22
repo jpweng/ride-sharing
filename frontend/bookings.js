@@ -98,14 +98,11 @@ CARD_EXTRAS.push((kind, item, card) => {
 // A search result or a listed drive: what became of the passenger's
 // request, if they made one, and "Request a seat" unless it's waiting or
 // accepted (after a decline or a cancellation, they can ask again).
-// Nothing on one's own drives. A demo drive (fictional) has no button: its
-// opened card says why (styles/passenger.css: .demo-note).
+// Nothing on one's own drives, on demo drives (fictional: a search result's
+// card says so itself, app.js: demoNote), or before signing in.
 function fillAsk(box, kind, item, sent = false) {
   box.innerHTML = "";
-  if (!item.bookable) {
-    if (item.is_demo) box.innerHTML = `<div class="hint demo-note">${esc(t("errors.not_bookable"))}</div>`;
-    return;
-  }
+  if (!item.bookable) return;
   if (!signedIn()) {
     // Asking for a seat needs an account: the button leads to signing in.
     if (item.seats_available > 0) box.appendChild(actionButton("booking.signInToAsk", "submit-btn", goToSignIn));
