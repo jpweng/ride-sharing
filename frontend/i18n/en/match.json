@@ -1,9 +1,9 @@
 {
+  "match.byCar": "By car",
   "match.details": "Details",
   "match.directions": "Directions",
   "match.driver": "Driver",
   "match.dropoff": "Drop-off ~{time}, {km} km from your destination",
-  "match.dropoffAt": "Drop-off ~{time} near {place}, {km} km from your destination",
   "match.earlier": "{duration} earlier",
   "match.firstMile": "To the pickup:",
   "match.lastMile": "From the drop-off:",
@@ -13,7 +13,6 @@
   "match.onwardTransit": "{duration} by public transport",
   "match.onwardWalk": "{duration} on foot",
   "match.pickup": "Pickup ~{time}, {km} km from your start",
-  "match.pickupAt": "Pickup ~{time} near {place}, {km} km from your start",
   "match.rideKm": "{km} km together",
   "match.showOnMap": "Show on map",
   "match.wider": "further away"

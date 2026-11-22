@@ -1,7 +1,12 @@
 {
+  "price.amount": "CHF {price}",
+  "price.amountApprox": "≈ CHF {price}",
   "price.perSeat": "CHF {price} par place",
+  "price.rideAndTrain": "voiture CHF {ride} + train CHF {train}",
+  "price.rideAndTrainApprox": "voiture CHF {ride} + train ≈ CHF {train}",
   "price.train": "train CHF {price}",
   "price.trainApprox": "train ≈ CHF {price}",
   "price.trainHint": "Billet de train 2e classe, plein tarif, pour la même distance",
-  "price.withPassengers": "{n} passagers : CHF {price} chacun"
+  "price.withPassengers": "{n} passagers : CHF {price} chacun",
+  "price.withoutTicket": "sans le billet de train"
 }
