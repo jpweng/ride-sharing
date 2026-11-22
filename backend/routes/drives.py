@@ -44,9 +44,13 @@ class DriveCreate(BaseModel):
 @router.post("/api/drives")
 def post_drive(payload: DriveCreate, user: Writer):
     try:
-        datetime.fromisoformat(payload.departure_time)
+        departure = datetime.fromisoformat(payload.departure_time).replace(tzinfo=None)
     except ValueError:
         raise api_error(400, "invalid_time", "departure_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
+    # A drive that has left is no offer: no search would find it, and it
+    # would count as a trip its driver made (notify.py's history).
+    if departure <= notify.local_now():
+        raise api_error(400, "departure_past", "The departure time has passed")
 
     route = matching.route_with_fallback([
         (payload.origin.lat, payload.origin.lon),
@@ -54,18 +58,18 @@ def post_drive(payload: DriveCreate, user: Writer):
     ])
 
     price_band = pricing.band(route["distance_m"] / 1000.0)
-    driver_price = None
-    if price_band:
-        driver_price = price_band["default_chf"]
-        if payload.price_chf is not None:
-            driver_price = round(payload.price_chf, 2)
-            problem = pricing.check_driver_price(driver_price, price_band)
-            if problem == "price_too_high":
-                raise api_error(400, "price_too_high",
-                                f"The price per passenger can be at most CHF {price_band['max_chf']:.2f}")
-            if problem == "price_too_low":
-                raise api_error(400, "price_too_low",
-                                f"The price per passenger must be at least CHF {price_band['min_chf']:.2f}")
+    if not price_band:  # as GET /api/price_band answers for the same trip
+        raise api_error(400, "no_distance", "Start and destination are the same place")
+    driver_price = price_band["default_chf"]
+    if payload.price_chf is not None:
+        driver_price = round(payload.price_chf, 2)
+        problem = pricing.check_driver_price(driver_price, price_band)
+        if problem == "price_too_high":
+            raise api_error(400, "price_too_high",
+                            f"The price per passenger can be at most CHF {price_band['max_chf']:.2f}")
+        if problem == "price_too_low":
+            raise api_error(400, "price_too_low",
+                            f"The price per passenger must be at least CHF {price_band['min_chf']:.2f}")
 
     drive_id = db.create_drive(
         driver_name=user["name"],

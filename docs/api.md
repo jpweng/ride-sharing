@@ -25,7 +25,8 @@ Rides:
   `train_fare`, and `ceilings_chf` (each passenger's ceiling with 1…8 passengers)
 - `POST /api/drives` — may change; posts a drive as the signed-in driver, with `price_chf`: their
   price per passenger, for one passenger and the whole drive (optional: the default suggestion).
-  Outside the band: 400 with code `price_too_high` / `price_too_low`
+  Outside the band: 400 with code `price_too_high` / `price_too_low`. A departure that has passed:
+  400 `departure_past`; the same place at both ends: 400 `no_distance`
 - `GET  /api/drives?upcoming_only=true[&limit=…]` — public; the upcoming drives. Without a signed-in
   user, `driver_name` and `driver_id` are `null`, here and in the two below.
   `?mine=true` — signed in; the driver's own
@@ -45,7 +46,8 @@ Rides:
   [Search limits](search-limits.md)), trips that combine a ride with public transport
   (`combined_matches`; see [A ride and public transport](combined-trips.md)), and a pure public-transport alternative
 - `POST /api/requests` — may change; asks for a ride nobody has posted (same body as `/api/match`),
-  at least 15 minutes and at most 14 days ahead (400 `request_too_soon`, `request_too_far`). To
+  at least 15 minutes and at most 14 days ahead (400 `request_too_soon`, `request_too_far`), between
+  two different places (400 `no_distance`). To
   arrive by a time, the request keeps `leave_by`, when the passenger's own trip has to start for
   that (400 `arrival_too_soon` when that is less than 15 minutes ahead);
   returns the request and how many drivers were told (`drivers_told`: real drivers only, for a real

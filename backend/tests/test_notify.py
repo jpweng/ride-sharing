@@ -280,6 +280,17 @@ def test_api_request_time_limits(user_named, when, code):
     assert e.value.detail["code"] == code
 
 
+def test_api_request_needs_two_places(user_named, isolated_db):
+    # Nothing to drive, yet drivers with an area there would be told.
+    asked = (notify.local_now() + timedelta(days=1)).isoformat(timespec="minutes")
+    with pytest.raises(HTTPException) as e:
+        request_routes.create_ride_request(request_routes.RideRequestCreate(
+            origin=VEVEY, destination={**VEVEY, "name": "Vevey again"}, requested_time=asked,
+        ), user_named("Marie"))
+    assert (e.value.status_code, e.value.detail["code"]) == (400, "no_distance")
+    assert db.list_open_requests(notify.local_now().isoformat(timespec="minutes")) == []
+
+
 def test_api_request_a_quarter_of_an_hour_ahead_is_enough(user_named, isolated_db):
     asked = (notify.local_now() + timedelta(minutes=20)).isoformat(timespec="minutes")
     answer = request_routes.create_ride_request(request_routes.RideRequestCreate(

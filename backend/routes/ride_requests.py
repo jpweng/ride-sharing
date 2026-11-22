@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, model_validator
 
 import bookings
 import database as db
+import matching
 import notify
 import search
 from api import LatLon, Member, Writer, api_error
@@ -40,6 +41,10 @@ def create_ride_request(payload: RideRequestCreate, user: Writer):
         asked = datetime.fromisoformat(payload.requested_time).replace(tzinfo=None)
     except ValueError:
         raise api_error(400, "invalid_time", "requested_time must be ISO 8601, e.g. 2026-09-22T08:30:00")
+    # No trip to drive: drivers with an area there would be told all the same.
+    if matching.haversine_km(payload.origin.lat, payload.origin.lon,
+                             payload.destination.lat, payload.destination.lon) <= 0:
+        raise api_error(400, "no_distance", "Start and destination are the same place")
     now = notify.local_now()
     if asked < now + notify.REQUEST_MIN_AHEAD:
         raise api_error(400, "request_too_soon", "A ride request must be at least 15 minutes ahead")

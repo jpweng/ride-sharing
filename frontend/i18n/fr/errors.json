@@ -11,6 +11,7 @@
   "errors.cross_site_request": "Cette requête a été refusée pour des raisons de sécurité. Rechargez la page et réessayez.",
   "errors.demo_driver_not_found": "Ce conducteur de démo n'existe pas.",
   "errors.demo_read_only": "Vous découvrez la démo en tant que conducteur fictif : rien ne peut être modifié. Connectez-vous avec votre adresse e-mail pour publier des trajets et des demandes.",
+  "errors.departure_past": "Cette heure de départ est déjà passée. Choisissez-en une plus tard.",
   "errors.drive_departed": "Ce trajet est déjà parti.",
   "errors.drive_not_found": "Ce trajet n'existe plus.",
   "errors.email_unavailable": "L'e-mail n'a pas pu être envoyé. Réessayez plus tard, s'il vous plaît.",

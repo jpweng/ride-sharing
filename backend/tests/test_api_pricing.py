@@ -10,6 +10,7 @@ import pytest
 from fastapi import HTTPException
 
 import database as db
+import notify
 import pricing
 from routes import drives as drive_routes
 from routes import match as match_routes
@@ -47,6 +48,32 @@ def test_price_band_needs_two_places(isolated_db, force_haversine):
     with pytest.raises(HTTPException) as exc:
         pricing_routes.get_price_band(46.5, 6.6, 46.5, 6.6)
     assert exc.value.detail["code"] == "no_distance"
+
+
+def test_a_drive_needs_two_places_too(isolated_db, force_haversine):
+    # As the band says for the same trip: without it the drive had no price.
+    with pytest.raises(HTTPException) as exc:
+        _post(destination=VEVEY)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (400, "no_distance")
+    assert db.list_drives() == []
+
+
+@pytest.mark.parametrize("ago", [timedelta(minutes=1), timedelta(days=1)])
+def test_a_drive_that_has_left_cant_be_offered(isolated_db, force_haversine, ago):
+    driver = db.get_user(db.get_or_create_user("Jean D."))
+    departure = (notify.local_now() - ago).isoformat(timespec="minutes")
+    with pytest.raises(HTTPException) as exc:
+        drive_routes.post_drive(drive_routes.DriveCreate(
+            origin=VEVEY, destination=BULLE, departure_time=departure,
+        ), driver)
+    assert (exc.value.status_code, exc.value.detail["code"]) == (400, "departure_past")
+    assert db.list_drives(upcoming_only=False) == []
+    # A few minutes ahead is fine: someone leaving now.
+    soon = (notify.local_now() + timedelta(minutes=5)).isoformat(timespec="minutes")
+    posted = drive_routes.post_drive(drive_routes.DriveCreate(
+        origin=VEVEY, destination=BULLE, departure_time=soon,
+    ), driver)
+    assert posted["departure_time"] == soon
 
 
 def test_drivers_price_is_stored_and_shown(isolated_db, force_haversine):
