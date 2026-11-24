@@ -20,7 +20,9 @@ can cancel afterwards. [backend/bookings.py](../backend/bookings.py) has the rul
   replaces the old booking, and the driver is told again.
 - **Where they meet:** the pickup point and time are shown to both, on the map too. The two
   messages are how they agree on the exact spot. No phone number or email address is exchanged.
-- **Price:** nothing is charged; they settle between themselves. Each booking shows what the
+- **Price:** nothing is charged, and they settle between themselves, unless
+  [payments](payments.md) are switched on: the passenger then pays through the site once the
+  driver has accepted. Each booking shows what the
   passenger pays per seat by the [pricing rules](../backend/pricing.py), with the passengers
   accepted so far: the price falls when more are accepted, for those already aboard too. A drive's
   `price_chf` is what the next passenger would pay.
@@ -58,7 +60,7 @@ passenger booked on it, accepted, in one step (`bookings.accept_request()`).
 After the ride, both sides are asked to [rate it](ratings-and-reports.md), and either can report
 a problem to the team at any time.
 
-Not there yet: paying through the app, and what happens after late cancellations or no-shows.
+Not there yet: what happens after late cancellations or no-shows.
 
 A booking's statuses: `requested`, then `accepted` or `declined` by the driver;
 `cancelled_by_passenger` or `cancelled_by_driver` afterwards. The inbox's kinds:

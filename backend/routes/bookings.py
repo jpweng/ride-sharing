@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 import bookings
 import database as db
 import demo_drives
+import payments
 import ratings
 from api import LatLon, Member, Writer, api_error
 
@@ -59,13 +60,16 @@ def request_booking(drive_id: int, payload: BookingCreate, user: Writer):
 
 @router.get("/api/bookings")
 def get_bookings(user: Member):
-    # Each with what the other side was rated on earlier rides.
-    return ratings.with_booking_ratings(bookings.for_user(user))
+    # Each with what the other side was rated on earlier rides, and its
+    # payment when seats are paid through the site.
+    return payments.with_payments(ratings.with_booking_ratings(bookings.for_user(user)))
 
 
 @router.post("/api/bookings/{booking_id}/accept")
 def accept_booking(booking_id: int, user: Writer, payload: BookingAnswer | None = None):
-    return bookings.accept(booking_id, user, payload.note if payload else None)
+    booking = bookings.accept(booking_id, user, payload.note if payload else None)
+    payments.booking_accepted(booking)  # from now on the passenger has it to pay
+    return booking
 
 
 @router.post("/api/bookings/{booking_id}/decline")
@@ -75,4 +79,6 @@ def decline_booking(booking_id: int, user: Writer):
 
 @router.post("/api/bookings/{booking_id}/cancel")
 def cancel_booking(booking_id: int, user: Writer):
-    return bookings.cancel(booking_id, user)
+    booking = bookings.cancel(booking_id, user)
+    payments.booking_ended(booking_id)  # nothing is due any more; what was paid goes back
+    return booking

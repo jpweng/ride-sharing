@@ -156,6 +156,8 @@ def _sentence(n: dict, language: str) -> tuple[str, str]:
     if kind == "booking_declined":
         return t("bookingDeclined", name=drive.get("driver_name", "")), drive_trip
     if kind == "booking_cancelled":
+        if details.get("reason") == "unpaid":
+            return t("bookingNotPaid", name=details.get("passenger_name", "")), drive_trip
         if details.get("by") == "driver":
             return t("bookingCancelledByDriver", name=drive.get("driver_name", "")), drive_trip
         return t("bookingCancelledByPassenger", name=details.get("passenger_name", "")), drive_trip
@@ -163,6 +165,12 @@ def _sentence(n: dict, language: str) -> tuple[str, str]:
         return t("bookingDriveCancelled", name=drive.get("driver_name", "")), drive_trip
     if kind == "request_accepted":
         return t("requestAccepted", name=drive.get("driver_name", "")), drive_trip
+    if kind == "payment_received":
+        return t("paymentReceived", name=details.get("passenger_name", "")), drive_trip
+    if kind == "booking_unpaid":
+        return t("bookingUnpaid"), drive_trip
+    if kind == "payment_refunded":
+        return t("paymentRefunded", amount=f"{details.get('amount_chf') or 0:.2f}"), drive_trip
     if kind == "rate_ride":
         name = details.get("rated_name", "")
         asked = t("rateDriver", name=name) if details.get("rated_role") == "driver" else t("ratePassenger", name=name)

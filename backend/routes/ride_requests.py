@@ -19,6 +19,7 @@ import bookings
 import database as db
 import matching
 import notify
+import payments
 import search
 from api import LatLon, Member, Writer, api_error
 from routes.match import MatchRequest
@@ -128,4 +129,6 @@ def accept_ride_request(request_id: int, payload: RequestAccept, user: Writer):
             "origin": payload.origin.model_dump(), "destination": payload.destination.model_dump(),
             "departure_time": payload.departure_time,
         }
-    return bookings.accept_request(request, user, payload.seats_available, payload.note, trip, payload.price_chf)
+    booking = bookings.accept_request(request, user, payload.seats_available, payload.note, trip, payload.price_chf)
+    payments.booking_accepted(booking)  # from now on the passenger has it to pay
+    return booking

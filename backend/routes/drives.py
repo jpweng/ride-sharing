@@ -23,6 +23,7 @@ import database as db
 import demo_drives
 import matching
 import notify
+import payments
 import pricing
 import ratings
 import search
@@ -135,5 +136,6 @@ def cancel_drive(drive_id: int, user: Writer):
     # told about it. The drive's bookings are deleted with it.
     booked = bookings.tell_drive_cancelled(drive)
     notify.tell_drive_cancelled(drive, exclude=booked)
+    payments.drive_cancelled(drive_id)  # what its passengers paid goes back
     db.delete_drive(drive_id)
     return {"deleted": drive_id}

@@ -21,7 +21,9 @@ price per passenger inside a band: at least about the fuel, at most the car's re
 (CHF 0.75/km) shared with one passenger, and never more than the train's 2nd class full fare. Each
 passenger pays the lowest of the driver's price, the car's cost shared by everyone in the car, and
 the train fare, so the price per passenger falls when more people join. Searches show the train
-fare next to each ride and on the public-transport option. Nothing is charged in the demo. See
+fare next to each ride and on the public-transport option. Nothing is charged in the demo:
+passenger and driver settle between themselves, until [payments](docs/payments.md) are switched
+on. See
 [backend/pricing.py](backend/pricing.py) for the rules and [backend/fares.py](backend/fares.py) for
 the train fares: the official national distance tariff (T601), or the real fare from
 opentransportdata.swiss when `OJP_API_KEY` is set (see [Train fares](docs/train-fares.md)).
@@ -120,6 +122,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [Load test](docs/load-test.md): the event-evening simulation and its results
 - [The contact page](docs/contact.md): the form whose messages are emailed to the team, the email's
   headers, limits, switching it on
+- [Payments](docs/payments.md): paying for a seat with Stripe, switched off until its keys are
+  set; refunds, what is kept, switching it on
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
   listed by FastAPI at `/docs` on a running app
 - [Ride predictions and ride requests](docs/ride-predictions.md): design, rules and reasons
@@ -149,6 +153,8 @@ backend/
   reports.py      reports of a problem with a ride, for the team (see admin.py)
   contact.py      the contact form: a visitor's message, emailed to the team
   bookings.py     bookings: asking for seats on a drive, the driver's answer, cancelling
+  payments.py     paying for a seat with Stripe (off without its keys), refunds
+  stripe_gateway.py  the calls to Stripe
   profiles.py     optional profiles (about, habits, car, photo) and who may see whose
   photos.py       where profile photos are kept: a private S3 bucket (a folder in development)
   fares.py        train fares: T601 distance tariff, optional OJP fare lookup

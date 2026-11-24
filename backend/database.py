@@ -914,7 +914,10 @@ def delete_account(user_id: int) -> dict:
     (social.py), sessions and sign-in links. Returns how many rows of each.
     Passengers must be told about cancelled drives first
     (notify.tell_drive_cancelled, bookings.tell_drive_cancelled), and drivers
-    about the user's bookings (bookings.tell_account_deleted)."""
+    about the user's bookings (bookings.tell_account_deleted). Payments
+    (payments.py) are not deleted: they are bookkeeping records, hold no
+    name, and their foreign keys leave them without the user; they must be
+    ended first (payments.drive_cancelled, payments.account_deleted)."""
     with get_conn() as conn:
         user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         if user is None:

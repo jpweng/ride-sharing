@@ -19,6 +19,9 @@
 #                           photos without it; see docs/profiles.md)
 #   CONTACT_EMAIL           where the contact form's messages are emailed
 #                           (optional: no form without it; see docs/contact.md)
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+#                           paying for a seat with Stripe (optional: nothing is
+#                           charged without both; see docs/payments.md)
 #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_ID, APPLE_TEAM_ID,
 #   APPLE_KEY_ID, APPLE_PRIVATE_KEY
 #                           sign-in with Google and Apple (optional: each is
@@ -106,6 +109,10 @@ services:
       # Where the contact form's messages are emailed (backend/contact.py).
       # Empty: the form is switched off and the contact page says so.
       CONTACT_EMAIL: ${CONTACT_EMAIL:-}
+      # Paying for a seat with Stripe (backend/payments.py). Empty: nothing
+      # is charged, passenger and driver settle between themselves.
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       # Sign-in with Google and Apple (backend/social.py). Empty: not offered.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
