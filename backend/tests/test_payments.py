@@ -413,6 +413,21 @@ def test_cancelling_the_drive_ends_every_payment_on_it(users, stripe):
     assert _payment(marie)["origin_name"] == "Lausanne"
 
 
+def test_deleting_a_drive_after_the_ride_refunds_nobody(users, stripe, monkeypatch):
+    booking = _booked(users)
+    _pay(stripe, booking, users["marie"])
+    after = datetime.fromisoformat(booking["pickup"]["time"]) + timedelta(hours=2)
+    monkeypatch.setattr(notify, "local_now", lambda: after)
+
+    drive_routes.cancel_drive(booking["drive_id"], users["jean"])
+
+    assert stripe.refunds == []
+    payment = _payment(booking)
+    assert (payment["status"], payment["ended_at"], payment["refund_due_cts"]) == ("paid", None, 0)
+    # Nor does the hourly run, which finds the booking gone.
+    assert payments.run(after)["payments_ended"] == 0
+
+
 def _delete_account(user):
     from fastapi import Response
 

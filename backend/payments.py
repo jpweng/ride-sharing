@@ -402,12 +402,16 @@ def booking_ended(booking_id: int) -> None:
         send_refunds(payment["id"])
 
 
-def drive_cancelled(drive_id: int) -> None:
+def drive_cancelled(drive_id: int, now: datetime | None = None) -> None:
     """A drive is being cancelled (by its driver, or with their account):
-    its bookings' payments end with it."""
+    the payments of the bookings on it end with it. Not those of
+    passengers already picked up: a drive deleted after the ride leaves
+    what was paid for it as it is."""
+    now = now or notify.local_now()
     with db.get_conn() as conn:
         rows = conn.execute(
-            f"SELECT booking_id FROM payments WHERE drive_id = ? AND {OPEN_SQL}", (drive_id,)
+            f"SELECT booking_id FROM payments WHERE drive_id = ? AND pickup_time > ? AND {OPEN_SQL}",
+            (drive_id, _iso(now)),
         ).fetchall()
     for row in rows:
         booking_ended(row["booking_id"])
