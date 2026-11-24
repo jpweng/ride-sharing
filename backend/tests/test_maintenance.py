@@ -95,7 +95,7 @@ def test_run_refreshes_demo_drives_and_purges(isolated_db, force_haversine):
         "unpaid_cancelled": 0, "payments_ended": 0, "prices_settled": 0, "refunds_sent": 0, "payments_deleted": 0,
         "payouts_sent": 0, "payouts_given_back": 0, "payout_reminders": 0,
         "drives": 0, "searches": 0, "ride_requests": 0, "notifications": 0, "users": 0,
-        "sign_in_links": 0, "sessions": 0,
+        "sign_in_links": 0, "sessions": 0, "app_sign_ins": 0,
     }
 
 
