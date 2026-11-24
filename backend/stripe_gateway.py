@@ -19,11 +19,12 @@ SignatureError = stripe.SignatureVerificationError
 
 
 class Gateway:
-    def __init__(self, secret_key: str):
-        self._client = stripe.StripeClient(secret_key, max_network_retries=2)
+    def __init__(self, secret_key: str, http_client=None):
+        # `http_client`: the tests' stand-in for the network.
+        self._client = stripe.StripeClient(secret_key, max_network_retries=2, http_client=http_client)
 
     def create_checkout(self, *, amount_cts: int, description: str, success_url: str, cancel_url: str,
-                        expires_at: int, metadata: dict, idempotency_key: str, language: str | None = None,
+                        expires_at: int, metadata: dict, language: str | None = None,
                         email: str | None = None) -> dict:
         """A Checkout page for one payment of `amount_cts`; {"id", "url"}.
         The payment methods offered are those switched on in the Stripe
@@ -45,7 +46,7 @@ class Gateway:
         }
         if email:
             params["customer_email"] = email
-        session = self._client.v1.checkout.sessions.create(params, {"idempotency_key": idempotency_key})
+        session = self._client.v1.checkout.sessions.create(params)
         return {"id": session.id, "url": session.url}
 
     def checkout(self, session_id: str) -> dict:
@@ -82,11 +83,13 @@ class Gateway:
 
 def _checkout(session) -> dict:
     intent = session.payment_intent
+    metadata = session.metadata
     return {
         "id": session.id,
         "status": session.status,
         "paid": session.payment_status == "paid",
         "amount_cts": session.amount_total,
         "payment_intent": intent if isinstance(intent, str) or intent is None else intent.id,
-        "metadata": dict(session.metadata or {}),
+        # The library's own object isn't a mapping.
+        "metadata": metadata.to_dict() if hasattr(metadata, "to_dict") else dict(metadata or {}),
     }
