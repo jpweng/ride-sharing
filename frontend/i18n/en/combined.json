@@ -3,9 +3,14 @@
   "combined.carFrom": "By car from {place}",
   "combined.carTo": "By car to {place}",
   "combined.dropoffGap": "drop-off {km} km from your destination",
+  "combined.dropoffWalk": "{duration} on foot from the drop-off ({km} km)",
   "combined.pickupGap": "pickup {km} km from your start",
+  "combined.pickupWalk": "{duration} on foot to the pickup ({km} km)",
   "combined.searching": "Looking for rides combined with public transport…",
   "combined.title": "A ride and public transport",
   "combined.transitTo": "Public transport to {place}",
-  "combined.vsFaster": "{duration} quicker than public transport alone"
+  "combined.vsFaster": "{duration} quicker than public transport alone",
+  "combined.walkAbout": "about {duration}",
+  "combined.walkFromDropoff": "On foot to your destination",
+  "combined.walkToPickup": "On foot to the pickup"
 }

@@ -3,9 +3,14 @@
   "combined.carFrom": "En voiture depuis {place}",
   "combined.carTo": "En voiture jusqu'à {place}",
   "combined.dropoffGap": "dépose à {km} km de votre destination",
+  "combined.dropoffWalk": "{duration} à pied depuis la dépose ({km} km)",
   "combined.pickupGap": "prise en charge à {km} km de votre départ",
+  "combined.pickupWalk": "{duration} à pied jusqu'à la prise en charge ({km} km)",
   "combined.searching": "Recherche de trajets en voiture combinés aux transports publics…",
   "combined.title": "Un trajet en voiture et les transports publics",
   "combined.transitTo": "Transports publics jusqu'à {place}",
-  "combined.vsFaster": "{duration} de moins qu'en transports publics seuls"
+  "combined.vsFaster": "{duration} de moins qu'en transports publics seuls",
+  "combined.walkAbout": "environ {duration}",
+  "combined.walkFromDropoff": "À pied jusqu'à votre destination",
+  "combined.walkToPickup": "À pied jusqu'à la prise en charge"
 }

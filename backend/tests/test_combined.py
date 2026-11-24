@@ -412,6 +412,93 @@ def test_the_search_answers_with_a_ride_between(both_ends, force_haversine):
     assert trip["price_chf"] is not None and trip["driver_name"] is None
 
 
+# --- The walk between the passenger's own end of the trip and the car's ------------
+# 1.3 km east of the route: 20 minutes on foot (1.3 times the straight line, at 12 minutes a km).
+OFF_START = LatLon(name="Start", lat=NEAR_A[0], lon=NEAR_A[1] + 0.0168)
+OFF_END = LatLon(name="Near B", lat=NEAR_B[0], lon=NEAR_B[1] + 0.0171)
+
+
+def test_a_ride_first_starts_when_the_passenger_leaves_for_the_pickup(network):
+    _the_drive()
+    [trip] = combined.find(OFF_START, END, f"{DAY}T08:00")
+    assert (trip["pickup"]["gap_km"], trip["pickup"]["walk_min"]) == (1.3, 20)
+    # The trip starts when they leave their start, 20 minutes before the car is at the pickup.
+    assert (trip["pickup"]["time"][-5:], trip["starts"][-5:]) == ("08:05", "07:45")
+    assert (trip["arrives"][-5:], trip["total_min"]) == ("11:00", 195)
+    # The car and the connection are as without the walk: 20 minutes to change.
+    assert (trip["dropoff"]["time"][-5:], trip["transit"]["connection"]["departure"][11:16]) == ("09:40", "10:00")
+    assert trip["dropoff"]["walk_min"] is None
+    # The time asked for is still about what they board: the car, at 08:05:33.
+    assert trip["time_diff_min"] == 6
+
+
+def test_at_the_pickup_the_trip_starts_with_the_car(network):
+    _the_drive()
+    [trip] = combined.find(START, END, f"{DAY}T08:00")
+    assert trip["pickup"]["walk_min"] is None
+    assert (trip["starts"][-5:], trip["total_min"]) == (trip["pickup"]["time"][-5:], 175)
+
+
+def test_a_ride_last_ends_when_the_passenger_is_at_their_destination(network):
+    _the_drive()
+    start = LatLon(name="Far", lat=FAR_SOUTH[0], lon=FAR_SOUTH[1])
+    network.add_station("Far, station", start.lat, start.lon)
+    network.add_station("A, station", A[0], A[1])
+    network.set_connections("Far, station", "A, station", [_connection("06:40", "07:45")])
+    [trip] = combined.find(start, OFF_END, f"{DAY}T06:30")
+    assert (trip["shape"], trip["dropoff"]["gap_km"], trip["dropoff"]["walk_min"]) == (combined.TRANSIT_FIRST, 1.3, 20)
+    assert (trip["starts"][-5:], trip["dropoff"]["time"][-5:], trip["arrives"][-5:]) == ("06:40", "09:34", "09:54")
+    assert trip["total_min"] == 194 and trip["pickup"]["walk_min"] is None
+
+
+def test_the_walk_does_not_decide_which_trips_are_proposed(network):
+    _the_drive()
+    # To leave at 08:05 the passenger leaves at 07:45, more than 15 minutes
+    # before: the car is at the pickup at the time asked for, and that counts.
+    [trip] = combined.find(OFF_START, END, f"{DAY}T08:05")
+    assert (trip["starts"][-5:], trip["pickup"]["time"][-5:], trip["time_diff_min"]) == ("07:45", "08:05", 1)
+    # Nor what is much slower than public transport alone (175 minutes in what
+    # they ride, as much as 1.25 times 128 plus 15): but what the trip says
+    # about public transport alone is about all of it, the walk included.
+    alone = {"connections": [_connection("08:10", "10:18")]}
+    [trip] = combined.find(OFF_START, END, f"{DAY}T08:00", transit_option=alone)
+    assert (trip["total_min"], trip["vs_transit_min"]) == (195, 67)
+    [same] = combined.find(START, END, f"{DAY}T08:00", transit_option=alone)
+    assert (same["total_min"], same["vs_transit_min"]) == (175, 47)
+
+
+def test_too_far_to_walk_the_trip_is_counted_from_the_car(network):
+    # 5 km from the route: 78 minutes on foot, which nobody walks to a car.
+    far_off = LatLon(name="Start", lat=NEAR_A[0], lon=NEAR_A[1] + 0.0647)
+    _the_drive()
+    [trip] = combined.find(far_off, END, f"{DAY}T08:00")
+    assert (trip["pickup"]["gap_km"], trip["pickup"]["walk_min"]) == (5.0, None)
+    assert (trip["starts"][-5:], trip["total_min"]) == (trip["pickup"]["time"][-5:], 175)
+
+
+def test_a_ride_between_two_legs_has_no_walk_to_the_car(both_ends):
+    _the_drive()
+    # Public transport takes the passenger to the car and on from it, whatever the search's radius.
+    [trip] = combined.find(SOUTH, END, f"{DAY}T06:30")
+    assert trip["pickup"]["walk_min"] is None and trip["dropoff"]["walk_min"] is None
+    assert (trip["starts"][-5:], trip["arrives"][-5:], trip["total_min"]) == ("06:40", "11:00", 260)
+
+
+def test_the_card_shows_the_walk():
+    script = (FRONTEND / "combined.js").read_text()
+    # A step of its own in the details, before the car of a ride first, after it for a ride last.
+    assert '${walked === "pickup" ? walkStep("pickup", m, origin) : ""}${transitStep(before)}' in script
+    assert '${transitStep(after)}${walked === "dropoff" ? walkStep("dropoff", m, destination) : ""}' in script
+    step = script[script.index("function walkStep(kind, m, own) {"):script.index("function walkNote(kind, m) {")]
+    # From when they leave to the car's time (or from the car's to when they are there).
+    assert 'kind === "pickup" ? [m.starts, point.time] : [point.time, m.arrives]' in step
+    assert 't(kind === "pickup" ? "combined.walkToPickup" : "combined.walkFromDropoff")' in step
+    assert 't("combined.walkAbout", { duration: fmtMinutes(point.walk_min) })' in step and "directions-link" in step
+    # On the card, beyond a short walk, instead of the distance alone.
+    assert "${walked ? walkNote(walked, m) : farGapsNote(carEnd)}" in script
+    assert 'kind === "pickup" ? "combined.pickupWalk" : "combined.dropoffWalk"' in script
+
+
 def test_the_page_shows_them():
     html = (FRONTEND / "index.html").read_text()
     scripts = re.findall(r'<script src="([^"]+)"', html)

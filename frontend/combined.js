@@ -50,6 +50,37 @@ function combinedPrice(m, cost) {
   return tripPrice(cost.total, t(alone.approximate ? "price.trainAloneApprox" : "price.trainAlone", { price: fmtChf(alone.full_chf) }));
 }
 
+// The way between the passenger's own end of the trip and the car's, on
+// foot: the trip's times count it when the search gives it ("walk_min", on
+// the pickup of a ride first and the drop-off of a ride last: an estimate,
+// not a route). `kind`: "pickup" or "dropoff"; `own`: the passenger's start
+// or destination.
+const WALK_ICON = '<svg class="pt-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.5" r="1.6"/><path d="M13 8.5l-3 3.5 3 3v5.5M10 12l-.8 3.5L7 20.5M13 8.5l2.5 3 3 1M10 9.5l-3 1.5v3"/></svg>';
+
+// As a step of the details: when to leave (or when the passenger is there),
+// about how long it takes, how far the car passes, and a Google Maps
+// directions link (as a match's details, app.js: onwardLine).
+function walkStep(kind, m, own) {
+  const point = m[kind];
+  if (!point.walk_min) return "";
+  const [from, to] = kind === "pickup" ? [own, point] : [point, own];
+  const [starts, ends] = kind === "pickup" ? [m.starts, point.time] : [point.time, m.arrives];
+  const url = `https://www.google.com/maps/dir/?api=1&origin=${from.lat},${from.lon}&destination=${to.lat},${to.lon}&travelmode=walking`;
+  return tripStep(WALK_ICON, starts, ends,
+    `${esc(t(kind === "pickup" ? "combined.walkToPickup" : "combined.walkFromDropoff"))}
+    <span class="combined-gap">${esc(t("combined.walkAbout", { duration: fmtMinutes(point.walk_min) }))} · ${esc(gapsText({ pickup: {}, dropoff: {}, [kind]: point }))}
+    <a class="directions-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(t("match.directions"))}</a></span>`);
+}
+
+// On the card, beyond a short walk (FAR_GAP_KM): "20 min on foot to the
+// pickup (1.3 km)", so the trip's first time isn't taken for the car's.
+function walkNote(kind, m) {
+  const point = m[kind];
+  if (!(point.gap_km > FAR_GAP_KM)) return "";
+  const key = kind === "pickup" ? "combined.pickupWalk" : "combined.dropoffWalk";
+  return `<div class="trip-gap">${esc(t(key, { duration: fmtMinutes(point.walk_min), km: fmtNumber(point.gap_km) }))}</div>`;
+}
+
 // The car's part of a combined trip on the map: its route, where the
 // passenger gets in and out, and their own two ends.
 function showCombinedOnMap(m, origin, destination) {
@@ -86,12 +117,16 @@ function combinedCard(m, origin, destination) {
   // Beyond a short walk, the card says how far the car's end of the trip is
   // from the passenger's own (a ride between two legs has no such end).
   const carEnd = { pickup: {}, dropoff: {}, ...(between ? {} : rideFirst ? { pickup: m.pickup } : { dropoff: m.dropoff }) };
+  // That end, when the trip's times count the walk to or from the car: the
+  // walk is then a step of its own, which says how far.
+  const ownEnd = rideFirst ? "pickup" : "dropoff";
+  const walked = !between && m[ownEnd].walk_min ? ownEnd : "";
 
   // In the details, the steps by their stops' full names. The ride: how far
   // the car's end of the trip is from the passenger's own, and the seat's price.
   const byCar = between ? t("combined.carBetween", { from: m.change_before.name, to: m.change_after.name })
     : t(rideFirst ? "combined.carTo" : "combined.carFrom", { place: m.change.name });
-  const about = [gapsText(carEnd), typeof m.price_chf === "number" ? t("price.perSeat", { price: fmtChf(m.price_chf) }) : ""];
+  const about = [walked ? "" : gapsText(carEnd), typeof m.price_chf === "number" ? t("price.perSeat", { price: fmtChf(m.price_chf) }) : ""];
   const ride = tripStep(CAR_ICON, m.pickup.time, m.dropoff.time,
     `${esc(byCar)}<span class="combined-gap">${esc(about.filter(Boolean).join(" · "))}</span>`);
   // A connection: how long it takes and its lines, then its ticket and the link to it.
@@ -114,11 +149,11 @@ function combinedCard(m, origin, destination) {
   card.innerHTML = `
     ${tripLine(m.starts, m.arrives, m.total_min, combinedPrice(m, cost))}
     ${tripHow([part(before), drives, part(after)])}
-    ${farGapsNote(carEnd)}
+    ${walked ? walkNote(walked, m) : farGapsNote(carEnd)}
     ${quicker ? `<span class="score">${esc(quicker)}</span>` : ""}
     ${demoNote(m)}
     <div class="match-details" hidden>
-      <div class="combined-steps">${transitStep(before)}${ride}${transitStep(after)}</div>
+      <div class="combined-steps">${walked === "pickup" ? walkStep("pickup", m, origin) : ""}${transitStep(before)}${ride}${transitStep(after)}${walked === "dropoff" ? walkStep("dropoff", m, destination) : ""}</div>
       <div class="meta">${esc(m.origin_name)} → ${esc(m.destination_name)} · ${fmtTime(m.departure_time)} · ${esc(t("common.seats", { count: m.seats_available }))} · ${esc(t("match.rideKm", { km: fmtNumber(m.ride_km) }))}</div>
       <button type="button" class="link-btn match-on-map">${esc(t("match.showOnMap"))}</button>
     </div>
