@@ -208,3 +208,16 @@ def test_served_dictionary_is_the_merge(lang):
 
 def test_unknown_language_not_found():
     assert TestClient(main.app).get("/i18n/xx.json").status_code == 404
+
+
+def test_a_languages_folder_is_looked_up_never_built_from_the_name():
+    assert set(translations.FOLDERS) == set(translations.LANGUAGES)
+    for lang in LANGS:
+        assert translations.FOLDERS[lang] == translations.I18N_DIR / lang
+        assert translations.files(lang) == sorted((translations.I18N_DIR / lang).glob("*.json"))
+    # Anything else has no folder, whatever it would point at as a path.
+    for name in ("xx", "", "..", "en/..", "en/../de", "/etc", "EN"):
+        with pytest.raises(KeyError):
+            translations.files(name)
+        with pytest.raises(KeyError):
+            translations.dictionary(name)

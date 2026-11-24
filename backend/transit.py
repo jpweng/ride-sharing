@@ -192,6 +192,12 @@ def _search_stations(query: str) -> list[dict]:
     return _cache.fetch(("search", query), ask, STOPS_TTL_S)
 
 
+# geo.admin's canton after a town's name: "Bern (BE)". Anchored at the end
+# and without a run of spaces in front (the name is stripped afterwards): the
+# time it takes doesn't grow with the spaces a name may contain.
+CANTON_SUFFIX = re.compile(r"\([A-Z]{2}\)$")
+
+
 def station_for_place(place_name: str, lat: float, lon: float) -> dict | None:
     """
     The station of a town/municipality the user picked by name (e.g.
@@ -211,7 +217,7 @@ def station_for_place(place_name: str, lat: float, lon: float) -> dict | None:
     None if nothing matches (or the API is unreachable), so callers can fall
     back to the nearest stop.
     """
-    bare_name = re.sub(r"\s*\([A-Z]{2}\)$", "", place_name).strip()
+    bare_name = CANTON_SUFFIX.sub("", place_name.rstrip()).strip()
     queries = [bare_name] if bare_name == place_name else [bare_name, place_name]
 
     fallback = None

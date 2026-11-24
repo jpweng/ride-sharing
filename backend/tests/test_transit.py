@@ -7,6 +7,8 @@ responses are interpreted. These tests instead stub only the HTTP layer
 (requests.get) with payloads recorded from the live API, and run the real
 transit.py code on top -- still fully offline.
 """
+import time
+
 import pytest
 import requests
 
@@ -205,6 +207,32 @@ def test_place_search_drops_canton_suffix(fake_http):
 
     assert station["name"] == "Bern"
     assert fake_http.search_queries() == ["Bern"]
+
+
+@pytest.mark.parametrize("place, searched", [
+    ("Bern (BE)", ["Bern"]),
+    ("Bern   (BE)", ["Bern"]),
+    ("Bern(BE)", ["Bern"]),
+    ("Bern (BE)  ", ["Bern"]),
+    ("Bern", ["Bern"]),
+    # Not a canton at the end of the name: searched as it is.
+    ("Bern (be)", ["Bern (be)"]),
+    ("Bern (BE) Bahnhof", ["Bern (BE) Bahnhof"]),
+    ("(BE) Bern", ["(BE) Bern"]),
+])
+def test_only_a_canton_at_the_end_of_the_name_is_dropped(fake_http, place, searched):
+    fake_http.search["Bern"] = BERN_SEARCH
+    transit.station_for_place(place, *BERN_CENTROID)
+    assert fake_http.search_queries()[:1] == searched
+
+
+def test_a_name_full_of_spaces_takes_no_longer_to_read(fake_http):
+    """The time to cut the canton off doesn't grow with the spaces in a name."""
+    name = "Bern" + " " * 200_000 + "x"
+    started = time.monotonic()
+    assert transit.CANTON_SUFFIX.sub("", name.rstrip()).strip() == name
+    assert transit.CANTON_SUFFIX.sub("", ("Bern" + " " * 200_000 + "(BE)").rstrip()).strip() == "Bern"
+    assert time.monotonic() - started < 1.0
 
 
 def test_place_without_railway_gets_bus_stop_not_cable_car(fake_http):
