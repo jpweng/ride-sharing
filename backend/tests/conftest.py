@@ -172,6 +172,15 @@ def demo_drives_on_by_default(monkeypatch):
     monkeypatch.delenv("DEMO_DRIVES", raising=False)
 
 
+@pytest.fixture(autouse=True)
+def payments_off_by_default(monkeypatch):
+    """Tests run with payments off (the default), whatever Stripe keys are
+    set in the shell; the payment tests switch them on with a fake Stripe
+    (fake_stripe.py)."""
+    monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)
+    monkeypatch.delenv("STRIPE_WEBHOOK_SECRET", raising=False)
+
+
 @pytest.fixture
 def user_named(isolated_db):
     """name -> a user row, for calling the API's route functions directly

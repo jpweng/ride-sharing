@@ -1,0 +1,16 @@
+{
+  "payout.backPending": "Thank you. Stripe may need a moment to check your details.",
+  "payout.backReady": "Your payouts are set up.",
+  "payout.continue": "Continue the setup",
+  "payout.dashboard": "See your payouts at Stripe",
+  "payout.inboxLapsed": "A passenger's payment was refunded to them, because your payouts weren't set up",
+  "payout.inboxSent": "CHF {amount} for your drive is on its way to you",
+  "payout.inboxSetup": "CHF {amount} is waiting for you: set up payouts to receive it",
+  "payout.incomplete": "Your payout setup isn't finished, or Stripe is still checking it.",
+  "payout.none": "Passengers pay through Ride and Rail. To receive the money on your bank account, set up payouts once with our payment provider, Stripe: your identity and your bank account.",
+  "payout.ready": "Payouts are set up. The day after a ride, what your passengers paid is sent to you, and it is paid out to your bank account once a week.",
+  "payout.sent": "Sent to you so far: CHF {amount}",
+  "payout.setUp": "Set up payouts",
+  "payout.title": "Getting paid",
+  "payout.waiting": "Waiting for you: CHF {amount}"
+}

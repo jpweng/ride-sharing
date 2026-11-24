@@ -3,7 +3,7 @@ Paying for a seat (payments.py, routes/payments.py, docs/payments.md):
 switched off without Stripe's keys; with them, a payment due from the
 driver's acceptance, the Checkout page, Stripe's webhook, refunds when a
 booking ends, and the bookings cancelled when they aren't paid in time.
-Stripe itself is a fake (FakeStripe): no network. Isolated temp DB and
+Stripe itself is a fake (fake_stripe.py): no network. Isolated temp DB and
 haversine routing, the route functions called directly as a given user.
 """
 import json
@@ -26,6 +26,7 @@ import payments
 import pricing
 import stripe_gateway
 import translations
+from fake_stripe import NOW, at_noon, stripe  # noqa: F401 (fixtures)
 from routes import auth as auth_routes
 from routes import bookings as booking_routes
 from routes import drives as drive_routes
@@ -36,85 +37,10 @@ FRONTEND = Path(__file__).resolve().parents[2] / "frontend"
 LANGS = ["en", "de", "fr", "it"]
 
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()
-NOW = datetime.fromisoformat(f"{date.today().isoformat()}T12:00")
 BASE = "https://rideandrail.test"
 
 LAUSANNE = {"name": "Lausanne", "lat": 46.5197, "lon": 6.6323}
 GENEVE = {"name": "Genève", "lat": 46.2044, "lon": 6.1432}
-
-
-class FakeStripe:
-    """Stands in for stripe_gateway.Gateway: Checkout pages that a test
-    pays with pay(), and the refunds asked for."""
-
-    def __init__(self):
-        self.sessions = {}
-        self.refunds = []  # (payment intent, centimes), once per idempotency key
-        self.refund_keys = set()
-        self.failing = set()  # names of the calls that fail
-
-    def _check(self, call):
-        if call in self.failing:
-            raise stripe_gateway.Error(f"{call} failed")
-
-    def create_checkout(self, **asked):
-        self._check("create_checkout")
-        session_id = f"cs_{len(self.sessions) + 1}"
-        self.sessions[session_id] = {
-            "id": session_id, "status": "open", "paid": False, "amount_cts": asked["amount_cts"],
-            "payment_intent": None, "metadata": asked["metadata"], "asked": asked,
-        }
-        return {"id": session_id, "url": f"https://checkout.test/{session_id}"}
-
-    def checkout(self, session_id):
-        self._check("checkout")
-        return {k: v for k, v in self.sessions[session_id].items() if k != "asked"}
-
-    def expire_checkout(self, session_id):
-        if self.sessions[session_id]["status"] != "open":
-            raise stripe_gateway.Error("not open")
-        self.sessions[session_id]["status"] = "expired"
-
-    def charge_of(self, payment_intent_id):
-        return payment_intent_id.replace("pi_", "ch_")
-
-    def refund(self, payment_intent_id, amount_cts, idempotency_key):
-        self._check("refund")
-        if idempotency_key not in self.refund_keys:
-            self.refund_keys.add(idempotency_key)
-            self.refunds.append((payment_intent_id, amount_cts))
-        return f"re_{len(self.refunds)}"
-
-    def event(self, payload, signature, secret):
-        if signature != f"signed with {secret}":
-            raise stripe_gateway.SignatureError("bad signature", signature)
-        return json.loads(payload)
-
-    # --- what a passenger does on the page ---
-    def pay(self, session_id):
-        session = self.sessions[session_id]
-        session.update(status="complete", paid=True, payment_intent=session_id.replace("cs_", "pi_"))
-        return self.checkout(session_id)
-
-    def last(self):
-        return list(self.sessions)[-1]
-
-
-@pytest.fixture
-def stripe(monkeypatch):
-    """Payments switched on, with a fake Stripe."""
-    fake = FakeStripe()
-    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_x")
-    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_x")
-    monkeypatch.setattr(payments, "gateway", lambda: fake)
-    return fake
-
-
-@pytest.fixture(autouse=True)
-def payments_off_by_default(monkeypatch):
-    for name in payments.SETTINGS:
-        monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr(notify, "local_now", lambda: NOW)
 
 
 @pytest.fixture

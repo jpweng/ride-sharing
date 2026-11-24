@@ -42,6 +42,8 @@
   "errors.payment_not_due": "Für diese Buchung ist nichts zu bezahlen.",
   "errors.payment_too_late": "Die Frist für die Bezahlung dieser Buchung ist abgelaufen.",
   "errors.payments_off": "Zahlungen sind zurzeit nicht verfügbar.",
+  "errors.payout_failed": "Unser Zahlungsanbieter war nicht erreichbar. Bitte versuchen Sie es erneut.",
+  "errors.payouts_not_set_up": "Richten Sie zuerst die Auszahlungen ein.",
   "errors.photo_invalid": "Diese Datei ist kein Foto, das wir verwenden können.",
   "errors.photo_too_large": "Dieses Foto ist zu gross.",
   "errors.photos_unavailable": "Fotos können im Moment nicht gespeichert werden. Bitte versuchen Sie es später noch einmal.",

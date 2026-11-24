@@ -1,0 +1,16 @@
+{
+  "payout.backPending": "Vielen Dank. Stripe braucht möglicherweise einen Moment, um Ihre Angaben zu prüfen.",
+  "payout.backReady": "Ihre Auszahlungen sind eingerichtet.",
+  "payout.continue": "Einrichtung fortsetzen",
+  "payout.dashboard": "Ihre Auszahlungen bei Stripe ansehen",
+  "payout.inboxLapsed": "Die Zahlung einer mitfahrenden Person wurde ihr zurückerstattet, weil Ihre Auszahlungen nicht eingerichtet waren",
+  "payout.inboxSent": "CHF {amount} für Ihre Fahrt sind unterwegs zu Ihnen",
+  "payout.inboxSetup": "CHF {amount} warten auf Sie: Richten Sie die Auszahlungen ein, um sie zu erhalten",
+  "payout.incomplete": "Die Einrichtung Ihrer Auszahlungen ist noch nicht abgeschlossen, oder Stripe prüft sie noch.",
+  "payout.none": "Mitfahrende bezahlen über Ride and Rail. Damit das Geld auf Ihr Bankkonto kommt, richten Sie einmalig die Auszahlungen bei unserem Zahlungsanbieter Stripe ein: Ihre Identität und Ihr Bankkonto.",
+  "payout.ready": "Die Auszahlungen sind eingerichtet. Am Tag nach einer Fahrt wird Ihnen überwiesen, was Ihre Mitfahrenden bezahlt haben; die Auszahlung auf Ihr Bankkonto erfolgt einmal pro Woche.",
+  "payout.sent": "Bisher an Sie überwiesen: CHF {amount}",
+  "payout.setUp": "Auszahlungen einrichten",
+  "payout.title": "Auszahlungen",
+  "payout.waiting": "Für Sie bereit: CHF {amount}"
+}

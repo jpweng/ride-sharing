@@ -1,0 +1,16 @@
+{
+  "payout.backPending": "Merci. Stripe peut avoir besoin d'un moment pour vérifier vos données.",
+  "payout.backReady": "Vos versements sont configurés.",
+  "payout.continue": "Poursuivre la configuration",
+  "payout.dashboard": "Voir vos versements chez Stripe",
+  "payout.inboxLapsed": "Le paiement d'un passager lui a été remboursé, car vos versements n'étaient pas configurés",
+  "payout.inboxSent": "CHF {amount} pour votre trajet vous sont envoyés",
+  "payout.inboxSetup": "CHF {amount} vous attendent : configurez les versements pour les recevoir",
+  "payout.incomplete": "La configuration de vos versements n'est pas terminée, ou Stripe la vérifie encore.",
+  "payout.none": "Les passagers paient par l'intermédiaire de Ride and Rail. Pour recevoir l'argent sur votre compte bancaire, configurez une fois les versements auprès de notre prestataire de paiement, Stripe : votre identité et votre compte bancaire.",
+  "payout.ready": "Les versements sont configurés. Le lendemain d'un trajet, ce que vos passagers ont payé vous est envoyé, puis versé sur votre compte bancaire une fois par semaine.",
+  "payout.sent": "Déjà envoyé : CHF {amount}",
+  "payout.setUp": "Configurer les versements",
+  "payout.title": "Versements",
+  "payout.waiting": "En attente pour vous : CHF {amount}"
+}

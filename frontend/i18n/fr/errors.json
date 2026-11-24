@@ -42,6 +42,8 @@
   "errors.payment_not_due": "Il n'y a rien à payer pour cette réservation.",
   "errors.payment_too_late": "Le délai pour payer cette réservation est écoulé.",
   "errors.payments_off": "Les paiements ne sont pas disponibles pour le moment.",
+  "errors.payout_failed": "Notre prestataire de paiement est injoignable. Veuillez réessayer.",
+  "errors.payouts_not_set_up": "Configurez d'abord les versements.",
   "errors.photo_invalid": "Ce fichier n'est pas une photo utilisable.",
   "errors.photo_too_large": "Cette photo est trop volumineuse.",
   "errors.photos_unavailable": "Les photos ne peuvent pas être enregistrées pour le moment. Réessayez plus tard, s'il vous plaît.",

@@ -42,6 +42,8 @@
   "errors.payment_not_due": "Non c'è nulla da pagare per questa prenotazione.",
   "errors.payment_too_late": "Il termine per pagare questa prenotazione è scaduto.",
   "errors.payments_off": "I pagamenti non sono disponibili al momento.",
+  "errors.payout_failed": "Non è stato possibile raggiungere il nostro fornitore di servizi di pagamento. Riprovi.",
+  "errors.payouts_not_set_up": "Configuri prima i versamenti.",
   "errors.photo_invalid": "Questo file non è una foto utilizzabile.",
   "errors.photo_too_large": "Questa foto è troppo grande.",
   "errors.photos_unavailable": "Al momento non è possibile salvare le foto. Riprovi più tardi.",

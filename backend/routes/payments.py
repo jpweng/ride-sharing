@@ -18,7 +18,7 @@ from api import Writer
 router = APIRouter()
 
 
-def _base_url(request: Request) -> str:
+def base_url(request: Request) -> str:
     """Where Stripe sends the passenger back: the site's public address, or
     the one this request came to (a local test)."""
     return (os.environ.get("PUBLIC_BASE_URL") or "").strip() or str(request.base_url)
@@ -31,7 +31,7 @@ def payments_config():
 
 @router.post("/api/bookings/{booking_id}/pay")
 def pay_booking(booking_id: int, request: Request, user: Writer):
-    return {"url": payments.checkout(booking_id, user, _base_url(request))}
+    return {"url": payments.checkout(booking_id, user, base_url(request))}
 
 
 @router.post("/api/bookings/{booking_id}/pay/check")

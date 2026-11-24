@@ -69,6 +69,10 @@ API_ROUTES = {
     ("post", "/api/bookings/{booking_id}/pay"),
     ("post", "/api/bookings/{booking_id}/pay/check"),
     ("post", "/api/payments/webhook"),
+    ("get", "/api/payouts"),
+    ("post", "/api/payouts/onboard"),
+    ("post", "/api/payouts/refresh"),
+    ("post", "/api/payouts/dashboard"),
 }
 
 

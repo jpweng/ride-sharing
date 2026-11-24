@@ -171,6 +171,11 @@ def _sentence(n: dict, language: str) -> tuple[str, str]:
         return t("bookingUnpaid"), drive_trip
     if kind == "payment_refunded":
         return t("paymentRefunded", amount=f"{details.get('amount_chf') or 0:.2f}"), drive_trip
+    if kind in ("payout_setup", "payout_sent"):
+        key = "payoutSetup" if kind == "payout_setup" else "payoutSent"
+        return t(key, amount=f"{details.get('amount_chf') or 0:.2f}"), drive_trip
+    if kind == "payout_lapsed":
+        return t("payoutLapsed"), drive_trip
     if kind == "rate_ride":
         name = details.get("rated_name", "")
         asked = t("rateDriver", name=name) if details.get("rated_role") == "driver" else t("ratePassenger", name=name)
