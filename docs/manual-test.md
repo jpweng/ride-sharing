@@ -34,6 +34,8 @@ How to read the steps:
   (see the README's "Run it"); the sign-in email is printed there instead of sent.
 - Steps that wait for another moment: 6.33 and 6.34 (later days), 7.12 and 7.13 (after 22:00), 10.9
   (the next deploy), 10.10 (the Android app).
+- Part 14 (payments) is apart: payments are switched off on the site, so it runs on your machine
+  with a Stripe test account, when there is one.
 
 ## Part 1. First visit and languages
 
@@ -882,3 +884,48 @@ D's drives and a request for a seat on D2's drive.
 - [ ] **13.9** In an old email of a deleted account, click "Turn these emails off", then try its
   sign-in link. **Expect:** the same neutral page as in step 7.10, and "This sign-in link is
   invalid, has expired or was already used."
+
+## Part 14. Payments (local, with a Stripe test account)
+
+Payments are switched off on the site until Stripe's keys are set ([Payments](payments.md)). This
+part tries them with Stripe's **test** keys, on your machine: no real money moves. It needs a
+Stripe account in test mode with Connect switched on, its secret key, and the Stripe CLI
+(`stripe listen --forward-to localhost:8000/api/payments/webhook`, which prints the signing
+secret). Start the server with `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` set, and for step
+14.9 also `SERVICE_FEE_PERCENT` and `SERVICE_FEE_FIXED_CHF`. Two accounts, P and D, as before.
+Stripe's test card is 4242 4242 4242 4242, any future date, any code.
+
+- [ ] **14.1** Open the About page and the privacy notice. **Expect:** "You pay for your seat
+  through Ride and Rail…" in place of "Nothing is paid through Ride and Rail", and Stripe named in
+  the privacy notice. Stop the server, start it without the keys, reload. **Expect:** the texts are
+  back to "Nothing is paid…". Start it with the keys again.
+- [ ] **14.2** As D, post a drive for tomorrow. As P, ask for a seat; as D, accept. **Expect:** P's
+  booking shows "Pay by …" and a "Pay CHF N" button; D sees "Waiting for payment" on P's row.
+- [ ] **14.3** As P, click "Pay CHF N". **Expect:** Stripe's payment page, in the site's language,
+  with the trip, its time and the amount, and the payment methods switched on in the dashboard.
+  Go back without paying. **Expect:** "The payment wasn't completed. You can still pay below."
+- [ ] **14.4** Pay with the test card. **Expect:** back on the site, "Thank you, your seat is
+  paid.", the booking shows "Paid" and "Free cancellation until …"; D's row shows "Paid" and D's
+  inbox "Paula P. paid for their seat". The payment is in the Stripe dashboard.
+- [ ] **14.5** As D, open the Driver page. **Expect:** a section "Getting paid" with "Waiting for
+  you: CHF N" and "Set up payouts". Click it and go through Stripe's test onboarding. **Expect:**
+  back on the Driver page, "Your payouts are set up." (or, while Stripe checks, "Stripe may need a
+  moment to check your details").
+- [ ] **14.6** As P, click "Cancel booking" and choose Cancel. **Expect:** the question says "You
+  get CHF N back." Confirm it. **Expect:** the booking is gone, P's inbox says "CHF N is being
+  refunded to you", and the refund is in the Stripe dashboard.
+- [ ] **14.7** Book and pay again. A day after the ride's time (or after moving the times in the
+  test database), run `PYTHONPATH=backend uv run python backend/maintenance.py`. **Expect:** D's inbox says "CHF N for your drive is on its way to
+  you", "Getting paid" shows "Sent to you so far", and the transfer is in the Stripe dashboard.
+- [ ] **14.8** Accept another booking and don't pay it; run the maintenance command after its "Pay
+  by" time. **Expect:** the booking is cancelled, P's inbox says it wasn't paid in time, D's that
+  the seat is free again.
+- [ ] **14.9** With the two fee settings: search as P. **Expect:** "+ CHF N fee" under each ride's
+  price. Book, have it accepted. **Expect:** "CHF N for the ride + CHF N service fee" above the
+  button, whose amount is the sum, and two lines on Stripe's page. After paying, the account page
+  lists the payment under "Your payments" with both parts and Stripe's reference.
+- [ ] **14.10** After a paid ride's pickup time, as P click "The ride didn't take place" and
+  confirm. **Expect:** the booking says the payment is on hold; D's inbox says so too. Run
+  `PYTHONPATH=backend uv run python backend/admin.py payments`. **Expect:** the payment is listed.
+  `refund-payment <n>` refunds P and tells D; on another one, `release-payment <n>` tells P, and D
+  is paid at the next maintenance run.

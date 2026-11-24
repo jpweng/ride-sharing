@@ -8,7 +8,8 @@ with Stripe Connect. See docs/payments.md. On when payments are.
     identity document or the IBAN. Drivers can post drives and accept
     passengers without it: the money waits.
   - PAY_OUT_AFTER after a ride's drop-off, what its passenger paid, less
-    what was refunded, is moved to the driver's account at Stripe
+    what was refunded and the service fee, is moved to the driver's account
+    at Stripe
     (pay_out(), hourly), and the driver is told. The wait leaves time to
     hear that a ride didn't take place: a payment its passenger put on
     hold (payments.dispute) isn't sent until the team has decided. Stripe
@@ -44,7 +45,9 @@ UNCLAIMED_AFTER = timedelta(days=60)
 ACCOUNT_DESCRIPTION = "Shares the costs of car rides with passengers on Ride and Rail"
 
 # A payment that was made, whose money is still in the site's Stripe account.
-_WAITING_SQL = "status = 'paid' AND transfer_id IS NULL AND amount_cts > refund_due_cts"
+# What is the driver's of it: what was paid, less refunds and the service fee.
+_THEIRS = "amount_cts - refund_due_cts - fee_cts"
+_WAITING_SQL = f"status = 'paid' AND transfer_id IS NULL AND {_THEIRS} > 0"
 # ...and isn't on hold for the team (payments.dispute).
 _TO_SEND_SQL = _WAITING_SQL + " AND (disputed_at IS NULL OR dispute_closed_at IS NOT NULL)"
 
@@ -70,7 +73,7 @@ def _sums(user_id: int) -> tuple[int, int]:
     """(centimes paid by the driver's passengers and not sent yet, centimes sent)."""
     with db.get_conn() as conn:
         waiting = conn.execute(
-            f"SELECT COALESCE(SUM(amount_cts - refund_due_cts), 0) FROM payments WHERE driver_id = ? AND {_WAITING_SQL}",
+            f"SELECT COALESCE(SUM({_THEIRS}), 0) FROM payments WHERE driver_id = ? AND {_WAITING_SQL}",
             (user_id,),
         ).fetchone()[0]
         sent = conn.execute(
@@ -164,7 +167,7 @@ def dashboard(user: dict) -> str:
 # ---------------------------------------------------------------------
 def _send(payment: dict, account: dict) -> bool:
     """Move what is left of a payment to its driver's account, once."""
-    amount = payment["amount_cts"] - payment["refund_due_cts"]
+    amount = payment["amount_cts"] - payment["refund_due_cts"] - payment["fee_cts"]
     try:
         transfer_id = payments.gateway().transfer(
             amount_cts=amount, account_id=account["stripe_account_id"], charge_id=payment["charge_id"],
@@ -250,10 +253,11 @@ def remind(now: datetime | None = None) -> int:
     with db.get_conn() as conn:
         rows = [dict(r) for r in conn.execute(
             """
-            SELECT p.driver_id, u.name, SUM(p.amount_cts - p.refund_due_cts) AS waiting_cts, MIN(p.id) AS payment_id
+            SELECT p.driver_id, u.name, SUM(p.amount_cts - p.refund_due_cts - p.fee_cts) AS waiting_cts,
+                   MIN(p.id) AS payment_id
             FROM payments p JOIN users u ON u.id = p.driver_id
             LEFT JOIN payout_accounts a ON a.user_id = p.driver_id
-            WHERE p.status = 'paid' AND p.transfer_id IS NULL AND p.amount_cts > p.refund_due_cts
+            WHERE p.status = 'paid' AND p.transfer_id IS NULL AND p.amount_cts - p.refund_due_cts - p.fee_cts > 0
               AND (p.disputed_at IS NULL OR p.dispute_closed_at IS NOT NULL) AND COALESCE(a.ready, 0) = 0
             GROUP BY p.driver_id
             """

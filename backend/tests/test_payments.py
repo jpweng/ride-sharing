@@ -94,7 +94,7 @@ def _kinds(user):
 
 def test_off_without_the_keys(users):
     assert payments.enabled() is False
-    assert TestClient(main.app).get("/api/payments/config").json() == {"enabled": False}
+    assert TestClient(main.app).get("/api/payments/config").json() == {"enabled": False, "fee": None}
     booking = _booked(users)
     # Bookings work as before: nothing to pay.
     assert _payment(booking) is None
@@ -140,7 +140,7 @@ def test_an_accepted_booking_is_to_pay(users, stripe):
 
     mine = _mine(users["marie"])[0]
     assert mine["payment"] == {
-        "status": "due", "amount_chf": mine["total_chf"], "refunded_chf": 0.0,
+        "status": "due", "amount_chf": mine["total_chf"], "fee_chf": 0.0, "refunded_chf": 0.0,
         # The pickup, tomorrow at 08:00, comes before 24 hours from now.
         "pay_by": f"{TOMORROW}T08:00",
         "free_cancel_until": None, "refund_if_cancelled_chf": None, "on_hold": False, "can_dispute": False,
@@ -180,7 +180,10 @@ def test_the_checkout_page(users, stripe):
     assert asked["description"] == f"Ride Lausanne → Genève, {when} (2 seats)"
     assert asked["success_url"] == f"{BASE}/?paid={booking['id']}#/ride"
     assert asked["cancel_url"] == f"{BASE}/?unpaid={booking['id']}#/ride"
-    assert asked["metadata"] == {"payment_id": str(_payment(booking)["id"]), "booking_id": str(booking["id"])}
+    assert asked["metadata"] == {
+        "payment_id": str(_payment(booking)["id"]), "booking_id": str(booking["id"]), "fee_cts": "0",
+    }
+    assert asked["fee_cts"] == 0  # no service fee is set
     # Open until the time to pay is over, within what Stripe allows.
     open_for = asked["expires_at"] - datetime.now(timezone.utc).timestamp()
     assert 30 * 60 - 5 <= open_for <= 23 * 3600 + 5

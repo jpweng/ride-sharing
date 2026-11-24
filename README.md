@@ -125,7 +125,7 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [The contact page](docs/contact.md): the form whose messages are emailed to the team, the email's
   headers, limits, switching it on
 - [Payments](docs/payments.md): paying for a seat with Stripe, switched off until its keys are
-  set; refunds, what is kept, switching it on
+  set; paying drivers, cancellation rules, the service fee, what is kept, switching it on
 - [Security alerts](docs/security-alerts.md): Dependabot, code scanning, who is told, and the
   weekly issue that counts the open alerts
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
@@ -157,7 +157,7 @@ backend/
   reports.py      reports of a problem with a ride, for the team (see admin.py)
   contact.py      the contact form: a visitor's message, emailed to the team
   bookings.py     bookings: asking for seats on a drive, the driver's answer, cancelling
-  payments.py     paying for a seat with Stripe (off without its keys), refunds
+  payments.py     paying for a seat with Stripe (off without its keys), refunds, the service fee
   payouts.py      paying drivers what their passengers paid (Stripe Connect)
   stripe_gateway.py  the calls to Stripe
   profiles.py     optional profiles (about, habits, car, photo) and who may see whose

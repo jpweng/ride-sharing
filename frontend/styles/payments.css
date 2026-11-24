@@ -9,3 +9,8 @@
 /* Getting paid as a driver (payouts.js): on the Driver page, under the drives. */
 #payouts-box { margin-bottom: 16px; }
 #payouts-box .payouts-buttons { margin-top: 8px; }
+
+/* The service fee next to a price, and "Your payments" on the account page. */
+.badge.fee { font-size: 11px; background: transparent; color: var(--muted); }
+.payment-fee { white-space: nowrap; }
+#payments-history { margin-bottom: 16px; }

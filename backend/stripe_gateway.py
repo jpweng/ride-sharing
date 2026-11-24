@@ -24,19 +24,19 @@ class Gateway:
         self._client = stripe.StripeClient(secret_key, max_network_retries=2, http_client=http_client)
 
     def create_checkout(self, *, amount_cts: int, description: str, success_url: str, cancel_url: str,
-                        expires_at: int, metadata: dict, language: str | None = None,
-                        email: str | None = None) -> dict:
-        """A Checkout page for one payment of `amount_cts`; {"id", "url"}.
+                        expires_at: int, metadata: dict, language: str | None = None, email: str | None = None,
+                        fee_cts: int = 0, fee_description: str = "") -> dict:
+        """A Checkout page for one payment of `amount_cts`, plus `fee_cts`
+        on a line of its own when there is a service fee; {"id", "url"}.
         The payment methods offered are those switched on in the Stripe
         dashboard (cards, TWINT, Apple Pay, Google Pay...)."""
+        lines = [(description, amount_cts)] + ([(fee_description, fee_cts)] if fee_cts else [])
         params = {
             "mode": "payment",
-            "line_items": [{
-                "quantity": 1,
-                "price_data": {
-                    "currency": CURRENCY, "unit_amount": amount_cts, "product_data": {"name": description},
-                },
-            }],
+            "line_items": [
+                {"quantity": 1, "price_data": {"currency": CURRENCY, "unit_amount": cents, "product_data": {"name": name}}}
+                for name, cents in lines
+            ],
             "success_url": success_url,
             "cancel_url": cancel_url,
             "expires_at": expires_at,
