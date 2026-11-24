@@ -20,8 +20,10 @@ drive. The passenger can add a note for the driver with the request, and
 the driver one for the passenger when accepting, to agree on the exact
 spot; no contact details are exchanged.
 
-Price: nothing is charged; the app shows what each passenger pays per seat
-by pricing.py's rules, which falls when more passengers are accepted.
+Price: the app shows what each passenger pays per seat by pricing.py's
+rules, which falls when more passengers are accepted. Nothing is charged
+here; when payments are switched on, the passenger pays once the driver has
+accepted (payments.py, called by the routes).
 
 Demo drives can't be booked: they're fictional. A passenger has one booking
 per drive: while it's requested or accepted they can't ask again; once it's
@@ -44,6 +46,8 @@ Errors are raised as the API's own (api.api_error), for the routes in
 routes/bookings.py.
 """
 from datetime import datetime, timedelta
+
+from fastapi import HTTPException
 
 import database as db
 import drive_conflicts
@@ -176,6 +180,18 @@ def view(booking: dict, drive: dict, accepted_seats: int) -> dict:
 def _view(booking_id: int) -> dict:
     booking, drive = _get(booking_id)
     return view(booking, drive, seats_booked([drive["id"]]).get(drive["id"], 0))
+
+
+def find(booking_id: int) -> dict | None:
+    """The booking as view() gives it, or None when it's gone (with its
+    drive, or replaced by a new request). For payments.py."""
+    with db.get_conn() as conn:
+        if conn.execute("SELECT 1 FROM bookings WHERE id = ?", (booking_id,)).fetchone() is None:
+            return None
+    try:
+        return _view(booking_id)
+    except HTTPException:  # deleted in between
+        return None
 
 
 def for_user(user: dict, now: datetime | None = None) -> dict:
@@ -380,11 +396,12 @@ def decline(booking_id: int, driver: dict) -> dict:
     return _view(booking_id)
 
 
-def cancel(booking_id: int, user: dict) -> dict:
+def cancel(booking_id: int, user: dict, reason: str | None = None) -> dict:
     """The passenger withdraws their request or cancels their accepted
     booking, or the driver cancels a booking they accepted (a request, they
     decline). An accepted booking's seats are free again, and the other one
-    is told."""
+    is told. `reason`: why, when it wasn't their own choice ("unpaid": the
+    passenger didn't pay in time, payments.py); the notification says it."""
     booking, drive = _get(booking_id)
     if booking["passenger_id"] == user["id"]:
         by, allowed = "passenger", ACTIVE
@@ -407,7 +424,8 @@ def cancel(booking_id: int, user: dict) -> dict:
                 (booking["seats"], drive["id"]),
             )
     other = drive["driver_name"] if by == "passenger" else booking["passenger_name"]
-    notify.send(other, "booking_cancelled", _details(booking, drive, by=by, was=booking["status"]))
+    more = {"reason": reason} if reason else {}
+    notify.send(other, "booking_cancelled", _details(booking, drive, by=by, was=booking["status"], **more))
     return _view(booking_id)
 
 

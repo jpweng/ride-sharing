@@ -22,6 +22,7 @@ import bookings
 import database as db
 import mailer
 import notify
+import payments
 import profiles
 import social
 from api import (
@@ -146,7 +147,9 @@ def delete_account(response: Response, found: Annotated[dict, Depends(signed_in)
     for drive in db.list_drives(upcoming_only=True, driver_name=user["name"], with_geometry=False):
         booked = bookings.tell_drive_cancelled(drive)
         notify.tell_drive_cancelled(drive, exclude=booked)
+        payments.drive_cancelled(drive["id"])  # what its passengers paid goes back
     bookings.tell_account_deleted(user)
+    payments.account_deleted(user)
     profiles.remove_photo(user["id"])  # the stored file; the profile's row goes with the account
     deleted = db.delete_account(user["id"])
     logger.info("Account deleted: %s", {k: v for k, v in deleted.items() if v})

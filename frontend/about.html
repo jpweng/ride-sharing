@@ -100,7 +100,13 @@
     Drivers share the costs of a drive. The driver sets the price
     per seat within limits: about the cost of the fuel at least, and never more than the train's
     2nd class full fare for the same distance. When more passengers share a drive, each pays less.
-    Nothing is paid through Ride and Rail: passenger and driver settle between themselves.
+    <span data-payments="off">
+      Nothing is paid through Ride and Rail: passenger and driver settle between themselves.
+    </span>
+    <span data-payments="on" hidden>
+      You pay for your seat through Ride and Rail once the driver has accepted, and you get
+      your money back if the ride is cancelled.
+    </span>
   </p>
 
   <h3>Knowing who you travel with</h3>
@@ -220,8 +226,15 @@
     Wer fährt, teilt die Kosten der Fahrt. Den Preis pro Platz legt
     die Fahrerin oder der Fahrer innerhalb von Grenzen fest: mindestens etwa die Treibstoffkosten
     und nie mehr als das Bahnbillett 2. Klasse zum Vollpreis für die gleiche Strecke. Je mehr
-    Mitfahrende eine Fahrt teilen, desto weniger zahlt jede Person. Über Ride and Rail wird nichts
-    bezahlt: Mitfahrende und Fahrende rechnen untereinander ab.
+    Mitfahrende eine Fahrt teilen, desto weniger zahlt jede Person.
+    <span data-payments="off">
+      Über Ride and Rail wird nichts bezahlt: Mitfahrende und Fahrende rechnen untereinander
+      ab.
+    </span>
+    <span data-payments="on" hidden>
+      Ihren Platz bezahlen Sie über Ride and Rail, sobald die Fahrerin oder der Fahrer
+      zugesagt hat; wird die Fahrt storniert, erhalten Sie Ihr Geld zurück.
+    </span>
   </p>
 
   <h3>Wissen, mit wem Sie unterwegs sind</h3>
@@ -347,8 +360,15 @@
     Les conducteurs partagent les frais du trajet. Le conducteur
     fixe le prix par place dans des limites : au moins le coût du carburant, à peu près, et jamais
     plus que le billet de train 2e classe plein tarif pour la même distance. Plus il y a de
-    passagers, moins chacun paie. Rien n'est payé par l'intermédiaire de Ride and Rail : passager
-    et conducteur s'arrangent entre eux.
+    passagers, moins chacun paie.
+    <span data-payments="off">
+      Rien n'est payé par l'intermédiaire de Ride and Rail : passager et conducteur
+      s'arrangent entre eux.
+    </span>
+    <span data-payments="on" hidden>
+      Vous payez votre place par l'intermédiaire de Ride and Rail une fois que le conducteur
+      a accepté, et vous êtes remboursé si le trajet est annulé.
+    </span>
   </p>
 
   <h3>Savoir avec qui vous voyagez</h3>
@@ -472,8 +492,15 @@
     I conducenti dividono i costi del viaggio. Il conducente fissa il
     prezzo per posto entro dei limiti: almeno il costo del carburante, all'incirca, e mai più del
     biglietto del treno 2a classe a prezzo intero per la stessa distanza. Più passeggeri ci sono,
-    meno paga ciascuno. Nulla viene pagato tramite Ride and Rail: passeggero e conducente si
-    accordano tra loro.
+    meno paga ciascuno.
+    <span data-payments="off">
+      Nulla viene pagato tramite Ride and Rail: passeggero e conducente si accordano tra
+      loro.
+    </span>
+    <span data-payments="on" hidden>
+      Paga il suo posto tramite Ride and Rail dopo che il conducente ha accettato, e viene
+      rimborsato se il viaggio è annullato.
+    </span>
   </p>
 
   <h3>Sapere con chi viaggia</h3>
@@ -530,6 +557,7 @@
 
 
 <script src="i18n.js"></script>
+<script src="payment_texts.js"></script>
 <script src="pwa.js"></script>
 </body>
 </html>

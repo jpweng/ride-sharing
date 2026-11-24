@@ -259,7 +259,7 @@ function myBookingCard(b) {
     ${b.seats > 1 && typeof b.total_chf === "number" ? `<div class="meta">${esc(t("booking.total", { seats: b.seats, total: fmtChf(b.total_chf) }))}</div>` : ""}
     <div class="meta">${esc(myBookingText(b.status))}${waitingForASeat ? ` ${esc(t("booking.fullForNow"))}` : ""}</div>
     ${b.driver_note ? `<div class="booking-note">${esc(t("booking.driverNote", { note: b.driver_note }))}</div>` : ""}
-    ${active ? `<div class="hint">${esc(t("booking.priceNote"))}</div>` : ""}
+    ${active ? `<div class="hint booking-price-note">${esc(t("booking.priceNote"))}</div>` : ""}
     ${active ? `<button type="button" class="link-btn">${esc(b.status === "requested" ? t("booking.withdraw") : t("booking.cancel"))}</button>` : ""}
     <div class="status-msg"></div>
   `;

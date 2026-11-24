@@ -52,7 +52,8 @@ Where each statement comes from, to know what to reread when something changes:
 | Asking drivers for a ride nobody has posted | [ride predictions and ride requests](ride-predictions.md), `backend/notify.py` |
 | Posting drives; areas, their ride requests, accepting one directly | [driver areas](driver-areas.md), [booking](booking.md) |
 | Passenger mode and driver mode with one account | `frontend/app.js` (`setMode`) |
-| Costs shared, the price limits, nothing paid through the service | `backend/pricing.py`, [booking](booking.md) |
+| Costs shared, the price limits | `backend/pricing.py`, [booking](booking.md) |
+| Nothing paid through the service, or paying through it: both are in the page, and the one that is true is shown | [payments](payments.md), `frontend/payment_texts.js` |
 | Sign-in by email link or the code in the same email, or Google or Apple; 18 or older; the code of conduct | [sign-in](sign-in.md), [social login](social-login.md), `frontend/conduct.html` |
 | First name and initial; optional profiles and who sees them | [profiles](profiles.md) |
 | Ratings and reports | [ratings and reports](ratings-and-reports.md) |
@@ -66,7 +67,8 @@ Some statements depend on how the site is set up, not only on the code. The page
 production as it runs today: sign-in with Google and Apple offered
 ([their keys are set](social-login.md)), demo drives on (`DEMO_DRIVES`), notifications by email on
 (`EMAIL_NOTIFICATIONS`) and profile photos on (`PHOTO_BUCKET`). Switching one of them off for good
-means changing the page.
+means changing the page. [Payments](payments.md) are the exception: the page holds the text for
+both states and shows the right one by itself.
 
 **The apps.** The page says apps for Android and iPhone are coming soon. When the Android app
 ([mobile/android/](../mobile/android/)) is published, replace that with a link to it; the same for

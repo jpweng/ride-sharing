@@ -1,0 +1,19 @@
+{
+  "payment.backPaid": "Grazie, il suo posto è pagato.",
+  "payment.backPending": "Il suo pagamento è in corso di conferma. Apparirà qui fra un istante.",
+  "payment.backUnpaid": "Il pagamento non è stato completato. Può ancora pagare qui sotto.",
+  "payment.checkoutLine.one": "Viaggio {origin} → {destination}, {time} ({count} posto)",
+  "payment.checkoutLine.other": "Viaggio {origin} → {destination}, {time} ({count} posti)",
+  "payment.inboxNotPaid": "{name} non ha pagato in tempo: il posto è di nuovo libero",
+  "payment.inboxReceived": "{name} ha pagato il posto",
+  "payment.inboxRefunded": "Le vengono rimborsati CHF {amount}",
+  "payment.inboxUnpaid": "La sua prenotazione è stata annullata perché non è stata pagata in tempo",
+  "payment.opening": "Apertura della pagina di pagamento…",
+  "payment.paid": "Pagato",
+  "payment.paidAmount": "Ha pagato CHF {amount}.",
+  "payment.pay": "Pagare CHF {amount}",
+  "payment.payBy": "Paghi entro {time} per mantenere il posto.",
+  "payment.priceNote": "Paga tramite Ride and Rail dopo che chi guida ha accettato.",
+  "payment.refunded": "CHF {amount} rimborsati",
+  "payment.waiting": "In attesa del pagamento"
+}
