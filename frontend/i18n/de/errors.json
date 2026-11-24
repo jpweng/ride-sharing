@@ -17,6 +17,8 @@
   "errors.dispute_not_possible": "Das kann für diese Buchung nicht mehr gemeldet werden.",
   "errors.drive_departed": "Diese Fahrt ist bereits losgefahren.",
   "errors.drive_not_found": "Diese Fahrt gibt es nicht mehr.",
+  "errors.drive_overlaps": "Sie haben zu dieser Zeit bereits eine Fahrt: {from} → {to}, Abfahrt um {time}.",
+  "errors.drive_too_close": "Zwischen dieser Fahrt und Ihrer Fahrt {from} → {to} um {time} bleibt zu wenig Zeit: Sie brauchen dazwischen etwa {duration}, für den Weg bei üblichem Verkehr und für Pausen.",
   "errors.email_unavailable": "Die E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es später noch einmal.",
   "errors.invalid_code": "Dieser Code ist falsch oder nicht mehr gültig. Prüfen Sie ihn oder fordern Sie einen neuen Link an.",
   "errors.invalid_email": "Geben Sie eine gültige E-Mail-Adresse ein.",

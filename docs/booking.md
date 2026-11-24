@@ -107,7 +107,9 @@ All three answer 404 `booking_not_found` for a booking the user has no part in.
   are the driver's own trip, all three or none (the passenger's trip at their time). Returns the
   booking. 404 `request_not_found`; 400 `request_not_open` (taken, cancelled, past, or a demo
   request), `own_request`, `not_on_route` (the driver's own trip doesn't serve it),
-  `price_too_high` / `price_too_low`, `drive_departed`
+  `price_too_high` / `price_too_low`, `drive_departed`; 409 `drive_overlaps`, `drive_too_close`
+  (the driver has another drive then, or too far away for the time between: see
+  [One drive at a time](one-drive-at-a-time.md)), the request staying open
 
 Every drive and match also carries `seats_available`, its free seats, and `seats_booked`, those
 taken by accepted bookings.

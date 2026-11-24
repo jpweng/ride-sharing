@@ -369,6 +369,16 @@ def booking_accepted(booking: dict | None, now: datetime | None = None) -> None:
         )
 
 
+def _language(user: dict) -> str:
+    """The user's language when the site has it, else English: one of
+    mailer.LANGUAGES itself, never the stored value, which names a folder
+    of translations."""
+    for known in mailer.LANGUAGES:
+        if user.get("language") == known:
+            return known
+    return "en"
+
+
 def _line(payment: dict, language: str) -> str:
     """What the Checkout page says is being paid: the trip, its time and
     the seats."""
@@ -399,14 +409,14 @@ def checkout(booking_id: int, user: dict, base_url: str, now: datetime | None = 
         back = f"{base_url.rstrip('/')}/?{{}}={booking_id}#/ride"
         ride_cts = cts(booking["total_chf"])
         fee = fee_cts(ride_cts)
-        language = user.get("language") or "en"
+        language = _language(user)
         session = gateway().create_checkout(
             amount_cts=ride_cts, description=_line(payment, language),
             success_url=back.format("paid"), cancel_url=back.format("unpaid"),
             expires_at=int(time.time() + open_for.total_seconds()),
             # fee_cts: what of the page's total is the fee, for when it's paid.
             metadata={"payment_id": str(payment["id"]), "booking_id": str(booking_id), "fee_cts": str(fee)},
-            language=user.get("language"), email=user.get("email"),
+            language=language, email=user.get("email"),
             fee_cts=fee, fee_description=mailer.text(language, "payment.checkoutFee"),
         )
     except stripe_gateway.Error:
