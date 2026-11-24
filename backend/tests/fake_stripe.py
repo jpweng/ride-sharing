@@ -15,8 +15,10 @@ NOW = datetime.fromisoformat(f"{date.today().isoformat()}T12:00")
 
 
 class FakeStripe:
-    """Stands in for stripe_gateway.Gateway: Checkout pages that a test
-    pays with pay(), and the refunds asked for."""
+    """Stands in for stripe_gateway.Gateway, method for method with the
+    same parameters (test_stripe_gateway.py checks that): Checkout pages
+    that a test pays with pay(), drivers' accounts that it approves with
+    approve(), and the refunds and transfers asked for."""
 
     def __init__(self):
         self.sessions = {}
@@ -32,8 +34,14 @@ class FakeStripe:
         if call in self.failing:
             raise stripe_gateway.Error(f"{call} failed")
 
-    def create_checkout(self, **asked):
+    def create_checkout(self, *, amount_cts, description, success_url, cancel_url, expires_at, metadata,
+                        language=None, email=None):
         self._check("create_checkout")
+        asked = {
+            "amount_cts": amount_cts, "description": description, "success_url": success_url,
+            "cancel_url": cancel_url, "expires_at": expires_at, "metadata": metadata, "language": language,
+            "email": email,
+        }
         session_id = f"cs_{len(self.sessions) + 1}"
         self.sessions[session_id] = {
             "id": session_id, "status": "open", "paid": False, "amount_cts": asked["amount_cts"],
@@ -66,9 +74,10 @@ class FakeStripe:
         return json.loads(payload)
 
     # --- drivers' accounts (payouts.py) ---
-    def create_account(self, **asked):
+    def create_account(self, *, email, description, metadata):
         self._check("create_account")
         account_id = f"acct_{len(self.accounts) + 1}"
+        asked = {"email": email, "description": description, "metadata": metadata}
         self.accounts[account_id] = {"submitted": False, "ready": False, "asked": asked}
         return account_id
 

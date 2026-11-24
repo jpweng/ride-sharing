@@ -7,9 +7,10 @@ the way it is written, nor what the library is asked to send; these can.
 """
 import hashlib
 import hmac
+import inspect
 import json
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -19,7 +20,9 @@ from fastapi.testclient import TestClient
 
 import main
 import payments
+import payouts
 import stripe_gateway
+from fake_stripe import FakeStripe
 from routes import bookings as booking_routes
 from routes import drives as drive_routes
 
@@ -191,3 +194,88 @@ def test_the_webhook_checks_stripes_signature(http, booking):
     resp = client.post("/api/payments/webhook", content=payload, headers={"Stripe-Signature": _signed(payload, "whsec_stub")})
     assert resp.status_code == 200
     assert payments.for_booking(booked["id"])["status"] == "paid"
+
+
+# --- Drivers' accounts and transfers (payouts.py) ------------------------------
+
+def test_setting_payouts_up(http, booking):
+    _, _, jean = booking()
+    http.answers[("POST", "/v1/accounts")] = {"id": "acct_test_1", "object": "account"}
+    http.answers[("POST", "/v1/account_links")] = {"object": "account_link", "url": "https://connect.stripe.test/setup"}
+
+    assert payouts.onboard(jean, BASE) == "https://connect.stripe.test/setup"
+
+    (fields, _), = http.sent("POST", "/v1/accounts")
+    assert (fields["type"], fields["country"], fields["business_type"]) == ("express", "CH", "individual")
+    assert fields["capabilities[transfers][requested]"] == "true"
+    assert not [name for name in fields if name.startswith("capabilities[card_payments]")]
+    assert fields["settings[payouts][schedule][interval]"] == "weekly"
+    assert fields["metadata[user_id]"] == str(jean["id"])
+    (fields, _), = http.sent("POST", "/v1/account_links")
+    assert fields == {
+        "account": "acct_test_1", "type": "account_onboarding",
+        "return_url": f"{BASE}/?payouts=done#/drive", "refresh_url": f"{BASE}/?payouts=again#/drive",
+    }
+
+    # Back from Stripe's pages: not accepted yet, then accepted.
+    account = {"id": "acct_test_1", "object": "account", "details_submitted": True, "payouts_enabled": False,
+               "capabilities": {"transfers": "pending"}}
+    http.answers[("GET", "/v1/accounts/acct_test_1")] = account
+    assert payouts.refresh(jean)["state"] == "incomplete"
+    http.answers[("GET", "/v1/accounts/acct_test_1")] = {
+        **account, "payouts_enabled": True, "capabilities": {"transfers": "active"},
+    }
+    assert payouts.refresh(jean)["state"] == "ready"
+
+    http.answers[("POST", "/v1/accounts/acct_test_1/login_links")] = {
+        "object": "login_link", "url": "https://connect.stripe.test/express",
+    }
+    assert payouts.dashboard(jean) == "https://connect.stripe.test/express"
+
+
+def test_the_transfer_to_the_driver(http, booking):
+    booked, marie, jean = booking()
+    http.answers[("POST", "/v1/accounts")] = {"id": "acct_test_1", "object": "account"}
+    http.answers[("POST", "/v1/account_links")] = {"object": "account_link", "url": "https://connect.stripe.test/setup"}
+    http.answers[("GET", "/v1/accounts/acct_test_1")] = {
+        "id": "acct_test_1", "object": "account", "details_submitted": True, "payouts_enabled": True,
+        "capabilities": {"transfers": "active"},
+    }
+    payouts.onboard(jean, BASE)
+    payouts.refresh(jean)
+    http.answers[("POST", "/v1/checkout/sessions")] = _session()
+    payments.checkout(booked["id"], marie, BASE)
+    payment_id = str(payments.for_booking(booked["id"])["id"])
+    http.answers[("GET", "/v1/checkout/sessions/cs_test_1")] = _session(
+        status="complete", payment_status="paid", payment_intent="pi_test_1", metadata={"payment_id": payment_id},
+    )
+    http.answers[("GET", "/v1/payment_intents/pi_test_1")] = {
+        "id": "pi_test_1", "object": "payment_intent", "latest_charge": "ch_test_1",
+    }
+    payments.check(booked["id"], marie)
+    http.answers[("POST", "/v1/transfers")] = {"id": "tr_test_1", "object": "transfer"}
+
+    after = datetime.fromisoformat(booked["dropoff"]["time"]) + payouts.PAY_OUT_AFTER
+    assert payouts.pay_out(after) == {"sent": 1, "given_back": 0}
+
+    (fields, key), = http.sent("POST", "/v1/transfers")
+    assert fields == {
+        "amount": "1060", "currency": "chf", "destination": "acct_test_1", "source_transaction": "ch_test_1",
+        "metadata[payment_id]": payment_id, "metadata[booking_id]": str(booked["id"]),
+    }
+    assert key == f"payout-{payment_id}"
+    assert payments.for_booking(booked["id"])["transfer_id"] == "tr_test_1"
+
+
+# --- The fake the other tests use ----------------------------------------------
+
+def _parameters(function):
+    return [(p.name, p.kind, p.default) for p in inspect.signature(function).parameters.values()]
+
+
+def test_the_fake_stripe_takes_what_the_gateway_takes():
+    # A call the real gateway would refuse must fail with the fake too.
+    methods = [name for name, value in vars(stripe_gateway.Gateway).items() if callable(value) and not name.startswith("_")]
+    assert {"create_checkout", "refund", "transfer", "create_account", "event"} <= set(methods)
+    for name in methods:
+        assert _parameters(getattr(FakeStripe, name)) == _parameters(getattr(stripe_gateway.Gateway, name)), name
