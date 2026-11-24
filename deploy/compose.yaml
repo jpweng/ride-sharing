@@ -22,6 +22,9 @@
 #   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 #                           paying for a seat with Stripe (optional: nothing is
 #                           charged without both; see docs/payments.md)
+#   SERVICE_FEE_PERCENT, SERVICE_FEE_FIXED_CHF
+#                           the service fee added to what a passenger pays
+#                           (optional: no fee without them)
 #   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, APPLE_CLIENT_ID, APPLE_TEAM_ID,
 #   APPLE_KEY_ID, APPLE_PRIVATE_KEY
 #                           sign-in with Google and Apple (optional: each is
@@ -113,6 +116,10 @@ services:
       # is charged, passenger and driver settle between themselves.
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # The service fee on a paid booking: a share of the ride's price and a
+      # fixed part. Empty: no fee.
+      SERVICE_FEE_PERCENT: ${SERVICE_FEE_PERCENT:-}
+      SERVICE_FEE_FIXED_CHF: ${SERVICE_FEE_FIXED_CHF:-}
       # Sign-in with Google and Apple (backend/social.py). Empty: not offered.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

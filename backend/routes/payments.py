@@ -2,7 +2,9 @@
 Paying for a seat (see payments.py, the module these routes call, and
 docs/payments.md):
 
-  GET  /api/payments/config          -- whether paying through the site is on
+  GET  /api/payments/config          -- whether paying through the site is on,
+                                        and the service fee
+  GET  /api/payments                 -- what the user paid and received
   POST /api/bookings/{id}/pay        -- the address of a page to pay on
   POST /api/bookings/{id}/pay/check  -- back from that page: what became of it
   POST /api/bookings/{id}/pay/dispute  -- the passenger: the ride didn't take place
@@ -16,7 +18,7 @@ from pydantic import BaseModel, Field
 
 import payments
 import reports
-from api import Writer
+from api import Member, Writer
 
 router = APIRouter()
 
@@ -29,7 +31,14 @@ def base_url(request: Request) -> str:
 
 @router.get("/api/payments/config")
 def payments_config():
-    return {"enabled": payments.enabled()}
+    on = payments.enabled()
+    # fee: {percent, fixed_cts}, for the prices a search shows; null without one.
+    return {"enabled": on, "fee": payments.fee_settings() if on else None}
+
+
+@router.get("/api/payments")
+def payment_history(user: Member):
+    return payments.history(user)
 
 
 @router.post("/api/bookings/{booking_id}/pay")

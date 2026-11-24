@@ -42,7 +42,33 @@ settle between themselves, and the site says so. The logic is in
 Bookings accepted while payments were off never get a payment: switching payments on changes
 nothing for them.
 
-A service fee is a separate step, described here when it is added.
+## The service fee
+
+A service fee can be added to what the passenger pays. It is set by two settings and doesn't exist
+without them; the amounts are not in this repository.
+
+- `SERVICE_FEE_PERCENT`: a share of the ride's price (the price per seat times the seats), in
+  percent; `SERVICE_FEE_FIXED_CHF`: a fixed part per booking. Either or both. The fee is their sum,
+  rounded to 5 centimes (`payments.fee_cts`). A value that isn't a number, is negative, or is above
+  50 % or CHF 20 is taken for a mistake: it counts as no fee, and the log says so.
+- **Shown before paying:** next to each price of a search (*+ CHF … service fee*, computed by the
+  page with the same arithmetic, from `GET /api/payments/config`), on the booking before paying
+  (*CHF … for the ride + CHF … service fee*, the amount on the *Pay* button being the total), and
+  on a line of its own on Stripe's page.
+- **The driver's part is untouched:** the driver is sent the ride's price, as without a fee. The
+  price limits of [pricing.py](../backend/pricing.py) (the car's cost shared, the train fare) are
+  limits on that price; the fee comes on top.
+- **When money goes back:** a full refund includes the fee (the driver cancels, the passenger
+  cancels in time, the ride didn't take place, money nobody claimed). A late cancellation refunds
+  half of the ride's price and not the fee. When the price is settled at the start of the ride,
+  the fee follows the price down.
+
+## Your payments
+
+The account page lists, when there are any, what the user paid as a passenger (the trip and its
+time, the amount, the fee within it, what was refunded, Stripe's reference) and what was sent to
+them as a driver: `GET /api/payments`. For a receipt by email, Stripe can send one for each
+payment: a setting of the Stripe dashboard (*Customer emails*).
 
 ## Cancelling a paid booking
 
@@ -126,7 +152,8 @@ The [About page](about-page.md) and the [privacy notice](../frontend/privacy.htm
 descriptions: "nothing is paid through Ride and Rail" and "you pay through Ride and Rail", with
 Stripe named as the payment provider. The elements are marked `data-payments="off"` and
 `data-payments="on"` (hidden), and [frontend/payment_texts.js](../frontend/payment_texts.js) shows
-the ones that are true, from `GET /api/payments/config`. So the pages agree with what the site does
+the ones that are true, from `GET /api/payments/config`. A sentence about the service fee is
+marked `data-payments="fee"`: shown when payments are on with a fee. So the pages agree with what the site does
 whichever way the switch is, without a change to them on the day it is turned on.
 
 ## Switching it on
@@ -139,7 +166,9 @@ tried with a Stripe **test** account (test keys, test cards, no real money).
    `https://<site>/api/payments/webhook` for the events `checkout.session.completed` and
    `checkout.session.async_payment_succeeded`.
 2. Set two repository **secrets**: `STRIPE_SECRET_KEY` (the secret API key) and
-   `STRIPE_WEBHOOK_SECRET` (the endpoint's signing secret), then run the deploy again.
+   `STRIPE_WEBHOOK_SECRET` (the endpoint's signing secret), then run the deploy again. For a
+   service fee, also the secrets `SERVICE_FEE_PERCENT` and `SERVICE_FEE_FIXED_CHF` (numbers, with
+   a point: `0.50`).
 3. Check `GET /api/payments/config`: `{"enabled": true}`.
 
 With only one of the two set, payments stay off and the log says which one is missing. Removing the
@@ -155,7 +184,10 @@ Stripe when the passenger comes back.
 
 Access levels and error codes as in [API](api.md).
 
-- `GET  /api/payments/config` — public; `{enabled}`
+- `GET  /api/payments/config` — public; `{enabled, fee}`: `fee` is `{percent, fixed_cts}`, or
+  `null` without a service fee
+- `GET  /api/payments` — signed in; `{paid, received}`: the user's payments as a passenger and
+  what was sent to them as a driver, the latest first (100 at most)
 - `POST /api/bookings/{id}/pay` — may change, the booking's passenger; `{url}`: the Checkout page
   to send the browser to. A page opened earlier for the booking is closed first. 503
   `payments_off`; 404 `booking_not_found` (also for someone else's booking); 400 `payment_not_due`
@@ -170,9 +202,10 @@ Access levels and error codes as in [API](api.md).
   (`Stripe-Signature`), not by a session; 400 `invalid_signature`, 503 `payments_off`
 
 `GET /api/bookings` gives each booking a `payment`: `null` when it isn't paid through the site,
-else `{status, amount_chf, pay_by, refunded_chf, free_cancel_until, refund_if_cancelled_chf,
-on_hold, can_dispute}` (`amount_chf`: still to pay at the current price while `due`, what was paid
-afterwards; `refund_if_cancelled_chf`: what the passenger would get back by cancelling now).
+else `{status, amount_chf, fee_chf, pay_by, refunded_chf, free_cancel_until,
+refund_if_cancelled_chf, on_hold, can_dispute}` (`amount_chf`: still to pay at the current price
+while `due`, what was paid afterwards, the service fee `fee_chf` included;
+`refund_if_cancelled_chf`: what the passenger would get back by cancelling now).
 
 Stripe sends the passenger back to `/?paid=<booking id>#/ride` after paying and to
 `/?unpaid=<booking id>#/ride` after leaving the page without paying.

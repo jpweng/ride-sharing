@@ -92,6 +92,10 @@ jobs:
           # empty until the repo secrets exist, and nothing is charged.
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          # The service fee (optional, see docs/payments.md). Secrets, so that
+          # this public log doesn't show the values. Empty: no fee.
+          SERVICE_FEE_PERCENT: ${{ secrets.SERVICE_FEE_PERCENT }}
+          SERVICE_FEE_FIXED_CHF: ${{ secrets.SERVICE_FEE_FIXED_CHF }}
         run: |
           INSTANCE_ID=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=${{ vars.SERVER_NAME }}" "Name=instance-state-name,Values=running" \
@@ -118,6 +122,8 @@ jobs:
           ENV_FILE=$(printf '%s\nCONTACT_EMAIL=%s\n' "$ENV_FILE" "$CONTACT_EMAIL")
           # STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET: optional repo secrets, from the step's env too.
           ENV_FILE=$(printf '%s\nSTRIPE_SECRET_KEY=%s\nSTRIPE_WEBHOOK_SECRET=%s\n' "$ENV_FILE" "$STRIPE_SECRET_KEY" "$STRIPE_WEBHOOK_SECRET")
+          # SERVICE_FEE_PERCENT, SERVICE_FEE_FIXED_CHF: optional repo secrets, from the step's env too.
+          ENV_FILE=$(printf '%s\nSERVICE_FEE_PERCENT=%s\nSERVICE_FEE_FIXED_CHF=%s\n' "$ENV_FILE" "$SERVICE_FEE_PERCENT" "$SERVICE_FEE_FIXED_CHF")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \

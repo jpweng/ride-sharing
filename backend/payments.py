@@ -38,6 +38,13 @@ How it goes, when it's on:
      the team is told (a report, reports.py), and decides: refunded to the
      passenger or released to the driver (resolve_dispute(), admin.py).
 
+A service fee can be added to what the passenger pays (fee_cts()): a
+share of the ride's price and a fixed part, from the settings
+SERVICE_FEE_PERCENT and SERVICE_FEE_FIXED_CHF, none without them. It is on
+a line of its own on the Checkout page, shown before paying, and part of
+the payment (fee_cts, within amount_cts); the driver is sent the rest. It
+goes back to the passenger whenever the ride's price goes back in full.
+
 The site never sees a card number: the passenger types it on Stripe's page.
 The money stays in the Stripe account. A payment keeps the trip it was for
 and outlives its booking and drive (the record of money that moved).
@@ -48,6 +55,7 @@ told (send_refunds()), with an idempotency key, and again at the next
 hourly run if that failed (run(), called by maintenance.py).
 """
 import logging
+import math
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -83,7 +91,12 @@ OPEN_SQL = "status IN ('due', 'paid') AND ended_at IS NULL"
 RECORDS_KEPT = timedelta(days=3653)
 
 SETTINGS = ("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET")
+# The service fee's settings, and the most each may be: a larger or
+# unreadable value is a mistake, and counts as no fee.
+FEE_SETTINGS = {"SERVICE_FEE_PERCENT": 50.0, "SERVICE_FEE_FIXED_CHF": 20.0}
+FEE_STEP_CTS = 5  # the fee is rounded to 5 centimes
 _warned = False
+_fee_warned: set[str] = set()
 _gateways: dict[str, stripe_gateway.Gateway] = {}
 
 
@@ -108,6 +121,40 @@ def gateway() -> stripe_gateway.Gateway:
     if key not in _gateways:
         _gateways[key] = stripe_gateway.Gateway(key)
     return _gateways[key]
+
+
+def _fee_setting(name: str) -> float:
+    raw = _setting(name)
+    if not raw:
+        return 0.0
+    try:
+        value = float(raw)
+    except ValueError:
+        value = -1.0
+    if not 0 <= value <= FEE_SETTINGS[name]:
+        if name not in _fee_warned:
+            # A mistyped setting must not break the site, nor overcharge.
+            _fee_warned.add(name)
+            logger.warning("%s isn't a number between 0 and %s: no service fee from it", name, FEE_SETTINGS[name])
+        return 0.0
+    return value
+
+
+def fee_settings() -> dict | None:
+    """{"percent", "fixed_cts"} of the service fee, or None without one."""
+    percent = _fee_setting("SERVICE_FEE_PERCENT")
+    fixed_cts = int(round(_fee_setting("SERVICE_FEE_FIXED_CHF") * 100))
+    return {"percent": percent, "fixed_cts": fixed_cts} if percent or fixed_cts else None
+
+
+def fee_cts(ride_cts: int) -> int:
+    """The service fee on a booking whose ride costs `ride_cts`: the share
+    plus the fixed part, rounded to FEE_STEP_CTS. payments.js computes the
+    same for the prices a search shows (serviceFeeCts)."""
+    fee = fee_settings()
+    if not fee or ride_cts <= 0:
+        return 0
+    return math.floor((ride_cts * fee["percent"] / 100 + fee["fixed_cts"]) / FEE_STEP_CTS + 0.5) * FEE_STEP_CTS
 
 
 def off_error():
@@ -174,7 +221,8 @@ def refund_on_cancel_cts(payment: dict, by: str | None, now: datetime) -> int:
     pickup = _naive(payment["pickup_time"])
     if now <= pickup - FREE_CANCEL_UNTIL:
         return amount
-    return int(amount * LATE_REFUND_SHARE) if now < pickup else 0
+    # Late: a share of the ride's price; the service fee isn't refunded.
+    return int((amount - payment["fee_cts"]) * LATE_REFUND_SHARE) if now < pickup else 0
 
 
 def _on_hold(payment: dict) -> bool:
@@ -198,10 +246,14 @@ def shown(payment: dict | None, booking: dict, now: datetime | None = None) -> d
     now = now or notify.local_now()
     due = payment["status"] == "due"
     standing = payment["status"] == "paid" and not payment["ended_at"]
+    ride_cts = cts(booking["total_chf"]) if booking.get("total_chf") is not None else None
+    to_pay = None if ride_cts is None else ride_cts + fee_cts(ride_cts)
     return {
         "status": payment["status"],
-        # Still to pay: the price as it is now. Paid: what was paid.
-        "amount_chf": booking.get("total_chf") if due else chf(payment["amount_cts"]),
+        # Still to pay: the price as it is now, with the service fee. Paid:
+        # what was paid. fee_chf: the fee within it.
+        "amount_chf": (None if to_pay is None else chf(to_pay)) if due else chf(payment["amount_cts"]),
+        "fee_chf": chf(fee_cts(ride_cts or 0)) if due else chf(payment["fee_cts"]),
         "pay_by": payment["pay_by"] if due else None,
         "refunded_chf": chf(payment["refund_due_cts"]),
         # If the passenger cancelled now: until when it costs nothing, and
@@ -230,6 +282,36 @@ def with_payments(bookings_by_side: dict) -> dict:
     for b in rows:
         b["payment"] = shown(found.get(b["id"]), b)
     return bookings_by_side
+
+
+HISTORY_SHOWN = 100
+
+
+def history(user: dict) -> dict:
+    """What the account page lists, the latest first: {"paid": what the
+    user paid as a passenger (with the fee within it, what came back, and
+    Stripe's reference), "received": what was sent to them as a driver}."""
+    def trip(p):
+        return {k: p[k] for k in ("id", "origin_name", "destination_name", "pickup_time", "seats")}
+
+    with db.get_conn() as conn:
+        paid = [dict(r) for r in conn.execute(
+            "SELECT * FROM payments WHERE passenger_id = ? AND payment_intent_id IS NOT NULL ORDER BY id DESC LIMIT ?",
+            (user["id"], HISTORY_SHOWN),
+        )]
+        received = [dict(r) for r in conn.execute(
+            "SELECT * FROM payments WHERE driver_id = ? AND transfer_id IS NOT NULL ORDER BY id DESC LIMIT ?",
+            (user["id"], HISTORY_SHOWN),
+        )]
+    return {
+        "paid": [{
+            **trip(p), "paid_at": p["paid_at"], "amount_chf": chf(p["amount_cts"]), "fee_chf": chf(p["fee_cts"]),
+            "refunded_chf": chf(p["refund_due_cts"]), "reference": p["payment_intent_id"],
+        } for p in paid],
+        "received": [{
+            **trip(p), "sent_at": p["transferred_at"], "amount_chf": chf(p["transferred_cts"]),
+        } for p in received],
+    }
 
 
 # ---------------------------------------------------------------------
@@ -315,12 +397,17 @@ def checkout(booking_id: int, user: dict, base_url: str, now: datetime | None = 
             raise _not_due()  # that page had been paid after all
         open_for = min(max(left, CHECKOUT_OPEN_MIN), CHECKOUT_OPEN_MAX)
         back = f"{base_url.rstrip('/')}/?{{}}={booking_id}#/ride"
+        ride_cts = cts(booking["total_chf"])
+        fee = fee_cts(ride_cts)
+        language = user.get("language") or "en"
         session = gateway().create_checkout(
-            amount_cts=cts(booking["total_chf"]), description=_line(payment, user.get("language") or "en"),
+            amount_cts=ride_cts, description=_line(payment, language),
             success_url=back.format("paid"), cancel_url=back.format("unpaid"),
             expires_at=int(time.time() + open_for.total_seconds()),
-            metadata={"payment_id": str(payment["id"]), "booking_id": str(booking_id)},
+            # fee_cts: what of the page's total is the fee, for when it's paid.
+            metadata={"payment_id": str(payment["id"]), "booking_id": str(booking_id), "fee_cts": str(fee)},
             language=user.get("language"), email=user.get("email"),
+            fee_cts=fee, fee_description=mailer.text(language, "payment.checkoutFee"),
         )
     except stripe_gateway.Error:
         logger.exception("Opening a Checkout page for booking %s failed", booking_id)
@@ -365,24 +452,29 @@ def _apply_checkout(state: dict) -> None:
     if payment["payment_intent_id"] == intent:
         return  # already recorded
     charge = gateway().charge_of(intent)
+    try:
+        fee = min(max(int(state["metadata"].get("fee_cts") or 0), 0), state["amount_cts"])
+    except ValueError:
+        fee = 0
     with db.get_conn() as conn:
         made = conn.execute(
             """
-            UPDATE payments SET status = 'paid', amount_cts = ?, payment_intent_id = ?, charge_id = ?,
+            UPDATE payments SET status = 'paid', amount_cts = ?, fee_cts = ?, payment_intent_id = ?, charge_id = ?,
                                 checkout_session_id = ?, paid_at = ?
             WHERE id = ? AND status = 'due'
             """,
-            (state["amount_cts"], intent, charge, state["id"], db.now_iso(), payment["id"]),
+            (state["amount_cts"], fee, intent, charge, state["id"], db.now_iso(), payment["id"]),
         ).rowcount == 1
         if not made:
             # The booking ended before this payment arrived: it goes back.
             late = conn.execute(
                 """
-                UPDATE payments SET amount_cts = ?, payment_intent_id = ?, charge_id = ?, checkout_session_id = ?,
-                                    paid_at = ?, refund_due_cts = ?
+                UPDATE payments SET amount_cts = ?, fee_cts = ?, payment_intent_id = ?, charge_id = ?,
+                                    checkout_session_id = ?, paid_at = ?, refund_due_cts = ?
                 WHERE id = ? AND status = 'cancelled' AND payment_intent_id IS NULL
                 """,
-                (state["amount_cts"], intent, charge, state["id"], db.now_iso(), state["amount_cts"], payment["id"]),
+                (state["amount_cts"], fee, intent, charge, state["id"], db.now_iso(), state["amount_cts"],
+                 payment["id"]),
             ).rowcount == 1
     if made:
         tell(payment["driver_id"], "payment_received", payment, passenger_name=_name(payment["passenger_id"]))
@@ -542,13 +634,21 @@ def settle_prices(now: datetime | None = None) -> int:
     refunded = 0
     for payment in rows:
         booking = bookings.find(payment["booking_id"])
-        above = 0
+        above, fee = 0, payment["fee_cts"]
         if booking and booking["status"] == "accepted" and booking["total_chf"] is not None:
-            above = max(0, payment["amount_cts"] - payment["refund_due_cts"] - cts(booking["total_chf"]))
+            # The fee follows the price down, never up.
+            ride_cts = cts(booking["total_chf"])
+            final_fee = min(fee, fee_cts(ride_cts))
+            above = max(0, payment["amount_cts"] - payment["refund_due_cts"] - ride_cts - final_fee)
+            if above:
+                fee = final_fee
         with db.get_conn() as conn:
             conn.execute(
-                "UPDATE payments SET settled_at = ?, refund_due_cts = refund_due_cts + ? WHERE id = ? AND settled_at IS NULL",
-                (db.now_iso(), above, payment["id"]),
+                """
+                UPDATE payments SET settled_at = ?, refund_due_cts = refund_due_cts + ?, fee_cts = ?
+                WHERE id = ? AND settled_at IS NULL
+                """,
+                (db.now_iso(), above, fee, payment["id"]),
             )
         if above:
             send_refunds(payment["id"], reason="shared")
