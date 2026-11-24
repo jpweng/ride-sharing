@@ -29,14 +29,21 @@ final class WebViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Behind the status bar: the white of the site's header, right below it.
-        view.backgroundColor = UIColor(named: "LaunchBackground")
-        for subview in [webView, spinner, noConnection] {
+        // Around the page, where the site doesn't draw: the grey of its background under the
+        // home indicator, and behind the status bar the white of its header, right below it.
+        view.backgroundColor = UIColor(named: "PageBackground")
+        let statusBarBackground = UIView()
+        statusBarBackground.backgroundColor = UIColor(named: "LaunchBackground")
+        for subview in [statusBarBackground, webView, spinner, noConnection] {
             subview.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(subview)
         }
         let safe = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
+            statusBarBackground.topAnchor.constraint(equalTo: view.topAnchor),
+            statusBarBackground.bottomAnchor.constraint(equalTo: safe.topAnchor),
+            statusBarBackground.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            statusBarBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             // The site doesn't draw under the status bar; at the bottom it scrolls under the
             // home indicator as in Safari.
             webView.topAnchor.constraint(equalTo: safe.topAnchor),
