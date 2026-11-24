@@ -567,24 +567,44 @@ function setupAutocomplete(role) {
   let items = [];
   let activeIndex = -1;
 
+  // An editable combobox with a listbox: focus stays in the field, and
+  // aria-activedescendant names the option Enter would choose.
+  input.setAttribute("role", "combobox");
+  input.setAttribute("aria-autocomplete", "list");
+  input.setAttribute("aria-haspopup", "listbox");
+  input.setAttribute("aria-controls", list.id);
+  input.setAttribute("aria-expanded", "false");
+  list.setAttribute("role", "listbox");
+
+  function syncAria() {
+    const open = items.length > 0;
+    input.setAttribute("aria-expanded", String(open));
+    if (open && activeIndex >= 0) input.setAttribute("aria-activedescendant", `${list.id}-opt-${activeIndex}`);
+    else input.removeAttribute("aria-activedescendant");
+  }
+
   function closeList() {
     searchCount++; // drop the answer to a search still running
     list.classList.remove("show");
     list.innerHTML = "";
     items = [];
     activeIndex = -1;
+    syncAria();
   }
 
   function renderList() {
+    const name = input.getAttribute("aria-label") || input.placeholder;
+    if (name) list.setAttribute("aria-label", name);
     list.innerHTML = items
       .map(
         (it, i) =>
-          `<li data-index="${i}" class="${i === activeIndex ? "active" : ""}${it.action ? " action" : ""}${it.note ? " note" : ""}">${esc(it.label)}${
-            it.detail ? `<span class="suggest-detail">${esc(it.detail)}</span>` : ""
+          `<li id="${list.id}-opt-${i}" role="option" aria-selected="${i === activeIndex}"${it.note ? ' aria-disabled="true"' : ""} data-index="${i}" class="${i === activeIndex ? "active" : ""}${it.action ? " action" : ""}${it.note ? " note" : ""}">${esc(it.label)}${
+            it.detail ? ` <span class="suggest-detail">${esc(it.detail)}</span>` : ""
           }</li>`
       )
       .join("");
     list.classList.toggle("show", items.length > 0);
+    syncAria();
   }
 
   function selectItem(it) {
