@@ -16,6 +16,8 @@
   "errors.departure_past": "Cette heure de départ est déjà passée. Choisissez-en une plus tard.",
   "errors.drive_departed": "Ce trajet est déjà parti.",
   "errors.drive_not_found": "Ce trajet n'existe plus.",
+  "errors.drive_overlaps": "Vous avez déjà un trajet à ce moment-là : {from} → {to}, départ à {time}.",
+  "errors.drive_too_close": "Il n'y a pas assez de temps entre ce trajet et votre trajet {from} → {to} de {time} : il vous faut environ {duration} entre les deux, pour le chemin avec le trafic habituel et pour les pauses.",
   "errors.email_unavailable": "L'e-mail n'a pas pu être envoyé. Réessayez plus tard, s'il vous plaît.",
   "errors.invalid_code": "Ce code est faux ou n'est plus valable. Vérifiez-le ou demandez un nouveau lien.",
   "errors.invalid_email": "Saisissez une adresse e-mail valide.",

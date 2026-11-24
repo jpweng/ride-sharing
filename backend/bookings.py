@@ -50,6 +50,7 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException
 
 import database as db
+import drive_conflicts
 import matching
 import notify
 import pricing
@@ -501,6 +502,14 @@ def accept_request(request: dict, driver: dict, seats_available: int = DEFAULT_S
         ride = {**theirs, "pickup": m["pickup"], "dropoff": m["dropoff"], "ride_km": m["ride_km"]}
     else:
         ride = _ride(planned, None, None)
+
+    # The driver can't have another drive then, or one too close to this
+    # one (routes/ride_requests.py keeps two from being accepted at once).
+    drive_conflicts.check(
+        driver["name"], (planned["origin_lat"], planned["origin_lon"]),
+        (planned["destination_lat"], planned["destination_lon"]), _naive(planned["departure_time"]),
+        planned["route_duration_s"],
+    )
 
     # The first driver to get here takes the request.
     with db.get_conn() as conn:

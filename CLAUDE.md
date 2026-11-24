@@ -65,29 +65,61 @@ API error code's text) and `nav.json` (a new tab). A new table also touches
 
 ### Branch rules
 
-- **Before starting a branch**, `git fetch`, branch from `origin/main`, and look at the open pull
-  requests (`gh pr list`, `gh pr diff <n> --name-only`). If one of them changes the same shared
+- **Before starting a branch**, `git fetch`, branch from `origin/main`, and look at what is in
+  progress: the open pull requests (`gh pr list`, `gh pr diff <n> --name-only`) and the other
+  sessions' worktrees (`git worktree list`). If one of them changes the same shared
   files in the same area, wait for it to be merged or build on top of its branch, and say so in
   the pull request ("Builds on #12, merge after it").
 - **Foundations first.** A change other work depends on (identity and sign-in, the database
   schema, prices, bookings, payments, the page layout) is its own pull request, merged before the
   work that uses it starts. Dependent work branches from `main` after that merge, never in
   parallel with it.
-- **Small and short-lived.** One topic per branch. Open it as a draft early, and get it merged
-  within a day or two. At most three branches open at once. When several start together, agree on
-  the order they will be merged in and write it in each pull request.
+- **Small and short-lived.** One topic per branch. Open it as a draft with its first commit,
+  before the bulk of the work: a branch without a pull request is invisible to the other sessions.
+  Get it merged within a day or two. At most three branches open at once. When several start
+  together, agree on the order they will be merged in and write it in each pull request.
 - **Parallel agents get separate files.** When Claude runs several agents at once, each gets
   work that touches different files; never two agents on the same shared file.
 - **Keeping a branch up to date: merge, never rebase.** `git fetch && git merge origin/main`,
   resolve, run the tests, push. Never force-push a branch that has a pull request. With
   `git config rerere.enabled true`, git remembers how a conflict was resolved and reuses it.
-- **After any pull request is merged, update the other open ones straight away**, while the
-  conflicts are small. Resolving conflicts is Claude's job, not the owner's: in a session, or by
+- **After any pull request is merged, the other open ones are updated straight away**, while the
+  conflicts are small: each session updates its own branches, not another session's (see below).
+  Resolving conflicts is Claude's job, not the owner's: in the branch's session, or by
   commenting `@claude update this branch from main and fix the conflicts` on the pull request.
 - **Don't touch what you don't need to.** No reformatting, reordering or renaming in passing; it
   turns a small change into conflicts for everyone else.
 - Merge method: merge commits only (squash and rebase merges are disabled), and merged branches
   are deleted automatically.
+
+## Several sessions at once
+
+Several Claude sessions often work on this repository at the same time. One folder has one branch
+and one set of uncommitted files: two sessions in the same folder commit, overwrite or switch away
+each other's work without noticing.
+
+- **One worktree per session.** A session that changes files first makes its own worktree from
+  `origin/main` and works only there:
+  `git worktree add .claude/worktrees/<topic> -b <branch> origin/main`. The main folder is the
+  owner's: a session doesn't switch its branch, pull into it or edit files in it, unless the owner
+  says so for that session.
+- **Don't touch what isn't yours:** another session's worktree, branch, stash, pull request or
+  uncommitted files. A session that finds its folder changed under it (a branch it didn't check
+  out, files it didn't write) stops, moves to a worktree of its own and tells the owner. It never
+  commits, stashes, resets or deletes those changes.
+- **Each session updates only its own branches** after a merge. Another session's branch is its
+  own to bring up to date.
+- **Local resources are a session's own:**
+  - a test server listens on a free port chosen when it starts (port 0, or one checked to be
+    free), never a fixed one;
+  - it is stopped by its process id, never by matching its name (`pkill -f`), which stops the
+    other sessions' servers too;
+  - test databases, logs, screenshots and coverage data go in the session's scratch folder, never
+    in the repository's folder (`rideshare.db` there is nobody's test database);
+  - no bare `git stash` or `git stash pop`: the stash is shared by every worktree.
+- **After the merge, clean up:** `git worktree remove` the session's worktree and delete its local
+  branch. A worktree whose branch is merged and gone is safe to remove; any other one is somebody's
+  work.
 
 ## Every pull request is safe to deploy the moment it's merged
 
