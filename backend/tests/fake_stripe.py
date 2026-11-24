@@ -35,16 +35,16 @@ class FakeStripe:
             raise stripe_gateway.Error(f"{call} failed")
 
     def create_checkout(self, *, amount_cts, description, success_url, cancel_url, expires_at, metadata,
-                        language=None, email=None):
+                        language=None, email=None, fee_cts=0, fee_description=""):
         self._check("create_checkout")
         asked = {
             "amount_cts": amount_cts, "description": description, "success_url": success_url,
             "cancel_url": cancel_url, "expires_at": expires_at, "metadata": metadata, "language": language,
-            "email": email,
+            "email": email, "fee_cts": fee_cts, "fee_description": fee_description,
         }
         session_id = f"cs_{len(self.sessions) + 1}"
         self.sessions[session_id] = {
-            "id": session_id, "status": "open", "paid": False, "amount_cts": asked["amount_cts"],
+            "id": session_id, "status": "open", "paid": False, "amount_cts": amount_cts + fee_cts,
             "payment_intent": None, "metadata": asked["metadata"], "asked": asked,
         }
         return {"id": session_id, "url": f"https://checkout.test/{session_id}"}
