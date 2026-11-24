@@ -91,6 +91,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   account deletion, email sending
 - [Driver areas](docs/driver-areas.md): the places a driver usually drives from or to, each with a
   radius they choose
+- [One drive at a time](docs/one-drive-at-a-time.md): a driver can't post two drives at the same
+  time, or too far apart for the time between them
 - [A ride and public transport](docs/combined-trips.md): trips that combine a ride for part of the
   way with the train or the bus for the rest, before the ride, after it or both
 - [The passenger page](docs/passenger-page.md): two fields, a search that starts by itself, the map
