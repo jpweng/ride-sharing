@@ -14,6 +14,7 @@
   "errors.demo_driver_not_found": "This demo driver doesn't exist.",
   "errors.demo_read_only": "You're viewing the demo as a fictional driver: nothing can be changed. Sign in with your email address to post drives and requests.",
   "errors.departure_past": "This departure time has passed. Choose a later one.",
+  "errors.dispute_not_possible": "This can't be reported for this booking any more.",
   "errors.drive_departed": "This drive has already left.",
   "errors.drive_not_found": "This drive no longer exists.",
   "errors.drive_overlaps": "You already have a drive at that time: {from} → {to}, leaving at {time}.",

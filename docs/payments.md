@@ -32,14 +32,48 @@ settle between themselves, and the site says so. The logic is in
    giving a payment up, the site asks Stripe whether it was made after all.
 6. **A booking that ends before the ride** ends its payment: cancelled by the passenger or the
    driver, the drive cancelled, an account deleted. Nothing is due any more, and what was paid is
-   refunded in full (`payment_refunded` tells the passenger). A payment that arrives after the
-   booking ended is refunded at once.
+   refunded (`payment_refunded` tells the passenger), by the rules below. A payment that arrives
+   after the booking ended is refunded at once.
+7. **When the ride starts, the price is settled:** the price per seat falls when more passengers
+   join, so a passenger who paid earlier may have paid more than the final price. The difference
+   is refunded at their pickup time (`payments.settle_prices`, hourly, and always before the
+   driver is paid). Nobody is asked for more than they paid if the price rises again.
 
 Bookings accepted while payments were off never get a payment: switching payments on changes
 nothing for them.
 
-The rules for late cancellations and a service fee are separate steps, described here as they are
-added.
+A service fee is a separate step, described here when it is added.
+
+## Cancelling a paid booking
+
+| Who cancels, when | The passenger gets back |
+| --- | --- |
+| The driver (the booking or the whole drive, or by deleting their account), at any time | everything |
+| The passenger, until 2 hours before the pickup (`payments.FREE_CANCEL_UNTIL`) | everything |
+| The passenger, later than that, before the pickup time | half (`payments.LATE_REFUND_SHARE`); the rest goes to the driver |
+| The passenger, after the pickup time | nothing; the driver is paid in full |
+
+A passenger deleting their account counts as cancelling. A passenger who doesn't show up has paid:
+nothing needs doing, and the driver is paid as for any ride. Before cancelling, the question the
+page asks says what comes back; the booking shows until when cancelling is free.
+
+## "The ride didn't take place"
+
+From the pickup time until the driver is paid (24 hours after the drop-off), the passenger's
+booking has a link *The ride didn't take place*. It puts the payment **on hold**: the driver isn't
+paid, hears why (`payout_held`), and the team gets a [report](ratings-and-reports.md) (reason
+`no_show`, with "Payment N is on hold").
+
+The team decides, on the server:
+
+    docker compose exec app python backend/admin.py payments           # those on hold
+    docker compose exec app python backend/admin.py refund-payment 7   # back to the passenger, in full
+    docker compose exec app python backend/admin.py release-payment 7  # to the driver, at the next hourly run
+
+The passenger hears of a release (`payment_released`), the driver of a refund (`payout_refunded`).
+A payment on hold stays so until one of the two is done: it is neither paid out nor given back by
+itself. Once the driver has been paid, the link is gone; a later complaint is a report like any
+other, handled by hand in the Stripe dashboard if money has to move.
 
 ## Paying drivers
 
@@ -129,12 +163,16 @@ Access levels and error codes as in [API](api.md).
   `payment_failed` (Stripe refused or couldn't be reached)
 - `POST /api/bookings/{id}/pay/check` — may change, the booking's passenger; asks Stripe what
   became of the open Checkout page and answers `{status}`
+- `POST /api/bookings/{id}/pay/dispute` `{details}` — may change, the booking's passenger: the
+  ride didn't take place. 400 `dispute_not_possible` (not paid, before the pickup time, the driver
+  already paid, or said before)
 - `POST /api/payments/webhook` — Stripe's calls, authenticated by their signature
   (`Stripe-Signature`), not by a session; 400 `invalid_signature`, 503 `payments_off`
 
 `GET /api/bookings` gives each booking a `payment`: `null` when it isn't paid through the site,
-else `{status, amount_chf, pay_by, refunded_chf}` (`amount_chf`: still to pay at the current price
-while `due`, what was paid afterwards).
+else `{status, amount_chf, pay_by, refunded_chf, free_cancel_until, refund_if_cancelled_chf,
+on_hold, can_dispute}` (`amount_chf`: still to pay at the current price while `due`, what was paid
+afterwards; `refund_if_cancelled_chf`: what the passenger would get back by cancelling now).
 
 Stripe sends the passenger back to `/?paid=<booking id>#/ride` after paying and to
 `/?unpaid=<booking id>#/ride` after leaving the page without paying.

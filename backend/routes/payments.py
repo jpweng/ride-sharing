@@ -5,14 +5,17 @@ docs/payments.md):
   GET  /api/payments/config          -- whether paying through the site is on
   POST /api/bookings/{id}/pay        -- the address of a page to pay on
   POST /api/bookings/{id}/pay/check  -- back from that page: what became of it
+  POST /api/bookings/{id}/pay/dispute  -- the passenger: the ride didn't take place
   POST /api/payments/webhook         -- Stripe's own calls
 """
 import os
 
 from fastapi import APIRouter, Request
 from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
 
 import payments
+import reports
 from api import Writer
 
 router = APIRouter()
@@ -37,6 +40,15 @@ def pay_booking(booking_id: int, request: Request, user: Writer):
 @router.post("/api/bookings/{booking_id}/pay/check")
 def check_payment(booking_id: int, user: Writer):
     return payments.check(booking_id, user)
+
+
+class Dispute(BaseModel):
+    details: str | None = Field(default=None, max_length=reports.MAX_DETAILS_CHARS)
+
+
+@router.post("/api/bookings/{booking_id}/pay/dispute")
+def dispute_payment(booking_id: int, user: Writer, payload: Dispute | None = None):
+    return payments.dispute(booking_id, user, payload.details if payload else None)
 
 
 @router.post("/api/payments/webhook")

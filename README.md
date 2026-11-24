@@ -143,7 +143,7 @@ backend/
   auth.py         sign-in by email link, sessions, profile (18+, code of conduct), demo-driver view
   social.py       sign-in with Google or Apple (OpenID Connect), off until their keys are set
   mailer.py       email: console backend (development, tests) or Amazon SES
-  admin.py        command line: ban / unban an account, list and close reports
+  admin.py        command line: ban / unban an account, list and close reports, decide on payments on hold
   database.py     SQLite access layer; init_db() applies migrations/ at startup
   migrations/     schema changes, one idempotent file each (YYYYMMDDHHMM_name.py), in name order
   matching.py     route corridor matching with search radii (OSRM, haversine fallback)

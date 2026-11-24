@@ -39,6 +39,16 @@ function bookingExtras(booking, element, otherRole) {
   BOOKING_EXTRAS.forEach((extra) => extra(booking, element, otherRole));
 }
 
+// What such scripts (payments.js) add to the question asked before a
+// booking is cancelled: each function gets the booking and who cancels
+// ("passenger" or "driver"), and returns a sentence or nothing.
+const BOOKING_CANCEL_NOTES = [];
+
+function confirmCancel(question, booking, by) {
+  const notes = BOOKING_CANCEL_NOTES.map((note) => note(booking, by)).filter(Boolean);
+  return confirm([question, ...notes].join("\n\n"));
+}
+
 function bookingStatusText(status) {
   if (status === "requested") return t("booking.statusRequested");
   if (status === "accepted") return t("booking.statusAccepted");
@@ -202,7 +212,7 @@ function passengerRow(b) {
   } else {
     buttons.append(
       actionButton("booking.cancelPassenger", "link-btn", () => {
-        if (confirm(t("booking.cancelPassengerConfirm", { name: b.passenger_name }))) act("cancel");
+        if (confirmCancel(t("booking.cancelPassengerConfirm", { name: b.passenger_name }), b, "driver")) act("cancel");
       }),
     );
   }
@@ -269,7 +279,7 @@ function myBookingCard(b) {
   card.querySelector("button")?.addEventListener("click", async () => {
     const trip = { from: d.origin_name, to: d.destination_name };
     const question = b.status === "requested" ? t("booking.withdrawConfirm", trip) : t("booking.cancelConfirm", trip);
-    if (!confirm(question)) return;
+    if (!confirmCancel(question, b, "passenger")) return;
     try {
       await postJson(`/api/bookings/${b.id}/cancel`, {});
       await loadBookings();

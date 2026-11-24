@@ -24,8 +24,19 @@ How it goes, when it's on:
      free again, and both are told (cancel_unpaid()).
   4. A booking that ends before the ride (cancelled by either of them, the
      drive cancelled, an account deleted) ends its payment: nothing is due
-     any more, and what was paid is refunded (booking_ended()). A payment
-     that arrives after that is refunded at once.
+     any more, and what was paid is refunded (booking_ended()): all of it,
+     except when the passenger cancels late. Until FREE_CANCEL_UNTIL before
+     the pickup they get everything back; after that LATE_REFUND_SHARE of
+     it, the rest going to the driver; after the pickup time nothing (a
+     passenger who doesn't show up has paid). A payment that arrives after
+     the booking ended is refunded at once.
+  5. When the ride starts, what a passenger paid above the price per seat
+     as it is then (it falls when more passengers join) is refunded
+     (settle_prices()). Nobody is ever asked for more than they paid.
+  6. From the pickup time until the driver is paid, the passenger can say
+     that the ride didn't take place (dispute()): the payment is on hold,
+     the team is told (a report, reports.py), and decides: refunded to the
+     passenger or released to the driver (resolve_dispute(), admin.py).
 
 The site never sees a card number: the passenger types it on Stripe's page.
 The money stays in the Stripe account. A payment keeps the trip it was for
@@ -41,10 +52,13 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 
+from fastapi import HTTPException
+
 import bookings
 import database as db
 import mailer
 import notify
+import reports
 import stripe_gateway
 from api import api_error
 
@@ -53,6 +67,11 @@ logger = logging.getLogger("uvicorn.error")
 # How long the passenger has to pay after the driver's acceptance, at the
 # latest until the pickup time.
 PAY_WITHIN = timedelta(hours=24)
+# A passenger who cancels gets everything back until this long before the
+# pickup, then this share of it (the rest goes to the driver), and nothing
+# once the pickup time has passed.
+FREE_CANCEL_UNTIL = timedelta(hours=2)
+LATE_REFUND_SHARE = 0.5
 # Stripe keeps a Checkout page open for 30 minutes at least, 24 hours at most.
 CHECKOUT_OPEN_MIN = timedelta(minutes=30)
 CHECKOUT_OPEN_MAX = timedelta(hours=23)
@@ -144,18 +163,53 @@ def _mine(booking_id: int, user: dict) -> dict:
     return payment
 
 
-def shown(payment: dict | None, booking: dict) -> dict | None:
+def refund_on_cancel_cts(payment: dict, by: str | None, now: datetime) -> int:
+    """How much of a paid payment goes back to the passenger when the
+    booking is cancelled at `now` by `by` ("passenger", "driver", or None
+    when it just went, with its drive): everything, unless the passenger
+    cancels late."""
+    amount = payment["amount_cts"] or 0
+    if by != "passenger":
+        return amount
+    pickup = _naive(payment["pickup_time"])
+    if now <= pickup - FREE_CANCEL_UNTIL:
+        return amount
+    return int(amount * LATE_REFUND_SHARE) if now < pickup else 0
+
+
+def _on_hold(payment: dict) -> bool:
+    return bool(payment["disputed_at"]) and not payment["dispute_closed_at"]
+
+
+def _can_dispute(payment: dict, now: datetime) -> bool:
+    """Paid, its booking stood, the pickup time has come, the driver isn't
+    paid yet, and it wasn't said before."""
+    return (
+        payment["status"] == "paid" and not payment["ended_at"] and not payment["transfer_id"]
+        and not payment["disputed_at"] and _naive(payment["pickup_time"]) <= now
+    )
+
+
+def shown(payment: dict | None, booking: dict, now: datetime | None = None) -> dict | None:
     """What a booking's passenger and driver see of its payment: None when
     it isn't paid through the site."""
     if payment is None:
         return None
+    now = now or notify.local_now()
     due = payment["status"] == "due"
+    standing = payment["status"] == "paid" and not payment["ended_at"]
     return {
         "status": payment["status"],
         # Still to pay: the price as it is now. Paid: what was paid.
         "amount_chf": booking.get("total_chf") if due else chf(payment["amount_cts"]),
         "pay_by": payment["pay_by"] if due else None,
         "refunded_chf": chf(payment["refund_due_cts"]),
+        # If the passenger cancelled now: until when it costs nothing, and
+        # what would come back.
+        "free_cancel_until": _iso(_naive(payment["pickup_time"]) - FREE_CANCEL_UNTIL) if standing else None,
+        "refund_if_cancelled_chf": chf(refund_on_cancel_cts(payment, "passenger", now)) if standing else None,
+        "on_hold": _on_hold(payment),
+        "can_dispute": _can_dispute(payment, now),
     }
 
 
@@ -381,12 +435,15 @@ def webhook(payload: bytes, signature: str | None) -> dict:
 # ---------------------------------------------------------------------
 # When a booking ends before the ride
 # ---------------------------------------------------------------------
-def booking_ended(booking_id: int) -> None:
-    """The booking was cancelled or is gone, before the ride: nothing is
-    due for it any more, and what was paid goes back to the passenger."""
+def booking_ended(booking_id: int, by: str | None = None, now: datetime | None = None) -> None:
+    """The booking was cancelled or is gone: nothing is due for it any
+    more, and what was paid goes back to the passenger, all of it unless
+    they cancelled late themselves (`by`: "passenger" or "driver"; see
+    refund_on_cancel_cts)."""
     payment = for_booking(booking_id)
     if payment is None or payment["status"] == "cancelled" or payment["ended_at"]:
         return
+    now = now or notify.local_now()
     with db.get_conn() as conn:
         given_up = conn.execute(
             "UPDATE payments SET status = 'cancelled', cancelled_at = ? WHERE id = ? AND status = 'due'",
@@ -394,11 +451,12 @@ def booking_ended(booking_id: int) -> None:
         ).rowcount == 1
         if not given_up:
             conn.execute(
+                # MAX: never less than what was already to give back.
                 """
-                UPDATE payments SET refund_due_cts = amount_cts, ended_at = ?
+                UPDATE payments SET refund_due_cts = MAX(refund_due_cts, ?), ended_at = ?
                 WHERE id = ? AND status = 'paid' AND ended_at IS NULL
                 """,
-                (db.now_iso(), payment["id"]),
+                (refund_on_cancel_cts(payment, by, now), db.now_iso(), payment["id"]),
             )
     if not enabled():
         return  # the keys are gone: Stripe is told once they are back (run())
@@ -424,7 +482,7 @@ def drive_cancelled(drive_id: int, now: datetime | None = None) -> None:
             (drive_id, _iso(now)),
         ).fetchall()
     for row in rows:
-        booking_ended(row["booking_id"])
+        booking_ended(row["booking_id"], by="driver", now=now)
 
 
 def account_deleted(user: dict, now: datetime | None = None) -> None:
@@ -437,12 +495,14 @@ def account_deleted(user: dict, now: datetime | None = None) -> None:
             (user["id"], _iso(now)),
         ).fetchall()
     for row in rows:
-        booking_ended(row["booking_id"])
+        booking_ended(row["booking_id"], by="passenger", now=now)
 
 
-def send_refunds(payment_id: int | None = None) -> int:
+def send_refunds(payment_id: int | None = None, reason: str | None = None) -> int:
     """Tell Stripe to send back what is due and not sent yet, for one
-    payment or for all; the passenger is told. Returns how many refunds."""
+    payment or for all; the passenger is told (`reason`: why, when the
+    notification should say: "shared", the price fell). Returns how many
+    refunds."""
     if not enabled():
         return 0
     with db.get_conn() as conn:
@@ -467,9 +527,120 @@ def send_refunds(payment_id: int | None = None) -> int:
                 "UPDATE payments SET refunded_cts = refunded_cts + ?, refunded_at = ? WHERE id = ? AND refunded_cts = ?",
                 (amount, db.now_iso(), payment["id"], payment["refunded_cts"]),
             )
-        tell(payment["passenger_id"], "payment_refunded", payment, amount_chf=chf(amount))
+        more = {"reason": reason} if reason else {}
+        tell(payment["passenger_id"], "payment_refunded", payment, amount_chf=chf(amount), **more)
         sent += 1
     return sent
+
+
+# ---------------------------------------------------------------------
+# The price when the ride starts
+# ---------------------------------------------------------------------
+def settle_prices(now: datetime | None = None) -> int:
+    """For the rides that have started: refund what each passenger paid
+    above the price as it is now (it fell if more passengers joined after
+    they paid). Once per payment. Returns how many got something back."""
+    now = now or notify.local_now()
+    with db.get_conn() as conn:
+        rows = [dict(r) for r in conn.execute(
+            """
+            SELECT * FROM payments
+            WHERE status = 'paid' AND ended_at IS NULL AND settled_at IS NULL AND pickup_time <= ?
+            """,
+            (_iso(now),),
+        )]
+    refunded = 0
+    for payment in rows:
+        booking = bookings.find(payment["booking_id"])
+        above = 0
+        if booking and booking["status"] == "accepted" and booking["total_chf"] is not None:
+            above = max(0, payment["amount_cts"] - payment["refund_due_cts"] - cts(booking["total_chf"]))
+        with db.get_conn() as conn:
+            conn.execute(
+                "UPDATE payments SET settled_at = ?, refund_due_cts = refund_due_cts + ? WHERE id = ? AND settled_at IS NULL",
+                (db.now_iso(), above, payment["id"]),
+            )
+        if above:
+            send_refunds(payment["id"], reason="shared")
+            refunded += 1
+    return refunded
+
+
+# ---------------------------------------------------------------------
+# "The ride didn't take place"
+# ---------------------------------------------------------------------
+def dispute(booking_id: int, user: dict, details: str | None = None, now: datetime | None = None) -> dict:
+    """The passenger says the ride they paid for didn't take place: the
+    payment is on hold (the driver isn't paid), the driver is told, and
+    the team gets a report to decide on. Returns the payment's status."""
+    now = now or notify.local_now()
+    payment = _mine(booking_id, user)
+    if not _can_dispute(payment, now):
+        raise api_error(400, "dispute_not_possible", "This can't be reported for this booking any more")
+    with db.get_conn() as conn:
+        held = conn.execute(
+            "UPDATE payments SET disputed_at = ? WHERE id = ? AND disputed_at IS NULL AND transfer_id IS NULL",
+            (db.now_iso(), payment["id"]),
+        ).rowcount == 1
+    if not held:
+        raise api_error(400, "dispute_not_possible", "This can't be reported for this booking any more")
+    logger.warning("Payment %s is on hold: its passenger says the ride didn't take place", payment["id"])
+    try:
+        # The team's list of things to look at (admin.py reports).
+        text = f"[Payment {payment['id']} is on hold] {(details or '').strip()}".strip()
+        reports.file(booking_id, user, "no_show", text)
+    except HTTPException:
+        # Already reported, or the booking is gone: admin.py payments lists it anyway.
+        pass
+    tell(payment["driver_id"], "payout_held", payment, passenger_name=user["name"])
+    return {"status": "paid", "on_hold": True}
+
+
+def on_hold() -> list[dict]:
+    """The payments waiting for the team's decision, the oldest first."""
+    with db.get_conn() as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT * FROM payments WHERE disputed_at IS NOT NULL AND dispute_closed_at IS NULL ORDER BY disputed_at"
+        )]
+
+
+def resolve_dispute(payment_id: int, refund: bool) -> bool:
+    """The team's decision on a payment on hold: `refund` it to the
+    passenger in full, or release it to the driver (who is paid at the
+    next hourly run). Both are told. False if it isn't on hold."""
+    payment = get(payment_id)
+    if payment is None or not _on_hold(payment):
+        return False
+    with db.get_conn() as conn:
+        closed = conn.execute(
+            f"""
+            UPDATE payments SET dispute_closed_at = ?
+                {", refund_due_cts = amount_cts, ended_at = COALESCE(ended_at, ?)" if refund else ""}
+            WHERE id = ? AND disputed_at IS NOT NULL AND dispute_closed_at IS NULL
+            """,
+            (db.now_iso(), db.now_iso(), payment_id) if refund else (db.now_iso(), payment_id),
+        ).rowcount == 1
+    if not closed:
+        return False
+    if refund:
+        send_refunds(payment_id)
+        tell(payment["driver_id"], "payout_refunded", payment)
+    else:
+        tell(payment["passenger_id"], "payment_released", payment)
+    return True
+
+
+def as_text(payment: dict) -> str:
+    """A payment on hold in a few lines, for the team (admin.py)."""
+    def who(user_id):
+        user = db.get_user(user_id) if user_id else None
+        return f"{user['name']} <{user['email']}>" if user else "(account deleted)"
+
+    return "\n".join([
+        f"Payment #{payment['id']} on hold since {payment['disputed_at'][:16]} UTC: CHF {chf(payment['amount_cts']):.2f}",
+        f"  Ride: {payment['origin_name']} → {payment['destination_name']}, pickup {payment['pickup_time']}",
+        f"  Passenger: {who(payment['passenger_id'])}; driver: {who(payment['driver_id'])}",
+    ])
 
 
 # ---------------------------------------------------------------------
@@ -521,12 +692,16 @@ def run(now: datetime | None = None) -> dict:
     for row in rows:
         booking = bookings.find(row["booking_id"])
         if booking is None or booking["status"] != "accepted":
-            booking_ended(row["booking_id"])
+            booking_ended(row["booking_id"], now=now)
             ended += 1
+    settled = settle_prices(now)
     refunds = send_refunds()
     with db.get_conn() as conn:
         deleted = conn.execute(
             "DELETE FROM payments WHERE created_at < ? AND status != 'due' AND refund_due_cts <= refunded_cts",
             ((datetime.now(timezone.utc) - RECORDS_KEPT).isoformat(),),
         ).rowcount
-    return {"unpaid_cancelled": unpaid, "payments_ended": ended, "refunds_sent": refunds, "payments_deleted": deleted}
+    return {
+        "unpaid_cancelled": unpaid, "payments_ended": ended, "prices_settled": settled, "refunds_sent": refunds,
+        "payments_deleted": deleted,
+    }
