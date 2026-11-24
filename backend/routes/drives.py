@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 import bookings
 import database as db
 import demo_drives
+import drive_conflicts
 import matching
 import notify
 import pricing
@@ -71,22 +72,28 @@ def post_drive(payload: DriveCreate, user: Writer):
             raise api_error(400, "price_too_low",
                             f"The price per passenger must be at least CHF {price_band['min_chf']:.2f}")
 
-    drive_id = db.create_drive(
-        driver_name=user["name"],
-        origin_name=payload.origin.name,
-        origin_lat=payload.origin.lat,
-        origin_lon=payload.origin.lon,
-        destination_name=payload.destination.name,
-        destination_lat=payload.destination.lat,
-        destination_lon=payload.destination.lon,
-        departure_time=payload.departure_time,
-        seats_available=payload.seats_available,
-        route_geometry=route["geometry"],
-        route_distance_m=route["distance_m"],
-        route_duration_s=route["duration_s"],
-        route_source=route["source"],
-        driver_price_chf=driver_price,
-    )
+    # A driver is in one place at a time (drive_conflicts.py).
+    with drive_conflicts.one_at_a_time(user["name"]):
+        drive_conflicts.check(
+            user["name"], (payload.origin.lat, payload.origin.lon),
+            (payload.destination.lat, payload.destination.lon), departure, route["duration_s"],
+        )
+        drive_id = db.create_drive(
+            driver_name=user["name"],
+            origin_name=payload.origin.name,
+            origin_lat=payload.origin.lat,
+            origin_lon=payload.origin.lon,
+            destination_name=payload.destination.name,
+            destination_lat=payload.destination.lat,
+            destination_lon=payload.destination.lon,
+            departure_time=payload.departure_time,
+            seats_available=payload.seats_available,
+            route_geometry=route["geometry"],
+            route_distance_m=route["distance_m"],
+            route_duration_s=route["duration_s"],
+            route_source=route["source"],
+            driver_price_chf=driver_price,
+        )
     drive = db.get_drive(drive_id)
     # Passengers waiting for a ride like this one are told.
     notify.tell_passengers(drive)
