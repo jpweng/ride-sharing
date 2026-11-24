@@ -96,7 +96,7 @@ jobs:
             echo "- Signed with: $SIGNED_WITH"
             echo "- Signing certificate, SHA-256: \`$fingerprint\`"
             echo "- Package: $(echo "$badging" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")"
-            echo "- Minimum Android API level: $(echo "$badging" | sed -n "s/^sdkVersion:'\(.*\)'/\1/p")"
+            echo "- Minimum Android API level: $(echo "$badging" | grep -oE "^(minSdkVersion|sdkVersion):'[0-9]+'" | grep -oE '[0-9]+')"
             echo "- Target Android API level: $(echo "$badging" | sed -n "s/^targetSdkVersion:'\(.*\)'/\1/p")"
           } | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
