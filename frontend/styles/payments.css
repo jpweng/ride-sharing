@@ -5,3 +5,7 @@
 .badge.payment.paid { background: #e6f4ea; color: var(--success); }
 .badge.payment.waiting { background: #fff4e5; color: #995c00; }
 #payment-back { margin-bottom: 12px; }
+
+/* Getting paid as a driver (payouts.js): on the Driver page, under the drives. */
+#payouts-box { margin-bottom: 16px; }
+#payouts-box .payouts-buttons { margin-top: 8px; }

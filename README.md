@@ -154,6 +154,7 @@ backend/
   contact.py      the contact form: a visitor's message, emailed to the team
   bookings.py     bookings: asking for seats on a drive, the driver's answer, cancelling
   payments.py     paying for a seat with Stripe (off without its keys), refunds
+  payouts.py      paying drivers what their passengers paid (Stripe Connect)
   stripe_gateway.py  the calls to Stripe
   profiles.py     optional profiles (about, habits, car, photo) and who may see whose
   photos.py       where profile photos are kept: a private S3 bucket (a folder in development)

@@ -3,10 +3,12 @@
 A passenger can pay for a seat through the site, with [Stripe](https://stripe.com). It is
 **switched off** until Stripe's keys are set: without them nothing is charged, passenger and driver
 settle between themselves, and the site says so. The logic is in
-[backend/payments.py](../backend/payments.py), the calls to Stripe in
+[backend/payments.py](../backend/payments.py) (passengers paying) and
+[backend/payouts.py](../backend/payouts.py) (drivers being paid), the calls to Stripe in
 [backend/stripe_gateway.py](../backend/stripe_gateway.py), the routes in
-[backend/routes/payments.py](../backend/routes/payments.py), the page's script in
-[frontend/payments.js](../frontend/payments.js).
+[backend/routes/payments.py](../backend/routes/payments.py) and
+[backend/routes/payouts.py](../backend/routes/payouts.py), the page's scripts in
+[frontend/payments.js](../frontend/payments.js) and [frontend/payouts.js](../frontend/payouts.js).
 
 ## How it goes
 
@@ -36,14 +38,46 @@ settle between themselves, and the site says so. The logic is in
 Bookings accepted while payments were off never get a payment: switching payments on changes
 nothing for them.
 
-The money stays in the Stripe account. Paying drivers out, the rules for late cancellations and a
-service fee are separate steps, described here as they are added.
+The rules for late cancellations and a service fee are separate steps, described here as they are
+added.
+
+## Paying drivers
+
+What passengers pay arrives in the site's Stripe account, and is moved from there to each driver's
+own account at Stripe (Stripe Connect, "separate charges and transfers"), which Stripe pays out to
+the driver's bank account. The site never holds the money itself.
+
+- **Setting payouts up, once.** The Driver page has a section *Getting paid*, shown while payments
+  are on. *Set up payouts* opens an Express account at Stripe for the driver and sends them to
+  Stripe's own pages, where they give their identity and their bank account. The site keeps only
+  the account's identifier and whether Stripe accepted it (`payout_accounts`); it never sees the
+  identity document or the IBAN. Back on the Driver page, the site asks Stripe how far the account
+  is: *none*, *incomplete* (not finished, or Stripe still checking), *ready*.
+- **Drivers can post and accept without it.** The money waits. A driver with money waiting and no
+  account that is ready is told so (`payout_setup`), at most once a week
+  (`payouts.REMIND_EVERY`).
+- **When the money moves:** 24 hours after the ride's drop-off (`payouts.PAY_OUT_AFTER`), hourly,
+  what the passenger paid less what was refunded is transferred to the driver's account, tied to
+  the passenger's payment, and the driver is told (`payout_sent`). The wait leaves time to hear
+  that a ride didn't take place. Stripe pays the account's balance out to the bank account once a
+  week (set on the account when it is created).
+- **Money that can't be sent:** 60 days after the ride without an account that is ready
+  (`payouts.UNCLAIMED_AFTER`), or when the driver has deleted their account, the payment is
+  refunded to the passenger (`payout_lapsed` tells the driver). The site doesn't keep it.
+- **A driver deleting their account** is first sent what the passengers of their finished rides
+  paid, without the 24 hours' wait, if their payouts are set up. The link to their account at
+  Stripe is deleted here; the account at Stripe stays theirs.
+- **After the ride, a deleted drive changes nothing:** only bookings whose pickup is still ahead
+  are refunded when a drive is cancelled.
+
+A transfer is asked of Stripe with an idempotency key naming the payment, like refunds: asked
+twice, it is made once; a failed one is tried again at the next hourly run.
 
 ## What is kept
 
 One row per booking in the `payments` table: the amounts (in centimes), Stripe's identifiers, the
-status (`due`, `paid`, `cancelled`), and the trip it was for (start, destination, pickup and
-drop-off time). No names. A payment outlives its booking and its drive, which are deleted 30 days
+status (`due`, `paid`, `cancelled`), what was sent to the driver, and the trip it was for (start,
+destination, pickup and drop-off time). No names. A payment outlives its booking and its drive, which are deleted 30 days
 after the departure: it is the record of money that moved, kept for ten years
 (`payments.RECORDS_KEPT`), as Swiss bookkeeping rules ask. When an account is deleted the row
 stays, without the link to that account.
@@ -66,7 +100,8 @@ whichever way the switch is, without a change to them on the day it is turned on
 Payments need a Stripe account, which needs a registered business. Until then everything can be
 tried with a Stripe **test** account (test keys, test cards, no real money).
 
-1. In the Stripe dashboard: switch on the payment methods to offer, and add a webhook endpoint
+1. In the Stripe dashboard: switch on Connect (Express accounts, in Switzerland), the payment
+   methods to offer, and add a webhook endpoint
    `https://<site>/api/payments/webhook` for the events `checkout.session.completed` and
    `checkout.session.async_payment_succeeded`.
 2. Set two repository **secrets**: `STRIPE_SECRET_KEY` (the secret API key) and
@@ -103,3 +138,18 @@ while `due`, what was paid afterwards).
 
 Stripe sends the passenger back to `/?paid=<booking id>#/ride` after paying and to
 `/?unpaid=<booking id>#/ride` after leaving the page without paying.
+
+Payouts:
+
+- `GET  /api/payouts` — signed in; `{enabled, state, waiting_chf, sent_chf}`: `state` is `none`,
+  `incomplete` or `ready`; `waiting_chf` is what the driver's passengers paid that hasn't been
+  sent yet, `sent_chf` what was
+- `POST /api/payouts/onboard` — may change; `{url}`: Stripe's pages to set payouts up or carry
+  on, valid a few minutes. 503 `payments_off`; 502 `payout_failed`
+- `POST /api/payouts/refresh` — may change; asks Stripe how far the account is, and answers as
+  `GET /api/payouts`
+- `POST /api/payouts/dashboard` — may change; `{url}`: the driver's own pages at Stripe (payouts
+  made, bank account). 400 `payouts_not_set_up`; 503 `payments_off`; 502 `payout_failed`
+
+Stripe sends the driver back to `/?payouts=done#/drive` from its pages, and to
+`/?payouts=again#/drive` when the link had expired.

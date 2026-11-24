@@ -91,7 +91,7 @@ def gateway() -> stripe_gateway.Gateway:
     return _gateways[key]
 
 
-def _off():
+def off_error():
     return api_error(503, "payments_off", "Payments are switched off")
 
 
@@ -118,7 +118,7 @@ def _iso(dt: datetime) -> str:
 # ---------------------------------------------------------------------
 # Reading
 # ---------------------------------------------------------------------
-def _get(payment_id: int) -> dict | None:
+def get(payment_id: int) -> dict | None:
     with db.get_conn() as conn:
         row = conn.execute("SELECT * FROM payments WHERE id = ?", (payment_id,)).fetchone()
     return dict(row) if row else None
@@ -194,7 +194,7 @@ def _details(payment: dict, **more) -> dict:
     }
 
 
-def _tell(user_id: int | None, kind: str, payment: dict, **more) -> None:
+def tell(user_id: int | None, kind: str, payment: dict, **more) -> None:
     user = db.get_user(user_id) if user_id else None
     if user:  # their account may be gone
         notify.send(user["name"], kind, _details(payment, **more))
@@ -247,7 +247,7 @@ def checkout(booking_id: int, user: dict, base_url: str, now: datetime | None = 
     price as it is now. A page opened earlier for it is closed first, so
     that a booking can't be paid twice."""
     if not enabled():
-        raise _off()
+        raise off_error()
     now = now or notify.local_now()
     payment = _mine(booking_id, user)
     booking = bookings.find(booking_id)
@@ -301,7 +301,7 @@ def _apply_checkout(state: dict) -> None:
     if not state["paid"] or not state["payment_intent"]:
         return
     try:
-        payment = _get(int(state["metadata"].get("payment_id") or 0))
+        payment = get(int(state["metadata"].get("payment_id") or 0))
     except ValueError:
         payment = None
     if payment is None:
@@ -331,7 +331,7 @@ def _apply_checkout(state: dict) -> None:
                 (state["amount_cts"], intent, charge, state["id"], db.now_iso(), state["amount_cts"], payment["id"]),
             ).rowcount == 1
     if made:
-        _tell(payment["driver_id"], "payment_received", payment, passenger_name=_name(payment["passenger_id"]))
+        tell(payment["driver_id"], "payment_received", payment, passenger_name=_name(payment["passenger_id"]))
     elif late:
         send_refunds(payment["id"])
     else:
@@ -350,7 +350,7 @@ def check(booking_id: int, user: dict) -> dict:
             _apply_checkout(gateway().checkout(payment["checkout_session_id"]))
         except stripe_gateway.Error:
             logger.exception("Asking Stripe about payment %s failed", payment["id"])
-        payment = _get(payment["id"])
+        payment = get(payment["id"])
     return {"status": payment["status"]}
 
 
@@ -358,7 +358,7 @@ def webhook(payload: bytes, signature: str | None) -> dict:
     """A call from Stripe (its signature is checked): a Checkout page was
     paid."""
     if not enabled():
-        raise _off()
+        raise off_error()
     try:
         event = gateway().event(payload, signature, _setting("STRIPE_WEBHOOK_SECRET"))
     except (stripe_gateway.SignatureError, ValueError):
@@ -457,7 +457,7 @@ def send_refunds(payment_id: int | None = None) -> int:
                 "UPDATE payments SET refunded_cts = refunded_cts + ?, refunded_at = ? WHERE id = ? AND refunded_cts = ?",
                 (amount, db.now_iso(), payment["id"], payment["refunded_cts"]),
             )
-        _tell(payment["passenger_id"], "payment_refunded", payment, amount_chf=chf(amount))
+        tell(payment["passenger_id"], "payment_refunded", payment, amount_chf=chf(amount))
         sent += 1
     return sent
 
@@ -485,12 +485,12 @@ def cancel_unpaid(now: datetime | None = None) -> int:
             except stripe_gateway.Error:
                 logger.exception("Asking Stripe about payment %s failed; it stays due", payment["id"])
                 continue
-            if _get(payment["id"])["status"] != "due":
+            if get(payment["id"])["status"] != "due":
                 continue
         booking = bookings.find(payment["booking_id"])
         if booking and booking["status"] == "accepted":
             bookings.cancel(payment["booking_id"], {"id": booking["passenger_id"]}, reason="unpaid")
-            _tell(payment["passenger_id"], "booking_unpaid", payment)
+            tell(payment["passenger_id"], "booking_unpaid", payment)
             cancelled += 1
         booking_ended(payment["booking_id"])
     return cancelled

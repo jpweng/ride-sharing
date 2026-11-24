@@ -1,5 +1,5 @@
 """
-The calls to Stripe that payments.py makes, in one place: each takes and
+The calls to Stripe that payments.py and payouts.py make, in one place: each takes and
 returns plain values, so the rest of the code (and the tests, which swap
 this class for a fake) never touches Stripe's own objects.
 
@@ -70,6 +70,59 @@ class Gateway:
             {"payment_intent": payment_intent_id, "amount": amount_cts}, {"idempotency_key": idempotency_key},
         )
         return refund.id
+
+    # --- Drivers' accounts and what is sent to them (payouts.py) ---
+
+    def create_account(self, *, email: str | None, description: str, metadata: dict) -> str:
+        """A connected account for a driver, who then fills it in on
+        Stripe's own pages (onboarding_link); its id. It only receives
+        transfers; Stripe pays its balance out to the bank account weekly."""
+        params = {
+            "type": "express",
+            "country": "CH",
+            "business_type": "individual",
+            "capabilities": {"transfers": {"requested": True}},
+            "business_profile": {"product_description": description, "mcc": "4789"},
+            "settings": {"payouts": {"schedule": {"interval": "weekly", "weekly_anchor": "monday"}}},
+            "metadata": metadata,
+        }
+        if email:
+            params["email"] = email
+        return self._client.v1.accounts.create(params).id
+
+    def onboarding_link(self, account_id: str, return_url: str, refresh_url: str) -> str:
+        """The address of Stripe's pages where the driver gives their
+        identity and bank account; valid a few minutes, once."""
+        link = self._client.v1.account_links.create({
+            "account": account_id, "type": "account_onboarding", "return_url": return_url, "refresh_url": refresh_url,
+        })
+        return link.url
+
+    def account(self, account_id: str) -> dict:
+        """{"submitted": the driver went through Stripe's pages, "ready":
+        Stripe accepted them, so transfers and payouts work}."""
+        account = self._client.v1.accounts.retrieve(account_id)
+        capabilities = account.capabilities
+        transfers = getattr(capabilities, "transfers", None) if capabilities is not None else None
+        return {
+            "submitted": bool(account.details_submitted),
+            "ready": bool(account.payouts_enabled) and transfers == "active",
+        }
+
+    def dashboard_link(self, account_id: str) -> str:
+        """The address of the driver's own pages at Stripe: their payouts,
+        their bank account."""
+        return self._client.v1.accounts.login_links.create(account_id).url
+
+    def transfer(self, *, amount_cts: int, account_id: str, charge_id: str | None, metadata: dict,
+                 idempotency_key: str) -> str:
+        """Move `amount_cts` of a passenger's payment to the driver's
+        account; the transfer's id. `charge_id` ties it to that payment, so
+        it can be made before Stripe has released the payment's money."""
+        params = {"amount": amount_cts, "currency": CURRENCY, "destination": account_id, "metadata": metadata}
+        if charge_id:
+            params["source_transaction"] = charge_id
+        return self._client.v1.transfers.create(params, {"idempotency_key": idempotency_key}).id
 
     def event(self, payload: bytes, signature: str | None, secret: str) -> dict:
         """A webhook call from Stripe, its signature checked: {"type",

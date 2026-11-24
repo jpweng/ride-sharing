@@ -8,7 +8,8 @@ Hourly upkeep of the database, run by main.py at startup and then every hour:
      (notify.run_extra_rounds), and ask both sides of the rides that are
      over how they went (ratings.ask_after_rides). When seats are paid
      through the site: cancel the bookings not paid in time and send the
-     refunds still due (payments.run).
+     refunds still due (payments.run), then send drivers what the
+     passengers of their finished rides paid (payouts.run).
   3. Delete visitors' data once it's RETENTION old: drives and ride
      requests a month after their time, searches and notifications a month
      after they were made. Nothing in the UI shows any of it by then.
@@ -35,6 +36,7 @@ import database as db
 import demo_drives
 import notify
 import payments
+import payouts
 import ratings
 
 RETENTION = timedelta(days=30)
@@ -72,7 +74,8 @@ def run(now: datetime | None = None) -> dict:
     asked = ratings.ask_after_rides(now)
     return {
         "demo_deleted": deleted, "demo_created": created, "demo_routes_deleted": routes_deleted,
-        "extra_round_told": told, "rides_to_rate": asked, **payments.run(now), **purge_old_data(now),
+        "extra_round_told": told, "rides_to_rate": asked, **payments.run(now), **payouts.run(now),
+        **purge_old_data(now),
     }
 
 

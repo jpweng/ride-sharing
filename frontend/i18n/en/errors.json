@@ -40,6 +40,8 @@
   "errors.payment_not_due": "There is nothing to pay for this booking.",
   "errors.payment_too_late": "The time to pay for this booking is over.",
   "errors.payments_off": "Payments aren't available right now.",
+  "errors.payout_failed": "Our payment provider couldn't be reached. Please try again.",
+  "errors.payouts_not_set_up": "Set up payouts first.",
   "errors.photo_invalid": "This file isn't a photo we can use.",
   "errors.photo_too_large": "This photo is too large.",
   "errors.photos_unavailable": "Photos can't be saved at the moment. Please try again later.",
