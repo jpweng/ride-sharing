@@ -19,6 +19,7 @@ import bookings
 import database as db
 import main
 import maintenance
+import matching
 import notify
 import notify_email
 import payments
@@ -255,8 +256,8 @@ def test_a_new_page_closes_the_one_before(users, stripe):
 
 def test_the_price_paid_is_the_price_at_that_moment(users, stripe):
     # At the highest price a driver may ask: the car's cost, shared.
-    highest = pricing.band(_drive(users["jean"], at="07:00")["route_distance_m"] / 1000)["max_chf"]
-    drive = _drive(users["jean"], price_chf=highest)
+    km = matching.haversine_km(LAUSANNE["lat"], LAUSANNE["lon"], GENEVE["lat"], GENEVE["lon"])
+    drive = _drive(users["jean"], price_chf=pricing.band(km)["max_chf"])
     marie = _booked(users, "marie", drive=drive)
     alone = _mine(users["marie"])[0]["payment"]["amount_chf"]
     _booked(users, "paul", drive=drive)
@@ -371,8 +372,8 @@ def test_deleting_an_account_ends_its_payments(users, stripe):
     assert stripe.refunds == [("pi_1", _payment(booking)["amount_cts"])]
     assert _payment(booking)["passenger_id"] is None  # the record stays, without the account
 
-    # ...and as a driver.
-    paul = _booked(users, "paul")
+    # ...and as a driver (of a later drive: one at a time).
+    paul = _booked(users, "paul", drive=_drive(users["jean"], at="14:00"))
     _pay(stripe, paul, users["paul"])
     _delete_account(users["jean"])
     assert stripe.refunds[-1] == ("pi_2", _payment(paul)["amount_cts"])

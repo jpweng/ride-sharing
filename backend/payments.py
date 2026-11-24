@@ -287,6 +287,16 @@ def booking_accepted(booking: dict | None, now: datetime | None = None) -> None:
         )
 
 
+def _language(user: dict) -> str:
+    """The user's language when the site has it, else English: one of
+    mailer.LANGUAGES itself, never the stored value, which names a folder
+    of translations."""
+    for known in mailer.LANGUAGES:
+        if user.get("language") == known:
+            return known
+    return "en"
+
+
 def _line(payment: dict, language: str) -> str:
     """What the Checkout page says is being paid: the trip, its time and
     the seats."""
@@ -316,11 +326,11 @@ def checkout(booking_id: int, user: dict, base_url: str, now: datetime | None = 
         open_for = min(max(left, CHECKOUT_OPEN_MIN), CHECKOUT_OPEN_MAX)
         back = f"{base_url.rstrip('/')}/?{{}}={booking_id}#/ride"
         session = gateway().create_checkout(
-            amount_cts=cts(booking["total_chf"]), description=_line(payment, user.get("language") or "en"),
+            amount_cts=cts(booking["total_chf"]), description=_line(payment, _language(user)),
             success_url=back.format("paid"), cancel_url=back.format("unpaid"),
             expires_at=int(time.time() + open_for.total_seconds()),
             metadata={"payment_id": str(payment["id"]), "booking_id": str(booking_id)},
-            language=user.get("language"), email=user.get("email"),
+            language=_language(user), email=user.get("email"),
         )
     except stripe_gateway.Error:
         logger.exception("Opening a Checkout page for booking %s failed", booking_id)

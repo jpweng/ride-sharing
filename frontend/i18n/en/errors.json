@@ -17,6 +17,8 @@
   "errors.dispute_not_possible": "This can't be reported for this booking any more.",
   "errors.drive_departed": "This drive has already left.",
   "errors.drive_not_found": "This drive no longer exists.",
+  "errors.drive_overlaps": "You already have a drive at that time: {from} → {to}, leaving at {time}.",
+  "errors.drive_too_close": "There isn't enough time between this drive and your drive {from} → {to} at {time}: you need about {duration} between the two, for the way in usual traffic and for breaks.",
   "errors.email_unavailable": "The email couldn't be sent. Please try again later.",
   "errors.invalid_code": "This code is wrong or no longer valid. Check it, or ask for a new link.",
   "errors.invalid_email": "Enter a valid email address.",

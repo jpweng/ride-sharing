@@ -108,7 +108,7 @@ def test_opening_the_checkout_page(http, booking):
     assert fields["success_url"] == f"{BASE}/?paid={booked['id']}#/ride"
     assert fields["cancel_url"] == f"{BASE}/?unpaid={booked['id']}#/ride"
     assert fields["metadata[payment_id]"] == fields["payment_intent_data[metadata][payment_id]"] == str(payment["id"])
-    assert fields["locale"] == "auto"  # the test users have no language of their own
+    assert fields["locale"] == "en"  # the test users have no language of their own
     assert int(fields["expires_at"]) > time.time()
     # Which payment methods the page offers is the dashboard's business.
     assert not [name for name in fields if name.startswith("payment_method_types")]

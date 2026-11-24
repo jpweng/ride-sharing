@@ -26,7 +26,9 @@ Rides:
 - `POST /api/drives` — may change; posts a drive as the signed-in driver, with `price_chf`: their
   price per passenger, for one passenger and the whole drive (optional: the default suggestion).
   Outside the band: 400 with code `price_too_high` / `price_too_low`. A departure that has passed:
-  400 `departure_past`; the same place at both ends: 400 `no_distance`
+  400 `departure_past`; the same place at both ends: 400 `no_distance`; another of the driver's
+  drives at that time, or too far away for the time between: 409 `drive_overlaps`,
+  `drive_too_close` (see [One drive at a time](one-drive-at-a-time.md))
 - `GET  /api/drives?upcoming_only=true[&limit=…]` — public; the upcoming drives. Without a signed-in
   user, `driver_name` and `driver_id` are `null`, here and in the two below.
   `?mine=true` — signed in; the driver's own
