@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, model_validator
 
 import bookings
 import database as db
+import drive_conflicts
 import matching
 import notify
 import payments
@@ -129,6 +130,8 @@ def accept_ride_request(request_id: int, payload: RequestAccept, user: Writer):
             "origin": payload.origin.model_dump(), "destination": payload.destination.model_dump(),
             "departure_time": payload.departure_time,
         }
-    booking = bookings.accept_request(request, user, payload.seats_available, payload.note, trip, payload.price_chf)
+    # It posts a drive: one of a driver's at a time (drive_conflicts.py).
+    with drive_conflicts.one_at_a_time(user["name"]):
+        booking = bookings.accept_request(request, user, payload.seats_available, payload.note, trip, payload.price_chf)
     payments.booking_accepted(booking)  # from now on the passenger has it to pay
     return booking
