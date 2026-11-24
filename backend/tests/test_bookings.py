@@ -314,7 +314,7 @@ def test_the_price_falls_as_passengers_are_accepted(users):
     drive = _drive(jean, seats=3)
     km = drive["route_distance_m"] / 1000
     top = pricing.band(km)["max_chf"]
-    drive = _drive(jean, seats=3, at="09:00", price_chf=top)
+    drive = _drive(jean, seats=3, at="12:00", price_chf=top)
     by_passengers = drive["price_by_passengers"]
     assert by_passengers[0] > by_passengers[1] > by_passengers[2]
 
@@ -335,14 +335,15 @@ def test_the_price_falls_as_passengers_are_accepted(users):
 def test_the_whole_drive_costs_what_the_drive_says(users):
     # Whatever the drive's distance: a booking keeps its own to 100 m.
     jean = users["jean"]
-    for i, destination in enumerate((GENEVE, MORGES, NYON, BERN, ZURICH)):
-        drive = _drive(jean, destination=destination, at=f"1{i}:00")
+    # Far enough apart for one driver to be back in Lausanne for the next.
+    for at, destination in (("01:00", GENEVE), ("05:00", MORGES), ("09:00", NYON), ("13:00", BERN), ("18:00", ZURICH)):
+        drive = _drive(jean, destination=destination, at=at)
         assert _ask(users["marie"], drive)["price_chf"] == drive["price_chf"], destination["name"]
 
 
 def test_drives_show_free_and_booked_seats_and_the_next_passengers_price(users):
     jean, marie = users["jean"], users["marie"]
-    drive = _drive(jean, seats=3, price_chf=pricing.band(_drive(jean, at="07:00")["route_distance_m"] / 1000)["max_chf"])
+    drive = _drive(jean, seats=3, price_chf=pricing.band(_drive(jean, at="04:00")["route_distance_m"] / 1000)["max_chf"])
     by_passengers = drive["price_by_passengers"]
     _accept(_ask(marie, drive), jean)
 

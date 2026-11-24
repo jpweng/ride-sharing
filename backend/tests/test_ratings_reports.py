@@ -92,7 +92,7 @@ def test_each_side_rates_the_other_once_the_ride_is_over(users, later):
 def test_who_cant_rate(users, later):
     jean, marie, paul = users["jean"], users["marie"], users["paul"]
     booked = _ride(jean, marie)
-    only_asked = _ride(jean, paul, at="09:00", accept=False)
+    only_asked = _ride(jean, paul, at="12:00", accept=False)
     later()
     assert _refused(_rate, paul, booked, 5) == (404, "booking_not_found")       # not their ride
     assert _refused(_rate, paul, only_asked, 5) == (400, "not_rateable")       # never accepted
@@ -131,7 +131,7 @@ def test_ratings_show_on_drives_searches_and_bookings(users, later, fake_transit
 
 def test_the_average_is_to_one_decimal(users, later):
     jean = users["jean"]
-    rides = [_ride(jean, users[name], at=f"0{i + 6}:00") for i, name in enumerate(("marie", "paul", "lea"))]
+    rides = [_ride(jean, users[name], at=at) for at, name in (("02:00", "marie"), ("05:00", "paul"), ("08:00", "lea"))]
     later()
     for name, booking, stars in zip(("marie", "paul", "lea"), rides, (5, 4, 4)):
         _rate(users[name], booking, stars)
@@ -143,7 +143,7 @@ def test_the_average_is_to_one_decimal(users, later):
 def test_both_sides_are_asked_once_when_the_ride_is_over(users):
     jean, marie, paul = users["jean"], users["marie"], users["paul"]
     booked = _ride(jean, marie)
-    _ride(jean, paul, at="09:00", accept=False)   # never accepted: nobody is asked
+    _ride(jean, paul, at="12:00", accept=False)   # never accepted: nobody is asked
     before = len(_kinds(jean))
 
     assert ratings.ask_after_rides(DEPARTURE) == 0   # not over yet
@@ -259,7 +259,7 @@ def test_the_team_is_emailed_when_an_address_is_set(users, monkeypatch):
     def broken(*args):
         raise mailer.EmailError("no")
     monkeypatch.setattr(outbox, "send", broken)
-    assert _report(marie, _ride(jean, marie, at="10:00"), "late")["reason"] == "late"
+    assert _report(marie, _ride(jean, marie, at="11:00"), "late")["reason"] == "late"
 
 
 def test_the_admin_tool_lists_and_closes_reports(users, capsys):
