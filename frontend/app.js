@@ -726,7 +726,8 @@ async function fetchJson(url, options) {
       route();
     }
     const code = data.detail?.code || (resp.status === 429 ? "too_many_requests" : null);
-    throw new Error(code ? t(`errors.${code}`) : t("errors.request_failed", { status: resp.status }));
+    // Some errors name what is in the way (the API's "params": a drive, a time).
+    throw new Error(code ? t(`errors.${code}`, data.detail.params) : t("errors.request_failed", { status: resp.status }));
   }
   return data;
 }

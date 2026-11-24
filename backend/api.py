@@ -29,10 +29,12 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "1") != "0"
 SESSION_COOKIE = "__Host-session" if COOKIE_SECURE else "session"
 
 
-def api_error(status: int, code: str, message: str) -> HTTPException:
+def api_error(status: int, code: str, message: str, params: dict | None = None) -> HTTPException:
     # The frontend shows its translation of `code` (errors.<code> in
     # frontend/i18n/<lang>/errors.json); `message` is for API users and logs.
-    return HTTPException(status, {"code": code, "message": message})
+    # `params`: what that translation names ({from}, {time}...), when it does.
+    detail = {"code": code, "message": message}
+    return HTTPException(status, {**detail, "params": params} if params else detail)
 
 
 # ---------------------------------------------------------------------
