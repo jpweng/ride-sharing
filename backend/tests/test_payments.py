@@ -101,7 +101,9 @@ def test_off_without_the_keys(users):
     assert _refused(payments.checkout, booking["id"], users["marie"], BASE) == (503, "payments_off")
     assert TestClient(main.app).post("/api/payments/webhook", content=b"{}").status_code == 503
     # And the hourly run has nothing to do.
-    assert payments.run(NOW) == {"unpaid_cancelled": 0, "payments_ended": 0, "refunds_sent": 0, "payments_deleted": 0}
+    assert payments.run(NOW) == {
+        "unpaid_cancelled": 0, "payments_ended": 0, "prices_settled": 0, "refunds_sent": 0, "payments_deleted": 0,
+    }
 
 
 @pytest.mark.parametrize("only", payments.SETTINGS)
@@ -140,6 +142,7 @@ def test_an_accepted_booking_is_to_pay(users, stripe):
         "status": "due", "amount_chf": mine["total_chf"], "refunded_chf": 0.0,
         # The pickup, tomorrow at 08:00, comes before 24 hours from now.
         "pay_by": f"{TOMORROW}T08:00",
+        "free_cancel_until": None, "refund_if_cancelled_chf": None, "on_hold": False, "can_dispute": False,
     }
     # The driver sees it too.
     assert _mine(users["jean"], "as_driver")[0]["payment"]["status"] == "due"
@@ -512,3 +515,6 @@ def test_the_about_page_says_both():
     html = " ".join((FRONTEND / "about.html").read_text().split())
     assert '<span data-payments="off"> Nothing is paid through Ride and Rail' in html
     assert '<span data-payments="on" hidden> You pay for your seat through Ride and Rail' in html
+    # The cancellation rule it gives is the code's.
+    assert "until two hours before the pickup, half of it after that" in html
+    assert payments.FREE_CANCEL_UNTIL == timedelta(hours=2) and payments.LATE_REFUND_SHARE == 0.5

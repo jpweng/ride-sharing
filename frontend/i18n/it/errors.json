@@ -14,6 +14,7 @@
   "errors.demo_driver_not_found": "Questo conducente demo non esiste.",
   "errors.demo_read_only": "Sta guardando la demo come conducente fittizio: non si può modificare nulla. Acceda con il suo indirizzo e-mail per pubblicare viaggi e richieste.",
   "errors.departure_past": "Questo orario di partenza è già passato. Ne scelga uno successivo.",
+  "errors.dispute_not_possible": "Non è più possibile segnalarlo per questa prenotazione.",
   "errors.drive_departed": "Questo viaggio è già partito.",
   "errors.drive_not_found": "Questo viaggio non esiste più.",
   "errors.email_unavailable": "Non è stato possibile inviare l'e-mail. Riprovi più tardi.",

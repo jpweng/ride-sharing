@@ -80,5 +80,7 @@ def decline_booking(booking_id: int, user: Writer):
 @router.post("/api/bookings/{booking_id}/cancel")
 def cancel_booking(booking_id: int, user: Writer):
     booking = bookings.cancel(booking_id, user)
-    payments.booking_ended(booking_id)  # nothing is due any more; what was paid goes back
+    # Nothing is due any more; what was paid goes back, all of it unless
+    # the passenger cancelled late.
+    payments.booking_ended(booking_id, by="driver" if booking["status"] == "cancelled_by_driver" else "passenger")
     return booking

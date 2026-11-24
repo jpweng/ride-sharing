@@ -60,7 +60,8 @@ passenger booked on it, accepted, in one step (`bookings.accept_request()`).
 After the ride, both sides are asked to [rate it](ratings-and-reports.md), and either can report
 a problem to the team at any time.
 
-Not there yet: what happens after late cancellations or no-shows.
+Late cancellations and rides that didn't take place only have consequences when
+[payments](payments.md) are switched on: see the rules there.
 
 A booking's statuses: `requested`, then `accepted` or `declined` by the driver;
 `cancelled_by_passenger` or `cancelled_by_driver` afterwards. The inbox's kinds:
