@@ -276,6 +276,19 @@ body[data-mode="passenger"].map-open.map-picking #map-hint {
 }
 .match-card.clickable:hover .trip-line::after { border-color: var(--accent); }
 .match-card.open .trip-line::after { margin-top: 10px; transform: rotate(-135deg); }
+/* On a phone the times and the price don't always fit next to each other:
+   they are a little smaller there, and a price that still doesn't fit goes
+   under the times, on the right, instead of the times running over it. The
+   arrow keeps its corner. */
+@media (max-width: 400px) {
+  .trip-line { position: relative; flex-wrap: wrap; gap: 2px 8px; }
+  .trip-when { flex: 1 1 0; min-width: min-content; }
+  .trip-times { font-size: 18px; }
+  .trip-price { width: min-content; max-width: none; margin-left: auto; }
+  .trip-amount { font-size: 16px; }
+  .match-card.clickable .trip-line { padding-right: 21px; }
+  .match-card.clickable .trip-line::after { position: absolute; top: 0; right: 0; }
+}
 /* How the trip goes, its parts in order, one a line, as a small journey:
    the sign of what the passenger rides in a circle (the car in the site's
    colour, public transport in grey), joined to the next by a line, and a

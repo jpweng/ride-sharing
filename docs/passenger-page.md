@@ -53,7 +53,9 @@ Asking drivers for a ride ("Ask drivers for this ride") needs a time at least 15
 
 A card starts with the passenger's trip, as a timetable shows a connection: when they get in and
 out ("07:30 → 09:05"), how long the ride takes, and at the right its price for a seat, with the
-train fare for the same distance under it. Then one line says who drives them, in words that can't
+train fare for the same distance under it. On a phone (400 px or less) the times and the price are
+a little smaller, and a price that still doesn't fit next to the times goes under them, on the
+right, instead of the times running over it. Then one line says who drives them, in words that can't
 be taken for anything else: after a car's sign in a circle, "Judith drives you from Zürich to
 Bern", with the driver's small photo if they have one (the match's `driver_photo`, see
 [Profiles](profiles.md)), else the first letter of their name, their name in bold and their
