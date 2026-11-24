@@ -7,6 +7,7 @@ really checked. Isolated database, no network.
 import base64
 import json
 import time
+from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import jwt
@@ -366,3 +367,19 @@ def test_deleting_the_account_forgets_its_identities(client, google):
     again = TestClient(main.app, base_url=SITE)
     _google_back(again, google)
     assert _me(again)["name"] is None
+
+
+def test_the_page_shows_a_message_only_for_the_codes_the_server_sends():
+    """The code is read from the address: a known one has its own message,
+    anything else is "it didn't work". Nothing is called by its name."""
+    script = (Path(__file__).resolve().parents[2] / "frontend" / "social.js").read_text()
+    show = script[script.index("function showSocialSignInError() {"):script.index("function suggestProfileName() {")]
+    for known in ("social_cancelled", "social_email_unverified", "account_banned"):
+        assert f'code === "{known}" ? t("errors.{known}")' in show
+    assert ': t("errors.social_failed");' in show
+    assert "[code]" not in show and "messages" not in show
+    # Each of those codes, and the fallback, has its text in every language.
+    for lang in ("en", "de", "fr", "it"):
+        texts = json.loads((Path(__file__).resolve().parents[2] / "frontend" / "i18n" / lang / "errors.json").read_text())
+        for code in ("social_cancelled", "social_email_unverified", "account_banned", "social_failed"):
+            assert texts[f"errors.{code}"], (lang, code)

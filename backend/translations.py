@@ -13,11 +13,15 @@ from pathlib import Path
 
 I18N_DIR = Path(__file__).resolve().parent.parent / "frontend" / "i18n"
 LANGUAGES = ("de", "fr", "it", "en")
+# Each language's folder. A folder is looked up here, never built from the
+# name a caller gives: that name can come from a request's address.
+FOLDERS = {language: I18N_DIR / language for language in LANGUAGES}
 
 
 def files(language: str) -> list[Path]:
-    """A language's dictionary files, in name order."""
-    return sorted((I18N_DIR / language).glob("*.json"))
+    """A language's dictionary files, in name order. KeyError for anything
+    that isn't one of LANGUAGES."""
+    return sorted(FOLDERS[language].glob("*.json"))
 
 
 def dictionary(language: str) -> dict[str, str]:

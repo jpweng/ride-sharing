@@ -34,12 +34,13 @@ function showSocialSignInError() {
   params.delete("signin_error");
   const query = params.toString();
   history.replaceState(null, "", `${location.pathname}${query ? `?${query}` : ""}${location.hash}`);
-  const messages = {
-    social_cancelled: () => t("errors.social_cancelled"),
-    social_email_unverified: () => t("errors.social_email_unverified"),
-    account_banned: () => t("errors.account_banned"),
-  };
-  showStatus("signin-notice", (messages[code] || (() => t("errors.social_failed")))(), false);
+  // The code comes from the address: only the ones the server sends have a
+  // message of their own, anything else is "it didn't work".
+  const message = code === "social_cancelled" ? t("errors.social_cancelled")
+    : code === "social_email_unverified" ? t("errors.social_email_unverified")
+    : code === "account_banned" ? t("errors.account_banned")
+    : t("errors.social_failed");
+  showStatus("signin-notice", message, false);
 }
 
 // First sign-in with a provider: the name it gave is filled in on the
