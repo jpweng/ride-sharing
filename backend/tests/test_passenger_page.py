@@ -116,6 +116,23 @@ def test_without_a_ride_asking_the_drivers_leads():
     assert (FRONTEND / "icons" / "no-rides.svg").is_file()
 
 
+def test_on_a_phone_the_price_goes_under_the_times_rather_than_over_them():
+    css = (FRONTEND / "styles" / "passenger.css").read_text()
+    phone = css[css.index("@media (max-width: 400px) {"):]
+    phone = phone[:phone.index("\n}\n")]
+    # The line wraps: what doesn't fit next to the times goes under them, on the right.
+    assert ".trip-line { position: relative; flex-wrap: wrap;" in phone
+    assert ".trip-price { width: min-content; max-width: none; margin-left: auto; }" in phone
+    # The times never give way to the price: they take their own width at least.
+    assert ".trip-when { flex: 1 1 0; min-width: min-content; }" in phone
+    # The arrow keeps its corner, out of the line's flow, with room kept for it.
+    assert ".match-card.clickable .trip-line { padding-right: 21px; }" in phone
+    assert ".match-card.clickable .trip-line::after { position: absolute; top: 0; right: 0; }" in phone
+    # Wider than a phone, the line is as it was: one row.
+    wide = css[css.index(".trip-line {"):css.index("@media (max-width: 400px) {")]
+    assert "flex-wrap" not in wide.split(".trip-when {")[0]
+
+
 def test_a_card_looks_like_something_to_choose():
     css = (FRONTEND / "styles" / "passenger.css").read_text()
     # An arrow at the end of the card's first line, turned when it is open; an outline when pointed at.
