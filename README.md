@@ -91,6 +91,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   account deletion, email sending
 - [Driver areas](docs/driver-areas.md): the places a driver usually drives from or to, each with a
   radius they choose
+- [One drive at a time](docs/one-drive-at-a-time.md): a driver can't post two drives at the same
+  time, or too far apart for the time between them
 - [A ride and public transport](docs/combined-trips.md): trips that combine a ride for part of the
   way with the train or the bus for the rest, before the ride, after it or both
 - [The passenger page](docs/passenger-page.md): two fields, a search that starts by itself, the map
@@ -120,6 +122,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
 - [Load test](docs/load-test.md): the event-evening simulation and its results
 - [The contact page](docs/contact.md): the form whose messages are emailed to the team, the email's
   headers, limits, switching it on
+- [Security alerts](docs/security-alerts.md): Dependabot, code scanning, who is told, and the
+  weekly issue that counts the open alerts
 - [API](docs/api.md): who may call what, error codes, prices in responses; every endpoint is also
   listed by FastAPI at `/docs` on a running app
 - [Ride predictions and ride requests](docs/ride-predictions.md): design, rules and reasons

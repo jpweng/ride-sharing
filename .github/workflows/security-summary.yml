@@ -1,0 +1,94 @@
+name: Security alerts
+
+# Every Monday: counts the open Dependabot and code scanning alerts and keeps
+# one issue about them, assigned to the repository's owner, who is emailed
+# when it is opened and when the counts change. Without an open alert the
+# issue is closed, or not opened. See docs/security-alerts.md.
+#
+# The repository is public and so is the issue: it only counts the alerts
+# (.github/scripts/security_summary.py), their details stay in the Security
+# tab. A pull request that changes this workflow or its script runs it
+# without touching the issue, to show what it would write.
+
+on:
+  schedule:
+    - cron: "23 6 * * 1" # Mondays, 06:23 UTC
+  workflow_dispatch:
+  pull_request:
+    paths: [.github/workflows/security-summary.yml, .github/scripts/security_summary.py]
+
+permissions:
+  contents: read
+  issues: write
+  security-events: read # code scanning alerts
+  vulnerability-alerts: read # Dependabot alerts
+
+concurrency:
+  group: security-summary
+  cancel-in-progress: false
+
+jobs:
+  summary:
+    name: Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      OWNER: ${{ github.repository_owner }}
+      LABEL: security-alerts
+      DRY_RUN: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # A list that can't be read is said so in the issue, not counted as empty.
+      - name: Read the open alerts
+        run: |
+          gh api --paginate --slurp "repos/$REPO/code-scanning/alerts?state=open&per_page=100" > code.json \
+            || echo '"unreadable"' > code.json
+          gh api --paginate --slurp "repos/$REPO/dependabot/alerts?state=open&per_page=100" > dependencies.json \
+            || echo '"unreadable"' > dependencies.json
+
+      - name: Find the issue
+        id: issue
+        run: |
+          number=$(gh issue list --repo "$REPO" --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          if [ -n "$number" ]; then
+            gh issue view "$number" --repo "$REPO" --json body --jq .body > previous.md
+          fi
+
+      - name: Count them
+        id: summary
+        run: |
+          python3 .github/scripts/security_summary.py code.json dependencies.json \
+            --repo "$REPO" --body body.md --previous previous.md | tee -a "$GITHUB_OUTPUT"
+          cat body.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Neither list could be read
+        if: steps.summary.outputs.readable == 'false'
+        run: |
+          echo "::error::Neither the code scanning nor the Dependabot alerts could be read."
+          exit 1
+
+      - name: Keep the issue
+        if: env.DRY_RUN != 'true'
+        env:
+          NUMBER: ${{ steps.issue.outputs.number }}
+          OPEN: ${{ steps.summary.outputs.open }}
+          CHANGED: ${{ steps.summary.outputs.changed }}
+        run: |
+          if [ "$OPEN" -gt 0 ] && [ -z "$NUMBER" ]; then
+            gh label create "$LABEL" --repo "$REPO" --color d73a4a \
+              --description "The weekly count of open security alerts" --force
+            gh issue create --repo "$REPO" --title "Open security alerts" --body-file body.md \
+              --label "$LABEL" --assignee "$OWNER"
+          elif [ "$OPEN" -gt 0 ] && [ "$CHANGED" = "true" ]; then
+            gh issue edit "$NUMBER" --repo "$REPO" --body-file body.md
+            gh issue comment "$NUMBER" --repo "$REPO" --body-file body.md
+          elif [ "$OPEN" -eq 0 ] && [ -n "$NUMBER" ]; then
+            gh issue edit "$NUMBER" --repo "$REPO" --body-file body.md
+            gh issue close "$NUMBER" --repo "$REPO" --comment "No open security alert is left."
+          else
+            echo "Nothing to change."
+          fi
