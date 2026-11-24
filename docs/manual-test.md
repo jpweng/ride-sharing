@@ -369,8 +369,8 @@ As D in browser B, unless a step names another account.
 - [ ] **4.13b** Offer Lausanne → Bern again, tomorrow 08:00. Then Zürich → Basel, tomorrow 10:00.
   **Expect:** the first refused with "You already have a drive at that time: Lausanne → Bern,
   leaving at 08:00."; the second with "There isn't enough time between this drive and your drive
-  Lausanne → Bern at 08:00: getting from one to the other takes about (an hour and a half)."
-  Nothing is posted. Zürich → Basel at 12:00 is.
+  Lausanne → Bern at 08:00: you need about (two hours) between the two, for the way in usual
+  traffic and for breaks." Nothing is posted. Zürich → Basel at 12:00 is.
 - [ ] **4.14** Click the drive's card. **Expect:** the map shows its route with a marker at each
   end.
 - [ ] **4.15** As P in browser A: search Lausanne → Bern, tomorrow 08:00. **Expect:** Daniel D.'s

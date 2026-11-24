@@ -259,7 +259,7 @@ def test_the_team_is_emailed_when_an_address_is_set(users, monkeypatch):
     def broken(*args):
         raise mailer.EmailError("no")
     monkeypatch.setattr(outbox, "send", broken)
-    assert _report(marie, _ride(jean, marie, at="10:00"), "late")["reason"] == "late"
+    assert _report(marie, _ride(jean, marie, at="11:00"), "late")["reason"] == "late"
 
 
 def test_the_admin_tool_lists_and_closes_reports(users, capsys):
