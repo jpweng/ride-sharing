@@ -43,6 +43,9 @@ jobs:
       - name: Install Bubblewrap
         run: |
           npm install --global @bubblewrap/cli
+          # Bubblewrap looks for the SDK's tools where its own download puts them (<sdk>/bin).
+          [ -e "$ANDROID_HOME/bin" ] || [ -e "$ANDROID_HOME/tools" ] \
+            || sudo ln -s "$ANDROID_HOME/cmdline-tools/latest/bin" "$ANDROID_HOME/bin"
           mkdir -p ~/.bubblewrap
           printf '{"jdkPath":"%s","androidSdkPath":"%s"}\n' "$JAVA_HOME" "$ANDROID_HOME" > ~/.bubblewrap/config.json
           bubblewrap --version || true
