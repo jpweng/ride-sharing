@@ -5,8 +5,9 @@ passenger pays.
 In Switzerland, carpooling is legal as long as the driver only shares the
 costs of the trip. A driver who regularly earns more than the trip really
 costs is doing commercial passenger transport, which needs a professional
-licence. Hence these rules (nothing is charged yet: the app shows prices,
-passengers and drivers settle between themselves):
+licence. Hence these rules (the app shows prices; passengers and drivers
+settle between themselves, or the passenger pays through the site when
+payments are switched on, see payments.py):
 
 1. Capped at the train. A passenger never pays more than the train's 2nd
    class full fare for the same trip (fares.py).

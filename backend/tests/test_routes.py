@@ -65,6 +65,10 @@ API_ROUTES = {
     ("put", "/api/notification_settings"),
     ("get", "/api/contact"),
     ("post", "/api/contact"),
+    ("get", "/api/payments/config"),
+    ("post", "/api/bookings/{booking_id}/pay"),
+    ("post", "/api/bookings/{booking_id}/pay/check"),
+    ("post", "/api/payments/webhook"),
 }
 
 

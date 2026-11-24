@@ -1,0 +1,19 @@
+{
+  "payment.backPaid": "Thank you, your seat is paid.",
+  "payment.backPending": "Your payment is being confirmed. It will show here in a moment.",
+  "payment.backUnpaid": "The payment wasn't completed. You can still pay below.",
+  "payment.checkoutLine.one": "Ride {origin} → {destination}, {time} ({count} seat)",
+  "payment.checkoutLine.other": "Ride {origin} → {destination}, {time} ({count} seats)",
+  "payment.inboxNotPaid": "{name} didn't pay in time: the seat is free again",
+  "payment.inboxReceived": "{name} paid for their seat",
+  "payment.inboxRefunded": "CHF {amount} is being refunded to you",
+  "payment.inboxUnpaid": "Your booking was cancelled because it wasn't paid in time",
+  "payment.opening": "Opening the payment page…",
+  "payment.paid": "Paid",
+  "payment.paidAmount": "You paid CHF {amount}.",
+  "payment.pay": "Pay CHF {amount}",
+  "payment.payBy": "Pay by {time} to keep your seat.",
+  "payment.priceNote": "You pay through Ride and Rail once the driver has accepted.",
+  "payment.refunded": "CHF {amount} refunded",
+  "payment.waiting": "Waiting for payment"
+}

@@ -20,6 +20,7 @@ import database as db
 import drive_conflicts
 import matching
 import notify
+import payments
 import search
 from api import LatLon, Member, Writer, api_error
 from routes.match import MatchRequest
@@ -131,4 +132,6 @@ def accept_ride_request(request_id: int, payload: RequestAccept, user: Writer):
         }
     # It posts a drive: one of a driver's at a time (drive_conflicts.py).
     with drive_conflicts.one_at_a_time(user["name"]):
-        return bookings.accept_request(request, user, payload.seats_available, payload.note, trip, payload.price_chf)
+        booking = bookings.accept_request(request, user, payload.seats_available, payload.note, trip, payload.price_chf)
+    payments.booking_accepted(booking)  # from now on the passenger has it to pay
+    return booking

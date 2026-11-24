@@ -88,6 +88,10 @@ jobs:
           # docs/contact.md). A secret, not a variable: this log is public and
           # would show a variable's value. Empty: the form is switched off.
           CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
+          # Paying for a seat with Stripe (optional, see docs/payments.md):
+          # empty until the repo secrets exist, and nothing is charged.
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
         run: |
           INSTANCE_ID=$(aws ec2 describe-instances \
             --filters "Name=tag:Name,Values=${{ vars.SERVER_NAME }}" "Name=instance-state-name,Values=running" \
@@ -112,6 +116,8 @@ jobs:
           ENV_FILE=$(printf '%s\nPHOTO_BUCKET=%s\n' "$ENV_FILE" "${{ vars.PHOTO_BUCKET }}")
           # CONTACT_EMAIL: optional repo secret, from the step's env like the two above.
           ENV_FILE=$(printf '%s\nCONTACT_EMAIL=%s\n' "$ENV_FILE" "$CONTACT_EMAIL")
+          # STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET: optional repo secrets, from the step's env too.
+          ENV_FILE=$(printf '%s\nSTRIPE_SECRET_KEY=%s\nSTRIPE_WEBHOOK_SECRET=%s\n' "$ENV_FILE" "$STRIPE_SECRET_KEY" "$STRIPE_WEBHOOK_SECRET")
           # Files travel base64-encoded inside the SSM command.
           PARAMS=$(jq -n \
             --arg compose "$(base64 -w0 deploy/compose.yaml)" \
