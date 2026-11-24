@@ -1,0 +1,60 @@
+# The iOS app's Xcode project, as input for XcodeGen (https://github.com/yonaskolb/XcodeGen):
+# `xcodegen generate` in this folder writes RideAndRail.xcodeproj, which is not committed.
+# See README.md.
+name: RideAndRail
+options:
+  bundleIdPrefix: ch.rideandrail
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # The version shown in the App Store, and the build number, which must grow with every
+    # upload (the workflow sets it to its run number).
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # The site the app shows, read from Info.plist by Site.swift. Always HTTPS.
+    SITE_HOST: rideandrail.ch
+    # The Apple developer team that signs the app: empty here, given on the command line
+    # (DEVELOPMENT_TEAM=...) by whoever builds for a device or the App Store.
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+targets:
+  RideAndRail:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ch.rideandrail.app
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # iPhone only: on an iPad it runs as an iPhone app.
+        TARGETED_DEVICE_FAMILY: "1"
+  RideAndRailTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: RideAndRail
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ch.rideandrail.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  RideAndRail:
+    build:
+      targets:
+        RideAndRail: all
+        RideAndRailTests: [test]
+    test:
+      targets:
+        - RideAndRailTests
+    archive:
+      config: Release

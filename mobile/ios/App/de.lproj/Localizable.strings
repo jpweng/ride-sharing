@@ -1,0 +1,6 @@
+/* The app's own texts; everything else is the site's (frontend/i18n/). */
+"dialog.ok" = "OK";
+"dialog.cancel" = "Abbrechen";
+"offline.title" = "Sie sind offline";
+"offline.message" = "Um Fahrten zu finden oder anzubieten, braucht es eine Internetverbindung.";
+"offline.retry" = "Erneut versuchen";

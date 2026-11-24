@@ -30,3 +30,12 @@ signing-key-info.txt
 # Routing data build (routing/build.sh)
 routing/.work/
 loadtest/.work/
+
+# iOS app (mobile/ios/): the Xcode project is generated from project.yml,
+# and signing files must never be committed.
+mobile/ios/*.xcodeproj/
+mobile/ios/build/
+*.xcarchive
+*.ipa
+*.mobileprovision
+*.p8
