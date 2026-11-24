@@ -46,8 +46,8 @@ The app asks for no permission at launch and contains no analytics or advertisin
   challenge. Once the provider vouches for the person, the server sends the sheet to
   `ch.rideandrail.app://signin?code=…`, which closes it; the web view posts that one-time code,
   with the verifier the challenge was made from, to `/auth/app/finish`, which starts the session
-  in the app. **This needs the server side of the hand-off**, which is its own pull request; until
-  it is deployed, signing in with Google or Apple in the app ends in the sheet, not in the app.
+  in the app. The server's side is described in
+  [docs/app-sign-in.md](../../docs/app-sign-in.md).
 
 ## Building
 
@@ -100,8 +100,8 @@ None of these is needed to merge this folder; they need the Apple developer acco
 5. **Test with TestFlight.** Internal testers (people of the App Store Connect team) get the build
    at once; external testers (up to 10,000, by email or a public link) after a short review of the
    first build.
-6. **Submit for review.** The app's page needs: screenshots for a 6.9-inch iPhone, the
-   description, keywords, the support URL <https://rideandrail.ch/contact.html>, the privacy
+6. **Submit for review.** The app's page needs: screenshots for a 6.9-inch iPhone (1320×2868), the
+   description, the subtitle, keywords, the support URL <https://rideandrail.ch/contact.html>, the privacy
    policy URL <https://rideandrail.ch/privacy.html>, the *App Privacy* answers, an age rating, and
    for the reviewer a way to sign in (an account's email address and how to get its code, or a
    demo account).
