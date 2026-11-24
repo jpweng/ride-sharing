@@ -21,11 +21,11 @@ GENEVE = {"name": "Genève", "lat": 46.2044, "lon": 6.1432}
 BERN = {"name": "Bern", "lat": 46.9480, "lon": 7.4474}
 
 
-def _post_drive(user, origin=LAUSANNE, destination=GENEVE):
+def _post_drive(user, origin=LAUSANNE, destination=GENEVE, at="08:00"):
     return drive_routes.post_drive(drive_routes.DriveCreate(
         origin=origin,
         destination=destination,
-        departure_time=f"{TOMORROW}T08:00",
+        departure_time=f"{TOMORROW}T{at}",
     ), user)
 
 
@@ -48,7 +48,7 @@ def test_drives_filtered_by_driver(user_named, force_haversine):
     jean, sophie = user_named("Jean D."), user_named("Sophie M.")
     _post_drive(jean)
     _post_drive(sophie, origin=BERN)
-    _post_drive(jean, destination=BERN)
+    _post_drive(jean, destination=BERN, at="14:00")   # back from Genève by then
 
     mine = drive_routes.get_drives(_session(jean), mine=True)
     assert [d["destination_name"] for d in mine] == ["Genève", "Bern"]

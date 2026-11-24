@@ -16,6 +16,8 @@
   "errors.departure_past": "Questo orario di partenza è già passato. Ne scelga uno successivo.",
   "errors.drive_departed": "Questo viaggio è già partito.",
   "errors.drive_not_found": "Questo viaggio non esiste più.",
+  "errors.drive_overlaps": "Ha già un viaggio in quell'orario: {from} → {to}, partenza alle {time}.",
+  "errors.drive_too_close": "Non c'è abbastanza tempo tra questo viaggio e il suo viaggio {from} → {to} delle {time}: le servono circa {duration} tra i due, per il tragitto con il traffico abituale e per le pause.",
   "errors.email_unavailable": "Non è stato possibile inviare l'e-mail. Riprovi più tardi.",
   "errors.invalid_code": "Questo codice è sbagliato o non è più valido. Lo controlli o chieda un nuovo link.",
   "errors.invalid_email": "Inserisca un indirizzo e-mail valido.",

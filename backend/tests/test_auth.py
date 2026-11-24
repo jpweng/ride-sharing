@@ -503,7 +503,8 @@ def test_cross_site_writes_are_refused(client, outbox):
         assert (r.status_code, _code(r)) == (403, "cross_site_request")
         assert _code(client.delete("/api/account", headers=headers)) == "cross_site_request"
     assert client.post("/api/drives", json=body, headers={"Origin": SITE}).status_code == 200
-    assert client.post("/api/drives", json=body, headers={"Sec-Fetch-Site": "same-origin"}).status_code == 200
+    later = {**body, "departure_time": f"{TOMORROW}T14:00"}   # a driver has one drive at a time
+    assert client.post("/api/drives", json=later, headers={"Sec-Fetch-Site": "same-origin"}).status_code == 200
     # Reading isn't affected.
     assert client.get("/api/drives", headers={"Origin": "https://evil.example"}).status_code == 200
 
