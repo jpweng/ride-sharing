@@ -56,6 +56,12 @@ A combined trip that takes much longer than public transport alone
 match (pickup, dropoff, ride_km, prices for the part ridden), with "shape",
 "transit" ({from_station, to_station, connection, fare}), "change" (the
 stop where they change: {name, lat, lon}), "starts", "arrives" and "total_min".
+
+Those three are the passenger's, from their own start to their own
+destination: the car seldom passes at their door, and the walk between the
+two is part of the trip (_walk_min, on the point's "walk_min"; an estimate,
+as a match's). Which trips are proposed doesn't depend on it: the limits
+above are about what they ride.
 """
 import logging
 import time
@@ -66,6 +72,7 @@ import database as db
 import demo_drives
 import fares
 import matching
+import meeting_points
 import search
 import transit
 import transit_legs
@@ -124,6 +131,11 @@ SLOWER_GRACE_MIN = 15
 # transport alone, plus a grace.
 MAX_SLOWER_BETWEEN = 1.5
 SLOWER_BETWEEN_GRACE_MIN = 30
+
+# Between the passenger's own end of the trip and the car's, on foot: counted
+# in the trip's times up to this (the page's MAX_WALK_SHOWN_MIN). Beyond, it
+# is no walk: the trip is counted from the car, and says how far that is.
+MAX_WALK_MIN = 60
 
 # "Leave at": the trip may start this much before the time asked for, not
 # more (nobody leaves an hour earlier than they said they could).
@@ -620,6 +632,19 @@ def _between_at(group: list[dict], stations: dict, asked: datetime) -> list[tupl
     return found
 
 
+def _walk_min(candidate: dict) -> int | None:
+    """Minutes on foot between the passenger's own end of the trip and the
+    car's (to the pickup of a ride first, from the drop-off of a ride last):
+    the estimate a match's pickup has (meeting_points.py), from the straight
+    line. None when the car is practically there, or too far to walk
+    (MAX_WALK_MIN)."""
+    near = candidate["part"]["pickup" if candidate["shape"] == RIDE_FIRST else "dropoff"]
+    if near["gap_km"] <= meeting_points.NEAR_KM:
+        return None
+    minutes = meeting_points.walk_min(near["gap_km"])
+    return minutes if minutes <= MAX_WALK_MIN else None
+
+
 def _transit_alone_min(transit_option: dict | None) -> float | None:
     """The quickest of the public transport connections for the whole trip, in minutes."""
     durations = []
@@ -631,18 +656,26 @@ def _transit_alone_min(transit_option: dict | None) -> float | None:
     return min(durations) if durations else None
 
 
-def _as_match(candidate: dict, leg: dict, off_min: float) -> dict:
+def _as_match(candidate: dict, leg: dict, off_min: float, own_end: bool = True) -> dict:
     """A combined trip as a match (matching.match_drive's shape), with its
-    public transport part."""
+    public transport part. Its times are the passenger's: with the walk
+    between their own end of the trip and the car's (_walk_min), unless the
+    car is at neither of their ends (`own_end` False: a ride between two
+    public transport legs)."""
     d, part, shape = candidate["drive"], candidate["part"], candidate["shape"]
 
     def point(p: dict) -> dict:
         return {"lat": round(p["lat"], 6), "lon": round(p["lon"], 6), "gap_km": round(p["gap_km"], 1),
-                "time": _iso(p["time"]), "name": None}
+                "time": _iso(p["time"]), "name": None, "walk_min": None}
 
     pickup, dropoff = point(part["pickup"]), point(part["dropoff"])
     # The far point is at the stop where the passenger changes.
     (dropoff if shape == RIDE_FIRST else pickup)["name"] = leg["stop"]["name"]
+    walk_min = _walk_min(candidate) if own_end else None
+    (pickup if shape == RIDE_FIRST else dropoff)["walk_min"] = walk_min
+    walk = timedelta(minutes=walk_min or 0)
+    starts = leg["starts"] - walk if shape == RIDE_FIRST else leg["starts"]
+    arrives = leg["arrives"] if shape == RIDE_FIRST else leg["arrives"] + walk
     return {
         **d,
         "route_geometry": [[lon, lat] for lat, lon, _ in candidate["route"]],
@@ -654,9 +687,9 @@ def _as_match(candidate: dict, leg: dict, off_min: float) -> dict:
         "transit": {k: leg[k] for k in ("from_station", "to_station", "connection", "fare")},
         # Where the passenger changes: the end of their ride that isn't their own.
         "change": {"name": leg["stop"]["name"], "lat": leg["stop"]["lat"], "lon": leg["stop"]["lon"]},
-        "starts": _iso(leg["starts"]),
-        "arrives": _iso(leg["arrives"]),
-        "total_min": round(_total_min(leg["starts"], leg["arrives"])),
+        "starts": _iso(starts),
+        "arrives": _iso(arrives),
+        "total_min": round(_total_min(starts, arrives)),
     }
 
 
@@ -665,7 +698,7 @@ def _as_between(candidate: dict, before: dict, after: dict, off_min: float) -> d
     "transit_before" and "transit_after" for "transit", and "change_before"
     and "change_after" (the stops where the passenger gets in and out) for
     "change"."""
-    trip = _as_match({**candidate, "shape": RIDE_FIRST}, after, off_min)
+    trip = _as_match({**candidate, "shape": RIDE_FIRST}, after, off_min, own_end=False)
     del trip["transit"], trip["change"]
     trip["pickup"]["name"] = before["stop"]["name"]
     return {
@@ -760,7 +793,9 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
     def proposed(starts: datetime, arrives: datetime, as_trip, slower: float, grace_min: float) -> dict | None:
         """The trip `as_trip(minutes off the time asked for)` when it is in
         time and not longer than `slower` times public transport alone
-        plus the grace."""
+        plus the grace: `starts` and `arrives` are those of what the
+        passenger rides. What the trip then says about public transport
+        alone is about all of it, the walk to or from the car included."""
         off = _off_by_min(starts, arrives, asked, time_kind, time_tolerance_min)
         if off is None:
             return None
@@ -769,7 +804,7 @@ def _find(origin, destination, requested_time, time_kind, exclude_ids, transit_o
             return None
         trip = as_trip(off)
         if alone_min() is not None:
-            trip["vs_transit_min"] = round(total_min - alone_min())  # negative: quicker than public transport alone
+            trip["vs_transit_min"] = round(trip["total_min"] - alone_min())  # negative: quicker than public transport alone
             # And what its ticket costs, to compare the two prices.
             if alone_option().get("fare"):
                 trip["transit_alone_fare"] = alone_option()["fare"]

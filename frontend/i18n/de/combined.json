@@ -3,9 +3,14 @@
   "combined.carFrom": "Mit dem Auto ab {place}",
   "combined.carTo": "Mit dem Auto bis {place}",
   "combined.dropoffGap": "Ausstieg {km} km von Ihrem Ziel",
+  "combined.dropoffWalk": "{duration} zu Fuss ab dem Ausstieg ({km} km)",
   "combined.pickupGap": "Einstieg {km} km von Ihrem Start",
+  "combined.pickupWalk": "{duration} zu Fuss bis zum Einstieg ({km} km)",
   "combined.searching": "Mitfahrten mit öffentlichem Verkehr werden gesucht…",
   "combined.title": "Mitfahrt und öffentlicher Verkehr",
   "combined.transitTo": "Öffentlicher Verkehr bis {place}",
-  "combined.vsFaster": "{duration} schneller als nur mit dem öffentlichen Verkehr"
+  "combined.vsFaster": "{duration} schneller als nur mit dem öffentlichen Verkehr",
+  "combined.walkAbout": "etwa {duration}",
+  "combined.walkFromDropoff": "Zu Fuss bis zu Ihrem Ziel",
+  "combined.walkToPickup": "Zu Fuss bis zum Einstieg"
 }

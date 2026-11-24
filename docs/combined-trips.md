@@ -37,6 +37,9 @@ A drive that passes near both ends is a plain match, not one of these.
   the quickest connection for the whole trip plus 15 minutes is left out
   (`MAX_SLOWER_THAN_TRANSIT`). A trip at least 5 minutes quicker says so on its card; one that
   isn't says nothing about it.
+- **The walk to or from the car decides none of this.** The two rules above are about what the
+  passenger rides, so a pickup a walk away from their start doesn't take a trip out of a search.
+  What a trip says is about all of it ([The trip's times](#the-trips-times)).
 - At most 4, the earliest arrival first ("Leave at") or the latest start first ("Arrive by");
   two drives at the same time on the same trip make one proposal.
 - **Next to 4 or more drives for the whole way, only drives that can be booked:** the fictional
@@ -58,6 +61,28 @@ A ride between two public transport legs has two changes, so it has rules of its
 - **It may take longer than the others:** up to 1.5 times public transport alone plus 30 minutes
   (`MAX_SLOWER_BETWEEN`), since two changes seldom make a quick trip. The card says how long it
   takes, as every card does.
+
+## The trip's times
+
+A trip's start, its end and how long it takes are the passenger's, from their own start to their
+own destination. The car seldom passes at their door: a ride first picks them up where its route
+is closest to their start, a ride last drops them where it is closest to their destination. The
+walk between the two is part of the trip:
+
+- **A ride first starts when they leave for the pickup**, the walk before the car is there; **a
+  ride last ends when they are at their destination**, the walk after the drop-off. A car at
+  16:15, 1.3 km from their start, makes a trip that starts at 15:55.
+- **The walk is an estimate**, the one a match's pickup has
+  ([backend/meeting_points.py](../backend/meeting_points.py)): 1.3 times the straight line at
+  12 minutes a km, not a walking route.
+- **No walk within 200 m** (the car is there), **nor beyond an hour on foot** (`MAX_WALK_MIN`,
+  about 3.8 km): that far is no walk, the trip is counted from the car and its card says how far
+  the car passes.
+- **How much quicker than public transport alone** a trip says it is counts the walk.
+- The car's own times and the connection are what they are without it: the time to change at the
+  stop is the same.
+- A ride between two public transport legs has no such walk: public transport takes the passenger
+  to the car and on from it.
 
 ## How they are found
 
@@ -108,7 +133,10 @@ match (`pickup`, `dropoff`, `ride_km`, the prices of the part ridden, `bookable`
 - `change`: `{name, lat, lon}`, the stop where the passenger changes;
 - for `transit_ride_transit`, instead of those two: `transit_before` and `transit_after` (each as
   `transit`), `change_before` and `change_after` (the stops where the passenger gets in and out);
-- `starts`, `arrives`, `total_min`: the whole trip;
+- `starts`, `arrives`, `total_min`: the whole trip, from the passenger's start to their
+  destination, the walk to or from the car included;
+- `walk_min` on `pickup` (a ride first) or `dropoff` (a ride last): that walk in minutes, `null`
+  when none is counted;
 - `vs_transit_min`: minutes longer (negative: shorter) than public transport alone, when known;
 - `transit_alone_fare`: what the ticket for public transport alone costs (`transit_option`'s
   `fare`), when known.
@@ -132,10 +160,15 @@ the sign of what the passenger rides, in a circle, the signs joined by a line: w
 passenger, in words ("Judith drives you to Zürich"; after public transport, "Judith drives you on
 from there"; signed out, "A driver takes you to …"), and "Public transport to Sévaz". Stops go by
 their towns there. Then how much quicker than public transport alone it is, when it is. A drop-off
-or a pickup more than 1 km from the passenger's own end of the trip is said on the card. Its
-details give the same steps once more, with what the card leaves out: their times and the stops'
+or a pickup more than 1 km from the passenger's own end of the trip is said on the card: with the
+walk the trip's times count ("20 min on foot to the pickup (1.3 km)"), or, too far to walk, the
+distance alone. Its details give the same steps once more, with what the card leaves out: their
+times and the stops'
 full names; under the ride, how far the car passes and the seat's price; under a connection, how
-long it takes, its lines, its ticket's price and the link to it. Then the drive's own route.
+long it takes, its lines, its ticket's price and the link to it. The walk is a step of its own,
+before the car of a ride first and after the car of a ride last: when to leave (or when the
+passenger is there), about how long it takes, how far the car passes, and a link to the way on
+Google Maps. Then the drive's own route.
 "Request a seat" asks for the car's part: from the
 passenger's start to the stop, from the stop to their destination, or from one stop to the other
 (`ride_from`, `ride_to`), a booking like any other ([Booking](booking.md)). Without a drive for

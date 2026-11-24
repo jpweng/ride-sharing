@@ -77,6 +77,11 @@ def _walk_min(km: float) -> int:
     return max(1, round(km * matching.MINUTES_PER_GAP_KM))
 
 
+def walk_min(gap_km: float) -> int:
+    """The walk across a straight-line gap, without a road distance."""
+    return _walk_min(gap_km * WALK_DETOUR_FACTOR)
+
+
 def _lookup(lat: float, lon: float) -> str | None:
     """The stop nearest the point, if it is near enough to name it."""
     stop = transit.nearest_named_station(lat, lon)
@@ -169,7 +174,7 @@ def add_to(matches: list[dict], origin, destination) -> None:
         dropoff["name"] = None
         dropoff["onward"] = None
         if pickup["gap_km"] > NEAR_KM:
-            pickup["walk_min"] = _walk_min(pickup["gap_km"] * WALK_DETOUR_FACTOR)
+            pickup["walk_min"] = walk_min(pickup["gap_km"])
 
     far = [m for m in matches if m["dropoff"]["gap_km"] > NEAR_KM]
     try:
