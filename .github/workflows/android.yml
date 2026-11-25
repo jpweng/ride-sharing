@@ -85,15 +85,19 @@ jobs:
       - name: Compile once, with Gradle's output in files
         run: |
           # Bubblewrap keeps at most 1 MB of what Gradle writes while it builds and fails beyond
-          # that ("stderr maxBuffer length exceeded"). So Gradle builds once here, writing to
-          # files: Bubblewrap's own build, next, finds the work done and Gradle says little.
+          # that ("stderr maxBuffer length exceeded"), which happened once for a reason its log
+          # didn't keep. So Gradle builds once here, writing to files (the two tasks Bubblewrap
+          # runs): Bubblewrap's own build, next, finds the work done and Gradle says little.
+          # If Gradle fails or writes a lot, this step shows what.
           ./gradlew assembleRelease bundleRelease > "$RUNNER_TEMP/gradle.out" 2> "$RUNNER_TEMP/gradle.err" || {
             tail -n 60 "$RUNNER_TEMP/gradle.out" "$RUNNER_TEMP/gradle.err"
             exit 1
           }
           wc -c "$RUNNER_TEMP/gradle.out" "$RUNNER_TEMP/gradle.err"
-          echo "What Gradle wrote most to its error output:"
-          cut -c1-60 "$RUNNER_TEMP/gradle.err" | sort | uniq -c | sort -rn | head -n 8
+          if [ -s "$RUNNER_TEMP/gradle.err" ]; then
+            echo "The most frequent lines of Gradle's error output:"
+            cut -c1-100 "$RUNNER_TEMP/gradle.err" | sort | uniq -c | sort -rn | head -n 8
+          fi
       - name: Build
         run: bubblewrap build --skipPwaValidation
       - name: Summary

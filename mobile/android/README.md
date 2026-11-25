@@ -55,6 +55,10 @@ The [Android app workflow](../../.github/workflows/android.yml) generates the An
   `app-release-signed.apk` (to install directly on a phone). The run's summary gives the version
   code, the signing certificate's SHA-256 fingerprint and the Android API level the app targets.
 
+Gradle builds the project once before Bubblewrap does, with its output in files: Bubblewrap stops
+with "stderr maxBuffer length exceeded" when Gradle writes more than 1 MB during its build. If a
+run fails, the step *Compile once* shows the end of what Gradle wrote.
+
 The version code is 1000 plus the run's number, so every build can be uploaded to Google Play
 without editing `twa-manifest.json`.
 
