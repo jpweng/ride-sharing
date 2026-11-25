@@ -103,6 +103,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   the passenger's trip and the driver's usual route on the map
 - [Sign-in with Google or Apple](docs/social-login.md): the optional buttons next to the email
   link, how accounts are matched, how to set the providers up
+- [Sign-in with Google or Apple from the iOS app](docs/app-sign-in.md): the one-time code that
+  carries a sign-in from the system's sign-in sheet into the app
 - [Train fares](docs/train-fares.md): the T601 distance tariff and the optional OJP fare lookup
 - [Translations](docs/translations.md): the four languages, the dictionaries and their checks
 - [The iOS app shows the site without its demo](docs/ios-app-without-demo.md): no fictional

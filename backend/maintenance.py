@@ -17,7 +17,8 @@ Hourly upkeep of the database, run by main.py at startup and then every hour:
      names without an account (demo drivers, and the typed names from before
      sign-in existed) are deleted once nothing references them.
   4. Delete sign-in links a day after they were asked for, and expired
-     sessions (see auth.py).
+     sessions (see auth.py), and the codes of sign-ins from the iOS app that
+     nobody used in their two minutes (app_sign_in.py).
 
 Users from before sign-in by email (a typed name, no email) can't sign in
 any more: their drives, searches and requests expire under step 3, then
@@ -31,6 +32,7 @@ Run it by hand with the backend on PYTHONPATH, e.g.:
 """
 from datetime import datetime, timedelta, timezone
 
+import app_sign_in
 import auth
 import database as db
 import demo_drives
@@ -58,6 +60,7 @@ def purge_old_data(now: datetime) -> dict:
             (datetime.now(timezone.utc) - auth.SIGN_IN_LINK_RETENTION).isoformat()
         ),
         "sessions": db.delete_expired_sessions(datetime.now(timezone.utc).isoformat()),
+        "app_sign_ins": app_sign_in.forget_expired(),
     }
 
 
