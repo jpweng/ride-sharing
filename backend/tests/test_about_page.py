@@ -59,7 +59,9 @@ def test_the_app_links_to_it():
 def test_it_says_first_that_this_is_a_demo(lang):
     # Right under the title, highlighted like the app's demo notices, for as
     # long as the site is a demo (docs/demo-subdomain-plan.md).
-    assert re.search(r'<h2>[^<]+</h2>\s*<p class="demo-hint">\s*<strong>', ARTICLES[lang]), lang
+    # Marked demo-only with the section about the demo: the iOS app shows
+    # the site without its demo (docs/ios-app-without-demo.md).
+    assert re.search(r'<h2>[^<]+</h2>\s*<p class="demo-hint demo-only">\s*<strong>', ARTICLES[lang]), lang
     assert "<strong>A demo version for now.</strong>" in EN
 
 
@@ -92,7 +94,7 @@ def test_the_tagline_says_the_same_as_the_opening():
 def test_the_sections_it_has():
     # One per thing the service offers; a new one is added in every language
     # (test_every_language_says_the_same_things).
-    assert re.findall(r"<h3>(.*?)</h3>", EN) == [
+    assert re.findall(r"<h3[^>]*>(.*?)</h3>", EN) == [
         "If you need a ride",
         "If you drive",
         "Sharing costs",

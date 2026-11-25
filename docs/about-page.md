@@ -37,6 +37,8 @@ the site does, with the README, with these docs and with the
 
 - **A change to what users can do, see or pay changes the page in the same pull request**, in all
   four languages, with the formal address. This is a rule of [CLAUDE.md](../CLAUDE.md).
+- In the [iOS app](ios-app-without-demo.md) the page is shown without its note and its section
+  about the demo, which are marked `class="demo-only"`; the app shows no demo drive either.
 - The page states what exists, not what is planned. The one exception is the sentence about the
   Android and iPhone apps ("coming soon").
 - It gives few numbers, so that it rarely goes stale. Those it gives are checked against the code.

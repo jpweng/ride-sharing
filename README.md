@@ -105,6 +105,8 @@ Add a dependency with `uv add <pkg>` (or `uv add --dev <pkg>` for dev-only tools
   link, how accounts are matched, how to set the providers up
 - [Train fares](docs/train-fares.md): the T601 distance tariff and the optional OJP fare lookup
 - [Translations](docs/translations.md): the four languages, the dictionaries and their checks
+- [The iOS app shows the site without its demo](docs/ios-app-without-demo.md): no fictional
+  drive and no demo wording for the app's requests, and how pages mark what they say about the demo
 - [Installable app (PWA) and Android app](docs/pwa.md): manifest, service worker, updates, the
   Trusted Web Activity
 - [Deploying to AWS](docs/deploying-to-aws.md): the server, Terraform, CI deploys, domain, emails,

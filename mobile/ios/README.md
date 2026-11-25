@@ -13,6 +13,8 @@ few Swift files around a `WKWebView`:
 - [App/WebViewController.swift](App/WebViewController.swift): the one screen. It does what
   `Site.route` says and stands in for what a browser provides around a page.
 - [App/SignIn.swift](App/SignIn.swift): sign-in with Google or Apple in the system's sign-in sheet.
+- [App/PageSheetController.swift](App/PageSheetController.swift): one of the site's own pages
+  shown over the screen.
 - [project.yml](project.yml): the Xcode project, as input for
   [XcodeGen](https://github.com/yonaskolb/XcodeGen). The generated `RideAndRail.xcodeproj` is not
   committed.
@@ -25,7 +27,9 @@ follows the phone's, and the site follows the app's.
 
 | In a browser | In the app |
 | --- | --- |
-| A link to another site, or one that opens a new tab (directions, train tickets, the code of conduct next to a form) | Shown over the app: in the app that owns the address when it is installed (Maps, SBB Mobile), else in a browser sheet. Closing it returns to the page as it was. |
+| A link to another site, or one to it that opens a new tab (directions, train tickets) | Shown over the app: in the app that owns the address when it is installed (Maps, SBB Mobile), else in a browser sheet. Closing it returns to the page as it was. |
+| One of the site's own pages that opens in a new tab (the code of conduct next to a form) | Shown over the app in a web view of its own, with a *Done* button. |
+| The demo: fictional drives, *View as a demo driver*, the banner's and the pages' words about it | **Not shown.** The site goes by the app's User-Agent (`RideAndRailApp/…`): see [The iOS app shows the site without its demo](../../docs/ios-app-without-demo.md). |
 | The payment page the site sends the passenger to | Stays in the app: it sends the passenger back to the site. |
 | `mailto:` and `tel:` links | Handed to iOS. |
 | *Continue with Google / Apple* | The system's sign-in sheet, see below. |

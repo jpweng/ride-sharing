@@ -596,7 +596,7 @@ def inbox(name: str, demo_view: bool = False) -> dict:
                     "id", "driver_name", "origin_name", "destination_name", "departure_time",
                     "seats_available", "is_demo",
                 )})
-                for d in drives if d and (demo_drives.enabled() or not d["is_demo"])
+                for d in drives if d and (demo_drives.shown() or not d["is_demo"])
             ]
         items.append(item)
     state = backoff(name)

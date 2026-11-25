@@ -48,7 +48,7 @@ class BookingAnswer(BaseModel):
 @router.post("/api/drives/{drive_id}/bookings")
 def request_booking(drive_id: int, payload: BookingCreate, user: Writer):
     drive = db.get_drive(drive_id)
-    if not drive or (drive["is_demo"] and not demo_drives.enabled()):
+    if not drive or (drive["is_demo"] and not demo_drives.shown()):
         raise api_error(404, "drive_not_found", "Drive not found")
     return bookings.request(
         drive, user,

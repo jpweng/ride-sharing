@@ -7,6 +7,7 @@
   "ride.askSentDemo.one": "Demo request: it only reaches fictional demo drivers. {count} was told: {names}. Sign out and continue under that name to see the request arrive.",
   "ride.askSentDemo.other": "Demo request: it only reaches fictional demo drivers. {count} were told: {names}. Sign out and continue under one of these names to see the request arrive.",
   "ride.askSentNone": "Request sent. No driver using the app has made this trip recently or drives around there (demo drivers are fictional and are never asked), but your inbox tells you when a drive that fits is posted.",
+  "ride.askSentNoneWithoutDemo": "Request sent. No driver using the app has made this trip recently or drives around there, but your inbox tells you when a drive that fits is posted.",
   "ride.askTitle": "Nothing that suits you?",
   "ride.cancelRequest": "Cancel request",
   "ride.leaveAt": "Leave at",

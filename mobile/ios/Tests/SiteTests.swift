@@ -20,6 +20,14 @@ final class SiteTests: XCTestCase {
         XCTAssertEqual(route("https://RideAndRail.ch/?lang=de#/ride"), .inApp)
     }
 
+    func testTheSitesFirstPage() {
+        XCTAssertTrue(Site.isHome(URL(string: "https://rideandrail.ch")!, host: host))
+        XCTAssertTrue(Site.isHome(URL(string: "https://rideandrail.ch/?lang=de#/ride")!, host: host))
+        XCTAssertTrue(Site.isHome(URL(string: "https://www.rideandrail.ch/index.html")!, host: host))
+        XCTAssertFalse(Site.isHome(URL(string: "https://rideandrail.ch/conduct.html")!, host: host))
+        XCTAssertFalse(Site.isHome(URL(string: "https://example.com/")!, host: host))
+    }
+
     func testALinkToAnotherSiteIsShownOverTheApp() {
         XCTAssertEqual(route("https://www.sbb.ch/en", isLinkTap: true), .outside)
         // A look-alike host is another site.

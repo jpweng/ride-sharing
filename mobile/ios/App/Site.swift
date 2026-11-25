@@ -21,6 +21,11 @@ enum Site {
         return urlHost == host || urlHost == "www.\(host)"
     }
 
+    /// The site's first page, the app itself, whatever its query and fragment say.
+    static func isHome(_ url: URL, host: String = Site.host) -> Bool {
+        isOwn(url, host: host) && ["", "/", "/index.html"].contains(url.path)
+    }
+
     // MARK: - Where an address is opened
 
     enum Route: Equatable {

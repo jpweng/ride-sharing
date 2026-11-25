@@ -6,13 +6,19 @@ import WebKit
 /// this class does what it says, and stands in for what a browser provides around a page:
 /// dialogs (alert, confirm), a place for links that open a new tab, a "no connection" screen.
 final class WebViewController: UIViewController {
-    private lazy var webView: WKWebView = {
+    /// How the app's web views are set up: the same cookies (so the same session), and the
+    /// app's name at the end of the User-Agent, where a browser has its own. The site goes by
+    /// that name to show itself without its demo (docs/ios-app-without-demo.md).
+    static func configuration() -> WKWebViewConfiguration {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default() // cookies kept between launches: stays signed in
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1"
-        // The end of the User-Agent, where a browser has its own name.
         configuration.applicationNameForUserAgent = "Mobile/15E148 RideAndRailApp/\(version)"
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        return configuration
+    }
+
+    private lazy var webView: WKWebView = {
+        let webView = WKWebView(frame: .zero, configuration: Self.configuration())
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
@@ -74,16 +80,19 @@ final class WebViewController: UIViewController {
     }
 
     private func showOutside(_ url: URL) {
-        let showBrowser = { [weak self] in
+        // One of the site's own pages (the code of conduct, next to a form being filled in):
+        // in a web view of the app's, so that it is the site as the app shows it.
+        if Site.isOwn(url) {
+            let sheet = UINavigationController(rootViewController: PageSheetController(url: url))
+            return present(sheet, animated: true)
+        }
+        // Another site's: in its app when that is installed (directions in Maps, tickets in
+        // SBB Mobile), else in a browser sheet.
+        UIApplication.shared.open(url, options: [.universalLinksOnly: true]) { [weak self] opened in
+            guard !opened else { return }
             let browser = SFSafariViewController(url: url)
             browser.preferredControlTintColor = UIColor(named: "AccentColor")
             self?.present(browser, animated: true)
-        }
-        // The site's own pages always in the browser sheet; another site's in its app when
-        // that is installed (directions in Maps, tickets in SBB Mobile).
-        if Site.isOwn(url) { return showBrowser() }
-        UIApplication.shared.open(url, options: [.universalLinksOnly: true]) { opened in
-            if !opened { showBrowser() }
         }
     }
 
