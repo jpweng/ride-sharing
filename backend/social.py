@@ -21,7 +21,7 @@ the server (routes/social.py):
 2. The provider sends the browser back with a `code` and the `state`
    (Google: in the address; Apple: in a form posted from its site, which is
    why that cookie is SameSite=None).
-3. finish(): the state must match the cookie's; the code is exchanged for
+3. identify(): the state must match the cookie's; the code is exchanged for
    an ID token at the provider, with our client secret (for Apple, a
    short-lived token signed with our key); the ID token's signature (the
    provider's published keys), issuer, audience, expiry and nonce are
@@ -33,6 +33,9 @@ the server (routes/social.py):
    else a new one. Then a session starts as with the email link, and a
    first sign-in still goes through the profile page (name, 18+, code of
    conduct), with the name the provider gave as a suggestion.
+
+From the iOS app, the session starts in the app instead of the browser
+that went to the provider: see app_sign_in.py.
 
 Nothing is kept of the provider's tokens: they are only used to learn who
 signed in.
@@ -141,9 +144,11 @@ def _unpack(cookie: str | None) -> dict | None:
     return values if isinstance(values, dict) else None
 
 
-def start(provider: str, language: str, base_url: str) -> tuple[str, str]:
+def start(provider: str, language: str, base_url: str, app_challenge: str | None = None) -> tuple[str, str]:
     """(the provider's address to send the browser to, the value of the
-    cookie that remembers this attempt in that browser)."""
+    cookie that remembers this attempt in that browser). `app_challenge`:
+    the attempt comes from the iOS app, which is handed a code at the end
+    instead of a session (app_sign_in.py)."""
     config = PROVIDERS[provider]
     remembered = {
         "provider": provider,
@@ -152,6 +157,8 @@ def start(provider: str, language: str, base_url: str) -> tuple[str, str]:
         "language": language if language in auth.LANGUAGES else "en",
         "at": int(time.time()),
     }
+    if app_challenge:
+        remembered["app_challenge"] = app_challenge
     params = {
         "client_id": _client_id(provider),
         "redirect_uri": redirect_uri(provider, base_url),
@@ -298,10 +305,11 @@ def _names(provider: str, claims: dict, apple_user: str | None) -> tuple[str | N
         return None, None
 
 
-def finish(provider: str, code: str | None, state: str | None, cookie: str | None, base_url: str,
-           apple_user: str | None = None) -> tuple[dict, str, str]:
-    """The provider sent the browser back: (user, session token, language).
-    Raises SocialError, or auth.AuthError for a banned account."""
+def identify(provider: str, code: str | None, state: str | None, cookie: str | None, base_url: str,
+             apple_user: str | None = None) -> tuple[dict, str]:
+    """The provider sent the browser back: (user, language). The caller
+    starts the session (routes/social.py). Raises SocialError, or
+    auth.AuthError for a banned account."""
     remembered = _unpack(cookie)
     if (
         not remembered or remembered.get("provider") != provider
@@ -328,7 +336,7 @@ def finish(provider: str, code: str | None, state: str | None, cookie: str | Non
     if user["is_demo"]:  # never: demo drivers have no email
         raise SocialError("social_failed", "a demo driver can't sign in")
     db.set_user_language(user["id"], language)
-    return db.get_user(user["id"]), auth.start_session(user["id"]), language
+    return db.get_user(user["id"]), language
 
 
 def _account(provider: str, subject: str, email: str, language: str, names: tuple) -> dict:
