@@ -82,6 +82,18 @@ jobs:
           echo "VERSION_CODE=$code" >> "$GITHUB_ENV"
       - name: Generate the Android project
         run: bubblewrap update --skipVersionUpgrade
+      - name: Compile once, with Gradle's output in files
+        run: |
+          # Bubblewrap keeps at most 1 MB of what Gradle writes while it builds and fails beyond
+          # that ("stderr maxBuffer length exceeded"). So Gradle builds once here, writing to
+          # files: Bubblewrap's own build, next, finds the work done and Gradle says little.
+          ./gradlew assembleRelease bundleRelease > "$RUNNER_TEMP/gradle.out" 2> "$RUNNER_TEMP/gradle.err" || {
+            tail -n 60 "$RUNNER_TEMP/gradle.out" "$RUNNER_TEMP/gradle.err"
+            exit 1
+          }
+          wc -c "$RUNNER_TEMP/gradle.out" "$RUNNER_TEMP/gradle.err"
+          echo "What Gradle wrote most to its error output:"
+          cut -c1-60 "$RUNNER_TEMP/gradle.err" | sort | uniq -c | sort -rn | head -n 8
       - name: Build
         run: bubblewrap build --skipPwaValidation
       - name: Summary
