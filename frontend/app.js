@@ -1918,7 +1918,7 @@ document.getElementById("ride-ask").addEventListener("click", async () => {
     // Only real drivers are counted. A demo driver's request is a demo one:
     // it only reaches demo drivers, who are named.
     const message = !data.drivers_told
-      ? t("ride.askSentNone")
+      ? t(WITHOUT_DEMO ? "ride.askSentNoneWithoutDemo" : "ride.askSentNone") // ios_app.js
       : data.demo_request
         ? t("ride.askSentDemo", { count: data.drivers_told, names: data.demo_drivers_told.join(", ") })
         : t("ride.askSent", { count: data.drivers_told });

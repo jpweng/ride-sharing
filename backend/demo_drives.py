@@ -30,6 +30,7 @@ requests from real passengers never reach demo drivers (see notify.py).
 Run it by hand with the backend on PYTHONPATH, e.g.:
     PYTHONPATH=backend uv run python backend/demo_drives.py
 """
+import contextvars
 import itertools
 import os
 import random
@@ -56,6 +57,22 @@ _OFF_VALUES = {"off", "false", "0", "no"}
 def enabled() -> bool:
     """Whether demo drives are on (the DEMO_DRIVES environment variable)."""
     return os.environ.get(SWITCH_ENV, "on").strip().lower() not in _OFF_VALUES
+
+
+# Set for the requests of a client that is shown the site without its demo
+# (the iOS app, see ios_app.py). Each request has its own value.
+_hidden = contextvars.ContextVar("demo_drives_hidden", default=False)
+
+
+def hide_for_this_request() -> None:
+    _hidden.set(True)
+
+
+def shown() -> bool:
+    """Whether whoever is asking sees demo drives: they are on, and not
+    hidden from this request. What a request answers goes by this; what
+    exists in the database (maintenance.py) goes by enabled()."""
+    return enabled() and not _hidden.get()
 
 
 # Pause after each route fetched: the public OSRM server asks for at most one

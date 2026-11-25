@@ -1,0 +1,2 @@
+/* Why the app asks for the camera: only when a profile photo is taken with it. */
+"NSCameraUsageDescription" = "Per scattare la Sua foto del profilo.";

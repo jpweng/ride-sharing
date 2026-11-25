@@ -184,7 +184,7 @@ def _upcoming_matches(
         with_geometry=False,
         departing_from=(asked - tolerance - timedelta(hours=matching.MAX_DRIVE_HOURS)).isoformat(timespec="minutes"),
         departing_until=(asked + tolerance).isoformat(timespec="minutes"),
-        include_demo=include_demo and demo_drives.enabled(),
+        include_demo=include_demo and demo_drives.shown(),
         # Left out by the database already: most of those that can't pass near both ends.
         passing_near=[(*origin, pickup_radius_km), (*destination, dropoff_radius_km)],
     )

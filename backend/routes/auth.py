@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 import auth
 import bookings
 import database as db
+import demo_drives
 import mailer
 import notify
 import payments
@@ -126,11 +127,14 @@ def sign_out(request: Request, response: Response):
 
 @router.get("/api/auth/demo_drivers")
 def list_demo_drivers():
-    return auth.demo_drivers()
+    # None for a client that is shown the site without its demo (ios_app.py).
+    return auth.demo_drivers() if demo_drives.shown() else []
 
 
 @router.post("/api/auth/demo")
 def view_as_demo_driver(payload: DemoSignIn, request: Request, response: Response):
+    if not demo_drives.shown():
+        raise api_error(404, "demo_driver_not_found", "No such demo driver")
     user, token = auth.demo_session(payload.driver_name)
     auth.end_session(request.cookies.get(SESSION_COOKIE))
     _set_session_cookie(response, token, auth.DEMO_SESSION_TTL)

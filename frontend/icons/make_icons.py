@@ -18,6 +18,9 @@ mobile/android/twa-manifest.json refer to:
                                 diameter), since Android crops it to its own shape
     apple-touch-icon.png        180x180, full bleed and opaque (iOS rounds the
                                 corners itself and turns transparency black)
+
+and, for the iOS app (mobile/ios/), its icon in the app's asset catalog:
+1024x1024, full bleed and opaque for the same reason.
 """
 import math
 from pathlib import Path
@@ -25,6 +28,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 HERE = Path(__file__).resolve().parent
+IOS_APP_ICON = HERE.parents[1] / "mobile/ios/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
 
 NAVY = "#1e2235"
 WHITE = "#ffffff"
@@ -122,6 +126,7 @@ def main():
         # Safe zone: a circle of 80% diameter; the route's dots reach 68%.
         "maskable-512.png": dict(size=512, rounded=False),
         "apple-touch-icon.png": dict(size=180, rounded=False),
+        IOS_APP_ICON: dict(size=1024, rounded=False),
     }
     for name, spec in icons.items():
         draw_icon(spec["size"], rounded=spec["rounded"]).save(HERE / name, optimize=True)
