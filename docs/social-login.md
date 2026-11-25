@@ -77,6 +77,9 @@ done here).
   back; starts the session and redirects to the app, or to `/?signin_error=<code>` with
   `social_cancelled`, `social_email_unverified`, `social_failed` or `account_banned`
 
+Started by the iOS app (`app=ios`), a sign-in ends in the app instead of the browser that went
+to the provider: see [Sign-in with Google or Apple from the iOS app](app-sign-in.md).
+
 The two `/auth/` addresses are outside `/api/` on purpose: Apple's answer is a form posted from
 its own site, which the cross-site check on `/api/` would refuse. The `state` in the cookie is
 what protects them; that cookie is `SameSite=None` because a `Lax` one wouldn't come with Apple's
