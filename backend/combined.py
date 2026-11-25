@@ -302,7 +302,7 @@ def _candidates(origin: tuple, destination: tuple, asked: datetime, time_kind: s
         upcoming_only=True, with_geometry=False,
         departing_from=_iso(asked - slack - timedelta(hours=matching.MAX_DRIVE_HOURS)),
         departing_until=_iso(asked + slack),
-        include_demo=include_demo and demo_drives.enabled(),
+        include_demo=include_demo and demo_drives.shown(),
         # Left out by the database already: most of those that pass near neither end.
         passing_near=[(*origin, radius_km), (*destination, radius_km)], passing_near_any=True,
     )
@@ -376,7 +376,7 @@ def _between_candidates(origin: tuple, destination: tuple, asked: datetime, time
         upcoming_only=True, with_geometry=False,
         departing_from=_iso(asked - slack - timedelta(hours=matching.MAX_DRIVE_HOURS)),
         departing_until=_iso(asked + slack),
-        include_demo=demo_drives.enabled(),
+        include_demo=demo_drives.shown(),
         ends_inside=_on_the_way_box(origin, destination),
     )
     trip_km = matching.haversine_km(*origin, *destination)

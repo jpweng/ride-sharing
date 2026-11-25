@@ -28,6 +28,7 @@ UNCHECKED_SCRIPTS = {
     "i18n.js",  # the translation code itself; its only t("…") is in a comment
     "sw.js",  # the service worker shows no text (its error code is checked below)
     "payment_texts.js",  # shows or hides texts written in the pages themselves
+    "ios_app.js",  # hides texts written in the pages themselves
 }
 PAGES = sorted(path.name for path in FRONTEND.glob("*.html"))
 # Pages translated as whole texts, one <article lang="xx" data-i18n-block> per language.

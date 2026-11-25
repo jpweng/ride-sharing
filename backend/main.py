@@ -38,6 +38,8 @@ from fastapi.staticfiles import StaticFiles
 
 import auth
 import database as db
+import demo_drives
+import ios_app
 import maintenance
 import notify_email
 import routes
@@ -127,6 +129,14 @@ async def reject_cross_site_writes(request: Request, call_next):
     if request.method in UNSAFE_METHODS and request.url.path.startswith("/api/") and not _same_origin(request):
         e = api_error(403, "cross_site_request", "Requests that change data must come from this site")
         return JSONResponse({"detail": e.detail}, status_code=e.status_code)
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def without_demo_in_the_ios_app(request: Request, call_next):
+    # The iOS app is shown the site without its demo (ios_app.py).
+    if ios_app.is_app(request):
+        demo_drives.hide_for_this_request()
     return await call_next(request)
 
 

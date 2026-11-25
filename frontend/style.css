@@ -680,3 +680,6 @@ header a { text-decoration: none; }
   header .subtitle { display: none; }
   .lang-picker { margin-left: auto; }
 }
+
+/* In the iOS app (ios_app.js) nothing about the demo is shown. */
+.without-demo .demo-only { display: none !important; }

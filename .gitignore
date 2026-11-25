@@ -31,5 +31,14 @@ signing-key-info.txt
 routing/.work/
 loadtest/.work/
 
+# iOS app (mobile/ios/): the Xcode project is generated from project.yml,
+# and signing files must never be committed.
+mobile/ios/*.xcodeproj/
+mobile/ios/build/
+*.xcarchive
+*.ipa
+*.mobileprovision
+*.p8
+
 # Store pictures (mobile/make_store_graphics.py): made from the site, not committed.
 mobile/graphics/

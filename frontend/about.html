@@ -14,6 +14,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Ride and Rail" />
+<script src="ios_app.js"></script>
 <link rel="stylesheet" href="style.css" />
 <link rel="stylesheet" href="styles/pwa.css" />
 </head>
@@ -26,7 +27,7 @@
 </header>
 
 <div class="demo-banner" role="note" data-i18n-html="banner.privacy">
-  <strong>Demo</strong> — a prototype for testing. <a href="./">Back to the app</a>
+  <span class="demo-only"><strong>Demo</strong> — a prototype for testing. </span><a href="./">Back to the app</a>
 </div>
 
 <!-- What Ride and Rail offers, one complete text per language (like
@@ -37,7 +38,7 @@
      and the facts taken from the code. -->
 <article class="doc" lang="en" data-i18n-block>
   <h2>About Ride and Rail</h2>
-  <p class="demo-hint">
+  <p class="demo-hint demo-only">
     <strong>A demo version for now.</strong> Ride and Rail is being tested: this site is a
     prototype, meant for trying the service out, not yet for arranging real trips.
   </p>
@@ -149,8 +150,8 @@
     for iPhone are coming soon; they will offer the same service, with the same account.
   </p>
 
-  <h3>A demo for now</h3>
-  <p>
+  <h3 class="demo-only">A demo for now</h3>
+  <p class="demo-only">
     As long as this is a demo version, the drives marked
     <span class="badge demo">Demo</span> are fictional: they show how a search works and can't be
     booked.
@@ -170,7 +171,7 @@
 
 <article class="doc" lang="de" data-i18n-block hidden>
   <h2>Über Ride and Rail</h2>
-  <p class="demo-hint">
+  <p class="demo-hint demo-only">
     <strong>Vorerst eine Demoversion.</strong> Ride and Rail wird getestet: Diese Website ist ein
     Prototyp zum Ausprobieren, noch nicht zum Vereinbaren echter Fahrten.
   </p>
@@ -291,8 +292,8 @@
     demselben Konto.
   </p>
 
-  <h3>Vorerst eine Demo</h3>
-  <p>
+  <h3 class="demo-only">Vorerst eine Demo</h3>
+  <p class="demo-only">
     Solange dies eine Demoversion ist, sind die Fahrten mit
     <span class="badge demo">Demo</span> erfunden: Sie zeigen, wie eine Suche funktioniert, und
     lassen sich nicht buchen.
@@ -312,7 +313,7 @@
 
 <article class="doc" lang="fr" data-i18n-block hidden>
   <h2>À propos de Ride and Rail</h2>
-  <p class="demo-hint">
+  <p class="demo-hint demo-only">
     <strong>Une version de démonstration pour l'instant.</strong> Ride and Rail est en phase de
     test : ce site est un prototype, fait pour essayer le service, pas encore pour organiser
     de vrais trajets.
@@ -436,8 +437,8 @@
     arrivent bientôt ; elles offriront le même service, avec le même compte.
   </p>
 
-  <h3>Une démo pour l'instant</h3>
-  <p>
+  <h3 class="demo-only">Une démo pour l'instant</h3>
+  <p class="demo-only">
     Tant qu'il s'agit d'une version de démonstration, les trajets marqués
     <span class="badge demo">Démo</span> sont fictifs : ils montrent comment fonctionne une
     recherche et ne peuvent pas être réservés.
@@ -458,7 +459,7 @@
 
 <article class="doc" lang="it" data-i18n-block hidden>
   <h2>Informazioni su Ride and Rail</h2>
-  <p class="demo-hint">
+  <p class="demo-hint demo-only">
     <strong>Per ora una versione dimostrativa.</strong> Ride and Rail è in fase di test: questo
     sito è un prototipo, fatto per provare il servizio, non ancora per organizzare viaggi reali.
   </p>
@@ -578,8 +579,8 @@
     stesso account.
   </p>
 
-  <h3>Per ora una demo</h3>
-  <p>
+  <h3 class="demo-only">Per ora una demo</h3>
+  <p class="demo-only">
     Finché si tratta di una versione dimostrativa, i viaggi segnati
     <span class="badge demo">Demo</span> sono fittizi: mostrano come funziona una ricerca e non
     possono essere prenotati.

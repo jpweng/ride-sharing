@@ -1,0 +1,128 @@
+name: iOS app
+
+# Builds and tests the iOS app (mobile/ios/) on a Mac, since it can't be built anywhere else:
+# on every pull request that changes it, and by hand (Actions -> iOS app -> Run workflow), which
+# can also send the build to TestFlight. See mobile/ios/README.md.
+on:
+  pull_request:
+    paths:
+      - "mobile/ios/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+    inputs:
+      testflight:
+        description: "Upload this build to TestFlight (needs the App Store Connect secrets)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile/ios
+    steps:
+      - uses: actions/checkout@v7
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Choose a simulator
+        run: |
+          # The newest iPhone this Mac has a simulator for.
+          udid=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          def version(runtime):
+              return [int(part) for part in runtime.rsplit("iOS-", 1)[1].split("-")]
+          ios = sorted((name for name in runtimes if "iOS-" in name and runtimes[name]), key=version)
+          phones = [device for device in runtimes[ios[-1]] if device["name"].startswith("iPhone")]
+          print(phones[0]["udid"])')
+          echo "SIMULATOR=$udid" >> "$GITHUB_ENV"
+          xcrun simctl list devices available | grep "$udid"
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild test -project RideAndRail.xcodeproj -scheme RideAndRail \
+            -destination "id=$SIMULATOR" -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO | tee "$RUNNER_TEMP/test.log" | grep -E "^(Test|\*\*|.*error:|.*warning: unre)|Executed" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" "$RUNNER_TEMP/test.log"
+      - name: Launch the app and take a screenshot
+        run: |
+          xcrun simctl bootstatus "$SIMULATOR" -b
+          xcrun simctl install "$SIMULATOR" build/Build/Products/Debug-iphonesimulator/RideAndRail.app
+          xcrun simctl launch "$SIMULATOR" ch.rideandrail.app
+          sleep 25 # the site, over the network
+          xcrun simctl io "$SIMULATOR" screenshot "$RUNNER_TEMP/launch.png"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ios-build
+          path: |
+            ${{ runner.temp }}/launch.png
+            ${{ runner.temp }}/test.log
+          if-no-files-found: warn
+
+  testflight:
+    name: Upload to TestFlight
+    if: github.event_name == 'workflow_dispatch' && inputs.testflight
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile/ios
+    env:
+      # An App Store Connect API key (Users and Access -> Integrations), with which Xcode
+      # makes the signing certificate and profile itself and uploads the build.
+      KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+    steps:
+      - name: Check the settings
+        working-directory: .
+        run: |
+          missing=""
+          [ -n "$KEY_ID" ] || missing="$missing APP_STORE_CONNECT_KEY_ID"
+          [ -n "$ISSUER_ID" ] || missing="$missing APP_STORE_CONNECT_ISSUER_ID"
+          [ -n "$PRIVATE_KEY" ] || missing="$missing APP_STORE_CONNECT_PRIVATE_KEY"
+          [ -n "$TEAM_ID" ] || missing="$missing APPLE_TEAM_ID(variable)"
+          if [ -n "$missing" ]; then
+            echo "::error::Not set in the repository's secrets and variables:$missing (see mobile/ios/README.md)"
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Archive and upload
+        run: |
+          set -o pipefail
+          key="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
+          # The key's text, or that base64-encoded on one line.
+          if printf '%s' "$PRIVATE_KEY" | grep -q "BEGIN"; then
+            printf '%s\n' "$PRIVATE_KEY" > "$key"
+          else
+            printf '%s' "$PRIVATE_KEY" | base64 --decode > "$key"
+          fi
+          sign=(-allowProvisioningUpdates -authenticationKeyPath "$key"
+                -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
+          xcodebuild archive -project RideAndRail.xcodeproj -scheme RideAndRail \
+            -destination "generic/platform=iOS" -archivePath "$RUNNER_TEMP/RideAndRail.xcarchive" \
+            "${sign[@]}" DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            | grep -E "error:|warning: .*provision|\*\*" || true
+          test -d "$RUNNER_TEMP/RideAndRail.xcarchive"
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/RideAndRail.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist -exportPath "$RUNNER_TEMP/export" "${sign[@]}"
+          rm -f "$key"

@@ -24,6 +24,8 @@ At startup and then every hour, the app runs [backend/maintenance.py](../backend
   routes, and creates none. Back `on`, they're recreated, fetching the ~1,500 routes again (a
   minute or so from our own OSRM server, about half an hour from the public one). In production
   it's the optional GitHub repo variable `DEMO_DRIVES`, see [Deploying to AWS](deploying-to-aws.md).
+- **The iOS app never shows them**, nor anything the site says about the demo, whatever the
+  switch says: see [The iOS app shows the site without its demo](ios-app-without-demo.md).
 - **Users' data is kept for 30 days**: drives are deleted 30 days after their departure, searches
   30 days after they were made, ride requests 30 days after their time, notifications 30 days after
   they were sent. Nothing in the UI shows any of this by then. Accounts stay until their owner

@@ -114,7 +114,7 @@ def get_drives(
     # from /api/drives/{id} for the drive it shows.
     drives = db.list_drives(
         upcoming_only=upcoming_only, driver_name=driver_name, with_geometry=False, limit=limit,
-        include_demo=demo_drives.enabled(),
+        include_demo=demo_drives.shown(),
     )
     drives = ratings.with_driver_ratings(bookings.with_seats_booked(drives))
     drives = [search.with_bookable(pricing.with_prices(d)) for d in drives]
@@ -125,7 +125,7 @@ def get_drives(
 @router.get("/api/drives/{drive_id}")
 def get_drive(drive_id: int, found: Annotated[dict | None, Depends(current_session)] = None):
     drive = db.get_drive(drive_id)
-    if not drive or (drive["is_demo"] and not demo_drives.enabled()):
+    if not drive or (drive["is_demo"] and not demo_drives.shown()):
         raise api_error(404, "drive_not_found", "Drive not found")
     drive = ratings.with_driver_ratings(bookings.with_seats_booked([drive]))[0]
     drive = search.with_bookable(pricing.with_prices(drive))
