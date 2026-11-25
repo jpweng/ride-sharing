@@ -84,7 +84,8 @@ What Google Play shows about the app, all of it ready to upload:
   in English, German, French and Italian. They are written from the
   [About page](../../frontend/about.html) by [make_listing.py](../make_listing.py), so that the
   store says what the site says; a test fails when the page changes and they don't. The files also
-  hold the App Store's subtitle and keywords.
+  hold the App Store's subtitle, keywords and description; that description says nothing about
+  the demo, like the iOS app.
 - <a id="store-graphics"></a>**Pictures:** `uv run --with playwright python mobile/make_store_graphics.py`
   takes them from the live site, in a headless browser the size of a phone: the 1024×500 feature
   graphic, and four phone screenshots per language (1080×1920), in `mobile/graphics/play/`. They

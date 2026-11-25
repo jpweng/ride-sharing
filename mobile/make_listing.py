@@ -14,6 +14,11 @@ Left out of the description: what depends on payments being switched on (the pag
 or the other; the listing says neither), and the section about phones and computers (it says the
 apps are coming). The few texts a store wants that the page doesn't have (short description,
 keywords) are below.
+
+There are two descriptions. Google Play's says, as the site does, that this is a demo for now.
+The App Store's says nothing about the demo, like the iOS app itself, which shows the site
+without it (docs/ios-app-without-demo.md): the note on top of the About page and its section
+about the demo are left out.
 """
 import json
 from html.parser import HTMLParser
@@ -26,7 +31,7 @@ LANGUAGES = ("en", "de", "fr", "it")
 
 NAME = "Ride and Rail"
 # Both stores: characters at most.
-LIMITS = {"name": 30, "subtitle": 30, "short": 80, "keywords": 100, "description": 4000}
+LIMITS = {"name": 30, "subtitle": 30, "short": 80, "keywords": 100, "play": 4000, "app_store": 4000}
 
 # Google Play's short description. The tagline, then public transport as what completes a
 # ride, in the order docs/about-page.md asks for.
@@ -44,28 +49,36 @@ KEYWORDS = {
     "it": "car pooling,passaggio,pendolari,festival,treno,trasporti pubblici,Svizzera,auto,viaggio",
 }
 HEADINGS = {
-    "en": ("Name", "Subtitle (App Store)", "Short description (Google Play)", "Keywords (App Store)", "Description"),
-    "de": ("Name", "Untertitel (App Store)", "Kurzbeschreibung (Google Play)", "Keywords (App Store)", "Beschreibung"),
-    "fr": ("Nom", "Sous-titre (App Store)", "Description courte (Google Play)", "Mots-clés (App Store)", "Description"),
-    "it": ("Nome", "Sottotitolo (App Store)", "Descrizione breve (Google Play)", "Parole chiave (App Store)", "Descrizione"),
+    "en": ("Name", "Subtitle (App Store)", "Short description (Google Play)", "Keywords (App Store)",
+           "Description (Google Play)", "Description (App Store)"),
+    "de": ("Name", "Untertitel (App Store)", "Kurzbeschreibung (Google Play)", "Keywords (App Store)",
+           "Beschreibung (Google Play)", "Beschreibung (App Store)"),
+    "fr": ("Nom", "Sous-titre (App Store)", "Description courte (Google Play)", "Mots-clés (App Store)",
+           "Description (Google Play)", "Description (App Store)"),
+    "it": ("Nome", "Sottotitolo (App Store)", "Descrizione breve (Google Play)", "Parole chiave (App Store)",
+           "Descrizione (Google Play)", "Descrizione (App Store)"),
 }
 
-# The About page's sections (its <h3>), in order, and whether the listing has them.
+# The About page's sections (its <h3>), in order, and which listing has them.
+EVERYWHERE, NOWHERE, WITH_THE_DEMO = "everywhere", "nowhere", "only where the demo is mentioned"
 SECTIONS = (
-    ("a passenger's side", True),
-    ("a driver's side", True),
-    ("sharing costs", True),
-    ("who you travel with", True),
-    ("phones and computers", False),  # "apps are coming soon"
-    ("the demo", True),
-    ("your data", True),
+    ("a passenger's side", EVERYWHERE),
+    ("a driver's side", EVERYWHERE),
+    ("sharing costs", EVERYWHERE),
+    ("who you travel with", EVERYWHERE),
+    ("phones and computers", NOWHERE),  # "apps are coming soon"
+    ("the demo", WITH_THE_DEMO),
+    ("your data", EVERYWHERE),
 )
+# The class of the note about the demo on top of the page.
+DEMO_NOTE = "demo-hint"
 BLOCKS = {"h2", "h3", "p", "li"}
 
 
 class _About(HTMLParser):
     """The page's articles as {language: [(tag, text)]}: its headings, paragraphs and list
-    items in order, without anything marked data-payments."""
+    items in order, without anything marked data-payments. The note about the demo on top of
+    the page has the tag "demo-note"."""
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -84,7 +97,7 @@ class _About(HTMLParser):
         elif self.skipping or "data-payments" in attrs:
             self.skipping.append(tag)
         elif tag in BLOCKS:
-            self.block = (tag, [])
+            self.block = (tag, [], DEMO_NOTE in (attrs.get("class") or "").split())
 
     def handle_endtag(self, tag):
         if tag == "article":
@@ -94,7 +107,7 @@ class _About(HTMLParser):
         elif self.block and tag == self.block[0]:
             text = " ".join("".join(self.block[1]).split())
             if text:
-                self.articles[self.language].append((tag, text))
+                self.articles[self.language].append(("demo-note" if self.block[2] else tag, text))
             self.block = None
 
     def handle_data(self, data):
@@ -102,9 +115,11 @@ class _About(HTMLParser):
             self.block[1].append(data)
 
 
-def description(blocks: list[tuple[str, str]]) -> str:
+def description(blocks: list[tuple[str, str]], with_the_demo: bool = True) -> str:
     """A language's About page as a store description: plain text, since neither store shows
-    any formatting."""
+    any formatting. `with_the_demo`: with what the page says about the demo (Google Play), or
+    without it (the App Store)."""
+    wanted_kinds = {EVERYWHERE, WITH_THE_DEMO} if with_the_demo else {EVERYWHERE}
     sections, current = [], []  # current: what comes before the first <h3>
     for tag, text in blocks:
         if tag == "h2":
@@ -121,9 +136,9 @@ def description(blocks: list[tuple[str, str]]) -> str:
             f"frontend/about.html has {len(sections)} sections, mobile/make_listing.py knows {len(SECTIONS)}: "
             "say in SECTIONS which of them belong in the store listing"
         )
-    lines = "\n\n".join(text for _, text in opening).split("\n")
-    for (_, wanted), section in zip(SECTIONS, sections):
-        if not wanted:
+    lines = "\n\n".join(text for tag, text in opening if with_the_demo or tag != "demo-note").split("\n")
+    for (_, kind), section in zip(SECTIONS, sections):
+        if kind not in wanted_kinds:
             continue
         if section is sections[-1]:
             section = section[:2]  # the heading and what it says; not the links that close the page
@@ -142,7 +157,9 @@ def listings() -> dict[str, str]:
     out = {}
     for language in LANGUAGES:
         subtitle = json.loads((REPO / f"frontend/i18n/{language}/header.json").read_text())["header.subtitle"]
-        fields = (NAME, subtitle, SHORT[language], KEYWORDS[language], description(parser.articles[language]))
+        blocks = parser.articles[language]
+        fields = (NAME, subtitle, SHORT[language], KEYWORDS[language],
+                  description(blocks), description(blocks, with_the_demo=False))
         parts = ["<!-- Written by mobile/make_listing.py from frontend/about.html: change those, not this file. -->\n"]
         for heading, value in zip(HEADINGS[language], fields):
             # In a code block: what a store's field gets is exactly what is between the fences.
@@ -154,7 +171,7 @@ def listings() -> dict[str, str]:
 def fields(listing: str) -> dict[str, str]:
     """A listing file's texts, by the keys of LIMITS."""
     values = [chunk.split("\n```", 1)[0] for chunk in listing.split("```text\n")[1:]]
-    return dict(zip(("name", "subtitle", "short", "keywords", "description"), values))
+    return dict(zip(("name", "subtitle", "short", "keywords", "play", "app_store"), values))
 
 
 def main():

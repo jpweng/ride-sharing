@@ -5,6 +5,7 @@ so a change to the About page that isn't carried to the listings fails here,
 and every text fits the store's field.
 """
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -34,7 +35,7 @@ def test_every_text_fits_its_field(language):
 
 @pytest.mark.parametrize("language", make_listing.LANGUAGES)
 def test_the_description_is_the_about_pages_own_text(language):
-    description = make_listing.fields(LISTINGS[language])["description"]
+    description = make_listing.fields(LISTINGS[language])["play"]
     about = " ".join((MOBILE.parent / "frontend/about.html").read_text().split())
     paragraphs = [line.removeprefix("• ") for line in description.split("\n") if line and not line.isupper()]
     assert len(paragraphs) > 15
@@ -45,12 +46,13 @@ def test_the_description_is_the_about_pages_own_text(language):
 
 def test_what_the_listing_leaves_out():
     for language in make_listing.LANGUAGES:
-        description = make_listing.fields(LISTINGS[language])["description"]
-        # Nothing about paying through the site, which is switched on or off, ...
-        assert "Stripe" not in description
-        # ... and nothing saying that the apps are still to come.
-        assert "Android" not in description and "iPhone" not in description
-    english = make_listing.fields(LISTINGS["en"])["description"]
+        for store in ("play", "app_store"):
+            description = make_listing.fields(LISTINGS[language])[store]
+            # Nothing about paying through the site, which is switched on or off, ...
+            assert "Stripe" not in description
+            # ... and nothing saying that the apps are still to come.
+            assert "Android" not in description and "iPhone" not in description
+    english = make_listing.fields(LISTINGS["en"])["play"]
     assert "settle between themselves" not in english and "service fee" not in english
     assert "payouts" not in english
     assert english.startswith("A demo version for now.")
@@ -62,3 +64,21 @@ def test_a_restructured_about_page_is_noticed():
     blocks = [("h2", "Title"), ("p", "Opening"), ("h3", "One"), ("p", "Text")]
     with pytest.raises(SystemExit, match="sections"):
         make_listing.description(blocks)
+
+
+DEMO_WORD = re.compile(r"d[eé]mo|prototyp|fictional|fictif|fittiz|erfunden", re.IGNORECASE)
+
+
+@pytest.mark.parametrize("language", make_listing.LANGUAGES)
+def test_the_app_stores_description_says_nothing_about_the_demo(language):
+    # Like the iOS app, which shows the site without its demo. Google Play's
+    # says it, as the site does.
+    fields = make_listing.fields(LISTINGS[language])
+    assert DEMO_WORD.search(fields["play"])
+    assert DEMO_WORD.findall(fields["app_store"]) == []
+    for field in ("name", "subtitle", "short", "keywords"):
+        assert DEMO_WORD.findall(fields[field]) == [], field
+    # Otherwise the same text: Google Play's without its lines about the demo.
+    play, app_store = fields["play"].split("\n"), fields["app_store"].split("\n")
+    assert [line for line in play if line in app_store] == app_store
+    assert 3 <= len(play) - len(app_store) <= 5

@@ -27,8 +27,14 @@ REPO = Path(__file__).resolve().parent.parent
 LANGUAGES = ("en", "de", "fr", "it")
 # Viewport in CSS pixels and the scale that gives the store's size.
 STORES = {
-    "play": {"width": 360, "height": 640, "scale": 3},
-    "app-store": {"width": 440, "height": 956, "scale": 3},
+    "play": {"width": 360, "height": 640, "scale": 3, "user_agent": None},
+    # The App Store's pictures show what the iOS app shows: the site without its demo, which
+    # the site gives whoever names the app in the User-Agent (docs/ios-app-without-demo.md).
+    "app-store": {
+        "width": 440, "height": 956, "scale": 3,
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 "
+                      "(KHTML, like Gecko) Mobile/15E148 RideAndRailApp/1.0",
+    },
 }
 # The trip searched for: two towns far enough apart for a ride and for a train.
 TRIP = {
@@ -63,6 +69,7 @@ def screenshots(browser, site: str, store: str, language: str, out: Path) -> Non
     context = browser.new_context(
         viewport={"width": size["width"], "height": size["height"]}, device_scale_factor=size["scale"],
         is_mobile=True, has_touch=True, locale=f"{language}-CH", timezone_id="Europe/Zurich",
+        **({"user_agent": size["user_agent"]} if size["user_agent"] else {}),
     )
     page = context.new_page()
     page.goto(f"{site}/?lang={language}", wait_until="networkidle")
