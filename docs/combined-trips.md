@@ -39,6 +39,8 @@ A drive that passes near both ends is a plain match, not one of these.
   isn't says nothing about it.
 - **The walk to or from the car decides none of this.** The two rules above are about what the
   passenger rides, so a pickup a walk away from their start doesn't take a trip out of a search.
+  Its card says when that, or the 15 minutes above, makes them leave before the time they asked
+  for, or be there after it ([Search limits](search-limits.md)).
   What a trip says is about all of it ([The trip's times](#the-trips-times)).
 - At most 4, the earliest arrival first ("Leave at") or the latest start first ("Arrive by");
   two drives at the same time on the same trip make one proposal.
@@ -154,7 +156,9 @@ long it takes, and what it costs, the ride's seat and the tickets of its public 
 together (2nd class, full fare, "≈" when a fare is an estimate). Under it, to compare: what the
 train alone costs for the whole trip ("train alone ≈ CHF 75.00", the search's
 `transit_alone_fare`); when that isn't known, the two amounts the price is made of. Without a
-ticket's price it is the ride's alone, "without the train ticket". Then how the trip goes, in
+ticket's price it is the ride's alone, "without the train ticket". Under that line, when the trip
+leaves before the time asked for or arrives after it, how much ("Leaves 15 min before the time you
+asked for (16:10)", `asked_time.js`). Then how the trip goes, in
 order, one part a line (two, or three for a ride between two public transport legs), each after
 the sign of what the passenger rides, in a circle, the signs joined by a line: who drives the
 passenger, in words ("Judith drives you to Zürich"; after public transport, "Judith drives you on

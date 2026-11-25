@@ -1,0 +1,4 @@
+{
+  "asked.arrivesLater": "Ankunft {duration} nach der gewünschten Zeit ({time})",
+  "asked.leavesEarlier": "Abfahrt {duration} vor der gewünschten Zeit ({time})"
+}

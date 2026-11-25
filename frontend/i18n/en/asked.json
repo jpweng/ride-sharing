@@ -1,0 +1,4 @@
+{
+  "asked.arrivesLater": "Arrives {duration} after the time you asked for ({time})",
+  "asked.leavesEarlier": "Leaves {duration} before the time you asked for ({time})"
+}
