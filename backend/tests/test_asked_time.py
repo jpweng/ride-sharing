@@ -16,7 +16,7 @@ LANGS = ("en", "de", "fr", "it")
 
 def test_the_page_loads_it_after_what_it_uses():
     html = (FRONTEND / "index.html").read_text()
-    scripts = re.findall(r'<script src="([^"]+)"></script>', html)
+    scripts = re.findall(r'<script src="([^"]+)"', html)
     assert scripts.index("asked_time.js") > scripts.index("app.js")
     assert '<link rel="stylesheet" href="styles/asked_time.css" />' in html
     for name in ("CARD_EXTRAS", "lastResults", "minutesBetween", "fmtMinutes", "fmtClock", "MINUTE_STEP"):
