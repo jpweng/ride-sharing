@@ -79,6 +79,7 @@ def test_the_app_stores_description_says_nothing_about_the_demo(language):
     for field in ("name", "subtitle", "short", "keywords"):
         assert DEMO_WORD.findall(fields[field]) == [], field
     # Otherwise the same text: Google Play's without its lines about the demo.
-    play, app_store = fields["play"].split("\n"), fields["app_store"].split("\n")
+    play, app_store = ([line for line in fields[store].split("\n") if line] for store in ("play", "app_store"))
     assert [line for line in play if line in app_store] == app_store
-    assert 3 <= len(play) - len(app_store) <= 5
+    # The note on top, and the section about the demo: its heading and its paragraph.
+    assert len(play) - len(app_store) == 3
