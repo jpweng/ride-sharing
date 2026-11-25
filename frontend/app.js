@@ -1390,7 +1390,8 @@ async function findRide() {
     const data = await postJson("/api/match", { ...payload, drives_only: true });
     if (search !== searchNumber) return; // a newer search has started
     Object.assign(data, { combined_matches: STILL_SEARCHING, transit_option: STILL_SEARCHING });
-    lastResults = { data, origin, destination };
+    // With the time asked for: a card says when its trip isn't at that time (asked_time.js).
+    lastResults = { data, origin, destination, asked: { time: payload.requested_time, kind: payload.time_kind } };
     renderResults();
     loadRecentSearches();
     const fillIn = (key) => (value) => {

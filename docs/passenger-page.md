@@ -55,7 +55,9 @@ A card starts with the passenger's trip, as a timetable shows a connection: when
 out ("07:30 → 09:05"), how long the ride takes, and at the right its price for a seat, with the
 train fare for the same distance under it. On a phone (400 px or less) the times and the price are
 a little smaller, and a price that still doesn't fit next to the times goes under them, on the
-right, instead of the times running over it. Then one line says who drives them, in words that can't
+right, instead of the times running over it. A ride that leaves before the time they asked for
+says so under that line, with a clock, in a warning's colours: "Leaves 25 min before the time you
+asked for (08:00)" ([Search limits](search-limits.md)). Then one line says who drives them, in words that can't
 be taken for anything else: after a car's sign in a circle, "Judith drives you from Zürich to
 Bern", with the driver's small photo if they have one (the match's `driver_photo`, see
 [Profiles](profiles.md)), else the first letter of their name, their name in bold and their

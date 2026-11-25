@@ -31,6 +31,16 @@ The time is one of two things (`time_kind`, `matching.match_drive`):
   quickest and takes over an hour longer is left out: for a village with a few buses a day, the
   timetable also answers with leaving the evening before.
 
+**A card says when its trip doesn't keep that time** (`frontend/asked_time.js`), right under its
+times, in a warning's colours: "Leaves 25 min before the time you asked for (08:00)" on a trip
+that starts before a time to leave at, "Arrives 20 min after the time you asked for (18:00)" on
+one that ends after a time to arrive by. The search shows such trips on purpose (a pickup up to 4
+hours before, and for a [ride with public transport](combined-trips.md) the walk to or from the
+car), and the note is what keeps a passenger from taking the card's first time for the one they
+gave. It compares the two times on the card's first line with the search's own time, from 5
+minutes' difference (less is "on time", as in the details). The other way round, leaving later or
+arriving earlier, is what they asked for and says nothing.
+
 The results stay one list, the best first (closest in time and place), at most 20. Above them,
 the page says when it looked further, and those drives carry a "further away" label. A drive
 found this way can be booked like any other: a [booking](booking.md) accepts the same 30 km

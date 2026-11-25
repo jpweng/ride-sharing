@@ -108,7 +108,9 @@ Still signed out in browser A. Searching is public: everything here must work wi
 
 - [ ] **2.7** Read the cards. **Expect:** at most 20. Each starts with the times in large figures
   ("hh:mm → hh:mm"), how long the ride takes and, at the right, "CHF N" with "train ≈ CHF N" under
-  it. Then a car in a circle and "A driver takes you from (a town) to (a town)"; "pickup N km from
+  it. Under the times of a ride that leaves 5 minutes or more before the time you chose, on an
+  orange background with a clock: "Leaves N min before the time you asked for (hh:mm)", hh:mm being
+  your time; nothing there on a ride that leaves at that time or later. Then a car in a circle and "A driver takes you from (a town) to (a town)"; "pickup N km from
   your start" or "drop-off N km from your destination" only when that is more than 1 km. The price
   is never above the train fare. Demo cards have no button to ask for a seat: in its place, a
   "Demo" label and "A fictional example: it can't be booked." Each card has a small arrow at the end of its first line, and
@@ -199,7 +201,9 @@ Still signed out in browser A. Searching is public: everything here must work wi
   drives' cards moving or closing.
 - [ ] **2.28** Read the end of each combined card's total line. **Expect:** "N min quicker than
   public transport alone" on a trip at least 5 minutes quicker. Nothing about it on the others: none
-  says it is slower.
+  says it is slower. A trip whose first time is before the time you chose says "Leaves N min
+  before the time you asked for (hh:mm)" under its times; with "Arrive by", one whose last time is
+  after it says "Arrives N min after the time you asked for (hh:mm)".
 - [ ] **2.29** Open a combined card. **Expect:** the departure, seats and "N km together", the two
   stations, the ticket's price, the connection with "Tickets on SBB", and "Show on map".
 

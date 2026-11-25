@@ -1,0 +1,29 @@
+/* A trip that leaves before the time asked for, or arrives after it
+   (asked_time.js): said right under the card's times, in a warning's
+   colours, with a clock and words that say it without them. */
+.asked-time-note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  margin: 6px 0 2px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #fff4e5;
+  color: #8a5300;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.asked-time-note svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
