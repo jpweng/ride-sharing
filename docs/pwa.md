@@ -44,6 +44,8 @@ all in [frontend/](../frontend/):
 The Android app is a Trusted Web Activity: the site opened full screen by Chrome, published on
 Google Play. [mobile/android/](../mobile/android/) holds its configuration (`twa-manifest.json` for
 Bubblewrap) and the step-by-step guide: signing key, Play App Signing, the closed test, production.
+A workflow builds the bundle for Google Play ([android.yml](../.github/workflows/android.yml)),
+and the store listing's texts are written from the About page ([mobile/listing/](../mobile/listing/)).
 The site proves it belongs to the app with `/.well-known/assetlinks.json`, generated from the
 `ANDROID_CERT_SHA256` environment variable (comma-separated SHA-256 certificate fingerprints;
 an empty list when unset), which the deploy takes from the GitHub repo variable of the same name.

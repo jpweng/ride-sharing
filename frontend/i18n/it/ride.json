@@ -7,6 +7,7 @@
   "ride.askSentDemo.one": "Richiesta demo: raggiunge solo conducenti demo fittizi. {count} conducente è stato avvisato: {names}. Si disconnetta e continui con questo nome per vedere arrivare la richiesta.",
   "ride.askSentDemo.other": "Richiesta demo: raggiunge solo conducenti demo fittizi. {count} conducenti sono stati avvisati: {names}. Si disconnetta e continui con uno di questi nomi per vedere arrivare la richiesta.",
   "ride.askSentNone": "Richiesta inviata. Nessun conducente che usa l'app ha fatto questo tragitto di recente o guida nella zona (i conducenti demo sono fittizi e non vengono mai contattati), ma i suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
+  "ride.askSentNoneWithoutDemo": "Richiesta inviata. Nessun conducente che usa l'app ha fatto questo tragitto di recente o guida nella zona, ma i suoi messaggi le segnalano quando viene pubblicato un passaggio adatto.",
   "ride.askTitle": "Niente che le vada bene?",
   "ride.cancelRequest": "Annullare la richiesta",
   "ride.leaveAt": "Partenza",

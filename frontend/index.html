@@ -16,6 +16,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Ride and Rail" />
+<script src="ios_app.js"></script>
 <link rel="stylesheet" href="style.css" />
 <!-- Feature styles, in the order their rules had in style.css. -->
 <link rel="stylesheet" href="styles/transit.css" />
@@ -43,8 +44,8 @@
 </header>
 
 <div class="demo-banner" role="note" data-i18n-html="banner.app">
-  <strong>Demo</strong> — a prototype for testing. Drives marked <span class="badge demo">Demo</span>
-  are fictional. Other users see your first name and the initial of your last name.
+  <span class="demo-only"><strong>Demo</strong> — a prototype for testing. Drives marked <span class="badge demo">Demo</span>
+  are fictional. </span>Other users see your first name and the initial of your last name.
   <a href="about.html">About</a> · <a href="privacy.html">Privacy</a> · <a href="conduct.html">Code of conduct</a> · <a href="contact.html">Contact</a>
 </div>
 
@@ -97,7 +98,7 @@
         <a class="submit-btn secondary social-btn" data-provider="apple" hidden data-i18n="social.apple">Continue with Apple</a>
       </div>
 
-      <div class="demo-box">
+      <div class="demo-box demo-only">
         <div class="section-title" data-i18n="signin.demoTitle">Just looking?</div>
         <div class="hint" data-i18n="signin.demoHint">View the demo as one of its fictional drivers, without an email address. You can look around but not change anything.</div>
         <label for="signin-demo-driver" data-i18n="signin.demoDriver">Demo driver</label>
